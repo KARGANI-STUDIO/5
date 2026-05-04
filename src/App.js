@@ -765,7 +765,11 @@ onClick={() => handleStartCreating("guitar")}
   textAlign: "center",
   width: "100%",
   pointerEvents: "none",
-  zIndex: 10
+  zIndex: 10,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "6px"
 }}>
   <p style={{
     color: "rgba(255, 255, 255, 0.3)",
@@ -777,7 +781,20 @@ onClick={() => handleStartCreating("guitar")}
   }}>
     Powered By <span style={{ color: "rgba(255, 255, 255, 0.6)", fontWeight: "bold" }}>KARGANI STUDIO</span>
   </p>
-</div>   
+  
+  <span style={{
+    fontSize: "9px",
+    color: "#4D88FF",
+    opacity: 0.6,
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    padding: "2px 8px",
+    border: "1px solid rgba(77, 136, 255, 0.2)",
+    borderRadius: "4px"
+  }}>
+    Desktop Version Only
+  </span>
+</div>
         </div>
     
       </div>

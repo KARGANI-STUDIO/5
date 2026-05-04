@@ -705,7 +705,7 @@ if (
     
           <h1 className="logo">STRUNA</h1>
     
-          <p className="tagline">UNBOUND SOUND</p>
+          <p className="tagline" style={{ marginTop: "-50px" }}>UNBOUND SOUND</p>
     
           <button
     // Просто одна строка вместо пяти!

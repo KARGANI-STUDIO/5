@@ -833,7 +833,7 @@ onClick={() => handleStartCreating("guitar")}
     </button>
 
     {/* Логотип */}
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
         <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.1-BETA</span>

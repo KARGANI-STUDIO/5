@@ -855,9 +855,6 @@ onClick={() => handleStartCreating("guitar")}
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
         <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.1-BETA</span>
       </div>
-      <p style={{ margin: 0, fontSize: "12px", color: "#4D88FF", letterSpacing: "2px", marginTop: "-5px" }}>
-        UNBOUND SOUND
-      </p>
     </div>
   </div>
 
@@ -870,7 +867,7 @@ onClick={() => handleStartCreating("guitar")}
 
 </div>
 
-      <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: 20 }}>
+<div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: 20, marginTop: 60 }}>
         <button onClick={handleTogglePlay} className={`play-pause-btn ${isPlaying ? "playing" : "stopped"}`}>
           {isPlaying ? (
             <svg viewBox="0 0 24 24" width="28" height="28">

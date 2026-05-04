@@ -563,8 +563,10 @@ if (
   };
 
   const stopSound = () => {
+    // 1. Останавливаем анимацию
     cancelAnimationFrame(animationRef.current);
     
+    // 2. Мгновенно глушим все синтезаторы
     Object.values(synthsRef.current).forEach(s => { 
       try { 
         if (s.releaseAll) s.releaseAll(); 
@@ -572,9 +574,21 @@ if (
       } catch(e) {} 
     });
 
+    // 3. Агрессивное глушение мастер-шины
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.rampTo(0, 0.01); 
+      setTimeout(() => {
+        if (masterGainRef.current) {
+          masterGainRef.current.gain.setTargetAtTime(0.8, Tone.now(), 0.1);
+        }
+      }, 100);
+    }
+
+    // 4. Сброс состояния
     pauseOffsetRef.current = 0;
     triggeredRef.current.clear();
     setIsPlaying(false);
+    
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
   };
@@ -782,18 +796,55 @@ onClick={() => handleStartCreating("guitar")}
 
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
   
-  {/* Левая часть: Логотип и подпись */}
-  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-    <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-      <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-      <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.1-BETA</span>
+  {/* Левая часть: Кнопка НАЗАД (EXIT) и Логотип */}
+  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+    
+    {/* Кнопка-невидимка EXIT */}
+    <button 
+      onClick={() => {
+        stopSound(); // Остановка звука
+        setMode("landing"); // Возврат на главный экран
+      }} 
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "rgba(255, 255, 255, 0.3)",
+        cursor: "pointer",
+        padding: "5px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "all 0.3s ease",
+      }}
+      onMouseOver={(e) => { 
+        e.currentTarget.style.color = "#FF4D4D"; 
+        e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
+        e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
+      }}
+      onMouseOut={(e) => { 
+        e.currentTarget.style.color = "rgba(255, 255, 255, 0.3)"; 
+        e.currentTarget.style.filter = "none";
+        e.currentTarget.style.transform = "translateX(0) scale(1)";
+      }}
+    >
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+      </svg>
+    </button>
+
+    {/* Логотип */}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+        <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.1-BETA</span>
+      </div>
+      <p style={{ margin: 0, fontSize: "12px", color: "#4D88FF", letterSpacing: "2px", marginTop: "-5px" }}>
+        UNBOUND SOUND
+      </p>
     </div>
-    <p style={{ margin: 0, fontSize: "12px", color: "#4D88FF", letterSpacing: "2px", marginTop: "-5px", textAlign: "center" }}>
-      UNBOUND SOUND
-    </p>
   </div>
 
-  {/* Правая часть: Кнопки управления */}
+  {/* Правая часть: Кнопки сохранения и загрузки */}
   <div style={{ display: "flex", gap: "10px" }}>
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
     <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>

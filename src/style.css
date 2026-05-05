@@ -677,6 +677,19 @@ div[style*="background-color"],
   min-width: max-content;    /* ключ */
 }
 .tracks > * {
-  width: 220px;      /* можно 200–300px под твой дизайн */
+  width: 20px;      /* можно 200–300px под твой дизайн */
   flex-shrink: 0;    /* КЛЮЧЕВОЕ */
+}
+/* Эффект подсветки кубика при проигрывании */
+.block.playing {
+  filter: brightness(1.5) contrast(1.1);
+  box-shadow: 0 0 20px currentColor;
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+/* Плавный переход */
+.block {
+  transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease;
+  will-change: transform, filter;
 }

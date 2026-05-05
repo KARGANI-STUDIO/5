@@ -24,7 +24,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFX, setShowFX] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-
+  const [activeStep, setActiveStep] = useState(null);
   const scrollRef = useRef(null);
   const isDraggingRef = useRef(false);
   const scrollSpeedRef = useRef(0);
@@ -54,7 +54,7 @@ function App() {
     setInstrument(inst); // Устанавливаем выбранный инструмент
     setMode("app"); // Переходим в интерфейс DAW
 };
-  const STEP_WIDTH = 40;
+  const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
   const OPEN_STRINGS = [82.41, 110, 146.83, 196, 246.94, 329.63];
@@ -489,15 +489,28 @@ if (
         });
       });
       const x = (elapsed / STEP_TIME) * STEP_WIDTH;
-      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${x}px)`;
-      if (scrollRef.current) {
-        const target = Math.max(0, x - FOLLOW_OFFSET);
-        scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
-      }
-      animationRef.current = requestAnimationFrame(loop);
-    };
-    loop();
-  };
+    
+    // Вычисляем шаг для подсветки
+    const currentStep = Math.floor(x / STEP_WIDTH);
+    if (activeStep !== currentStep) {
+      setActiveStep(currentStep);
+    }
+
+    if (playheadRef.current) {
+      playheadRef.current.style.transform = `translateX(${x}px)`;
+    }
+
+    if (scrollRef.current) {
+      const target = Math.max(0, x - FOLLOW_OFFSET);
+      scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
+    }
+    
+    // Вот эта строка должна быть ОДНА:
+    animationRef.current = requestAnimationFrame(loop);
+  }; // <--- Закрывающая скобка самой функции loop
+
+  loop(); // Запуск цикла
+}; // <--- Закрывающая скобка функции startEngine
 
   const handleTogglePlay = async () => {
     // Эта проверка — ключ к успеху на мобилках
@@ -853,7 +866,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.1-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.1.2-BETA</span>
       </div>
     </div>
   </div>
@@ -1010,7 +1023,12 @@ onClick={() => handleStartCreating("guitar")}
                     return (
                       <div 
                         key={b.id} 
-                        className="block"
+                        className={`block ${
+                          isPlaying && 
+                          activeStep >= Math.floor(b.x / STEP_WIDTH) && 
+                          activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) 
+                            ? 'playing' : ''
+                        }`}
                         data-id={b.id}
                         onMouseEnter={() => setHoveredBlockId(b.id)}   // 👈 ДОБАВИТЬ
                         onMouseLeave={() => setHoveredBlockId(null)}   // 👈 ДОБАВИТЬ

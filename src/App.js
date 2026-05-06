@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as Tone from "tone";
 import "./style.css";
 import { useGoogleLogin } from '@react-oauth/google';
+import UserProfile from './UserProfile';
 
 function App() {
+  const [user, setUser] = useState(null);
   const [mode, setMode] = useState("landing");
   const strings = ["E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [] });
@@ -43,13 +45,30 @@ function App() {
   const fileInputRef = useRef(null);
   const recorderRef = useRef(null);
   const login = useGoogleLogin({
-    onSuccess: tokenResponse => {
+    onSuccess: async (tokenResponse) => {
       console.log("Успешный вход:", tokenResponse);
-      handleStartCreating("guitar"); // Входим в приложение
+      
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        
+        const userInfo = await res.json();
+        
+        setUser({
+          name: userInfo.name,
+          picture: userInfo.picture,
+          email: userInfo.email
+        });
+
+        handleStartCreating("guitar"); 
+        
+      } catch (err) {
+        console.error("Ошибка при получении данных профиля:", err);
+      }
     },
     onError: (error) => console.log('Ошибка входа:', error),
   });
-  
   // НОВЫЙ РЕФ ДЛЯ СЕНСОРА v1.1
   const touchStateRef = useRef({
     taps: 0, lastTapTime: 0, tapTimer: null,
@@ -862,7 +881,7 @@ onClick={() => handleStartCreating("guitar")}
   }
   return (
     <div className="app">
-      
+     
       <style>{`
         @keyframes pulse-record {
           0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
@@ -920,6 +939,7 @@ onClick={() => handleStartCreating("guitar")}
 
   {/* Правая часть: Кнопки сохранения и загрузки */}
   <div style={{ display: "flex", gap: "10px" }}>
+  <UserProfile user={user} onLogout={() => setUser(null)} />
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
     <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
     <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />

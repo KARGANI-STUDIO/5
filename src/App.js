@@ -5,7 +5,11 @@ import { useGoogleLogin } from '@react-oauth/google';
 import UserProfile from './UserProfile';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // При загрузке страницы проверяем, есть ли сохраненный юзер в памяти браузера
+    const savedUser = localStorage.getItem("struna_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [mode, setMode] = useState("landing");
   const strings = ["E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [] });
@@ -46,28 +50,33 @@ function App() {
   const recorderRef = useRef(null);
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      console.log("Успешный вход:", tokenResponse);
-      
       try {
         const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         });
-        
+
         const userInfo = await res.json();
-        
-        setUser({
+
+        // 1. Создаем объект с данными
+        const userData = {
           name: userInfo.name,
           picture: userInfo.picture,
           email: userInfo.email
-        });
+        };
 
-        handleStartCreating("guitar"); 
-        
+        // 2. Сохраняем в память React (чтобы иконка появилась сейчас)
+        setUser(userData);
+
+        // 3. СОХРАНЯЕМ В ПАМЯТЬ БРАУЗЕРА (чтобы иконка осталась после перезагрузки)
+        // ВСТАВЛЯЙ ЭТУ СТРОЧКУ:
+        localStorage.setItem("struna_user", JSON.stringify(userData));
+
+        handleStartCreating("guitar");
       } catch (err) {
         console.error("Ошибка при получении данных профиля:", err);
       }
     },
-    onError: (error) => console.log('Ошибка входа:', error),
+    onError: (error) => console.log('Login Failed:', error)
   });
   // НОВЫЙ РЕФ ДЛЯ СЕНСОРА v1.1
   const touchStateRef = useRef({
@@ -639,6 +648,11 @@ if (
       setTracks({ guitar: [], synth: [], bass: [] });
     }
   };
+  const handleLogout = () => {
+    localStorage.removeItem("struna_user");
+    setUser(null);
+    setMode("landing");
+  };
 
   // --- ЛОГИКА ЖЕСТОВ ТАЧПАДА (v1.1) ---
   const handleTouchStart = (e, b, isResize) => {
@@ -939,7 +953,7 @@ onClick={() => handleStartCreating("guitar")}
 
   {/* Правая часть: Кнопки сохранения и загрузки */}
   <div style={{ display: "flex", gap: "10px" }}>
-  <UserProfile user={user} onLogout={() => setUser(null)} />
+  <UserProfile user={user} onLogout={handleLogout} />
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
     <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
     <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />

@@ -1,11 +1,8 @@
-нн
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import * as Tone from "tone";
 import "./style.css";
 import { useGoogleLogin } from '@react-oauth/google';
 import UserProfile from './UserProfile';
-import { db } from "./firebaseConfig";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -644,24 +641,7 @@ if (
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
   };
-  const handleCloudSave = async () => {
-    if (!user) {
-      alert("Сначала войдите в аккаунт через Google!");
-      return;
-    }
 
-    try {
-      const docRef = await addDoc(collection(db, "projects"), {
-        userId: user.email,
-        bpm: bpm,
-        tracks: tracks,
-        createdAt: serverTimestamp()
-      }); 
-      alert("Сохранено!");
-    } catch (e) {
-      console.error(e);
-    }
-  }; 
   const handleResetAll = () => {
     if (window.confirm("Очистить проект?")) {
       stopSound();
@@ -975,15 +955,8 @@ onClick={() => handleStartCreating("guitar")}
   <div style={{ display: "flex", gap: "10px" }}>
   <UserProfile user={user} onLogout={handleLogout} />
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
-    <button onClick={() => fileInputRef.current.click()} className="load-btn">📁 LOAD</button>
-<input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
-<button 
-  onClick={handleCloudSave} 
-  className="save-btn" 
-  style={{ background: '#4285F4', marginLeft: '10px' }}
-  >
-  ☁️ CLOUD SAVE
-</button>
+    <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
+    <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
   </div>
 
 </div>

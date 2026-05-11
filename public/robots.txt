@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://struna-sound.vercel.app/sitemap.xml

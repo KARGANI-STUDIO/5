@@ -50,33 +50,16 @@ function App() {
   const recorderRef = useRef(null);
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        });
-
-        const userInfo = await res.json();
-
-        // 1. Создаем объект с данными
-        const userData = {
-          name: userInfo.name,
-          picture: userInfo.picture,
-          email: userInfo.email
-        };
-
-        // 2. Сохраняем в память React (чтобы иконка появилась сейчас)
-        setUser(userData);
-
-        // 3. СОХРАНЯЕМ В ПАМЯТЬ БРАУЗЕРА (чтобы иконка осталась после перезагрузки)
-        // ВСТАВЛЯЙ ЭТУ СТРОЧКУ:
-        localStorage.setItem("struna_user", JSON.stringify(userData));
-
-        handleStartCreating("guitar");
-      } catch (err) {
-        console.error("Ошибка при получении данных профиля:", err);
-      }
+      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+      });
+      const data = await res.json();
+      const userData = { ...data, access_token: tokenResponse.access_token };
+      setUser(userData);
+      localStorage.setItem("struna_user", JSON.stringify(userData));
+      window.location.reload();
     },
-    onError: (error) => console.log('Login Failed:', error)
+    scope: 'https://www.googleapis.com/auth/drive.file',
   });
   // НОВЫЙ РЕФ ДЛЯ СЕНСОРА v1.1
   const touchStateRef = useRef({
@@ -653,7 +636,42 @@ if (
     setUser(null);
     setMode("landing");
   };
+  const handleDriveSave = async () => {
+    // 1. Берем данные пользователя прямо из хранилища (самый надежный способ)
+    const storedUser = JSON.parse(localStorage.getItem("struna_user") || "{}");
+    const token = user?.access_token || storedUser?.access_token;
 
+    if (!token) {
+      alert("Ошибка: Ключ доступа не найден. Пожалуйста, сделайте Logout и войдите снова.");
+      return;
+    }
+
+    const projectData = { bpm, tracks, name: "Struna Project " + new Date().toLocaleString() };
+    const metadata = { name: `struna_${Date.now()}.json`, mimeType: 'application/json' };
+
+    const file = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (response.ok) {
+        alert("✅ Успешно сохранено на Google Диск!");
+      } else {
+        const errorDetail = await response.json();
+        console.error("Детали ошибки Google:", errorDetail);
+        alert(`Ошибка: ${errorDetail.error.message}`);
+      }
+    } catch (err) {
+      alert("Ошибка сети или сервера Google");
+    }
+  };
   // --- ЛОГИКА ЖЕСТОВ ТАЧПАДА (v1.1) ---
   const handleTouchStart = (e, b, isResize) => {
     e.stopPropagation();
@@ -956,6 +974,15 @@ onClick={() => handleStartCreating("guitar")}
   <UserProfile user={user} onLogout={handleLogout} />
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
     <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
+    {user && (
+  <button
+    onClick={handleDriveSave}
+    className="save-btn"
+    style={{ background: '#34A853', marginLeft: '10px' }}
+  >
+    ▲ DRIVE SAVE
+  </button>
+)}
     <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
   </div>
 

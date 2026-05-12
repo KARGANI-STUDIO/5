@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
+    "@supabase/supabase-js": "^2.105.4",
     "react": "18.1.0",
     "react-dom": "18.1.0",
     "tone": "^15.5.6"

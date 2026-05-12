@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import "./style.css";
 import { useGoogleLogin } from '@react-oauth/google';
 import UserProfile from './UserProfile';
+import { supabase } from './supabaseClient';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -335,7 +336,79 @@ if (
       }
     });
   }, [fx]);
-
+  useEffect(() => {
+    const loadFromUrl = async () => {
+      // 1. Ищем ID проекта в ссылке
+      const params = new URLSearchParams(window.location.search);
+      const projectId = params.get('project');
+  
+      if (projectId) {
+        console.log("Обнаружен ID проекта в ссылке, загружаю...");
+        
+        // 2. Достаем данные из Supabase
+        const { data, error } = await supabase
+          .from('projects')
+          .select('grid_data')
+          .eq('id', projectId)
+          .single();
+  
+        if (error) {
+          console.error('Ошибка загрузки по ссылке:', error.message);
+          return;
+        }
+  
+        if (data && data.grid_data) {
+          const p = data.grid_data;
+          
+          // 3. Загружаем всё в плеер (убедись, что эти функции у тебя так называются)
+          if (p.bpm) setBpm(p.bpm);
+          if (p.tracks) setTracks(p.tracks);
+          if (p.filters) setFilters(p.filters);
+          if (p.fx) setFx(p.fx);
+          
+          alert("Проект успешно загружен по вашей ссылке! Нажмите PLAY.");
+        }
+      }
+    };
+  
+    loadFromUrl();
+  }, []);
+  const handleShare = async () => {
+    try {
+      // Собираем все данные проекта (как в твоем handleSaveProject)
+      const projectData = { 
+        tracks: tracks, 
+        bpm: bpm, 
+        filters: filters, 
+        fx: fx 
+      };
+  
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([
+          { 
+            user_email: user?.email || 'guest', 
+            tempo: bpm, 
+            grid_data: projectData // сохраняем весь объект со всеми настройками
+          }
+        ])
+        .select();
+  
+      if (error) throw error;
+  
+      if (data && data[0]) {
+        // Создаем ссылку
+        const shareUrl = `${window.location.origin}?project=${data[0].id}`;
+        
+        // Копируем в буфер
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Ссылка на твой трек скопирована! Можно отправлять друзьям.');
+      }
+    } catch (error) {
+      console.error('Ошибка Supabase:', error.message);
+      alert('Не удалось создать ссылку: ' + error.message);
+    }
+  };
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
@@ -974,13 +1047,22 @@ onClick={() => handleStartCreating("guitar")}
   <UserProfile user={user} onLogout={handleLogout} />
     <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
     <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
-    {user && (
+{user && (
   <button
     onClick={handleDriveSave}
     className="save-btn"
     style={{ background: '#34A853', marginLeft: '10px' }}
   >
     ▲ DRIVE SAVE
+  </button>
+)}
+{user && (
+  <button 
+    onClick={handleShare} 
+    className="save-btn share-btn" 
+    style={{ marginLeft: '10px' }}
+  >
+    <span>🔗</span> SHARE
   </button>
 )}
     <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />

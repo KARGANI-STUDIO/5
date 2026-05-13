@@ -851,3 +851,102 @@ animation: neon-flow 3s linear infinite;
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* --- КРАСНОЕ ОКНО RESET (DANGER ZONE) --- */
+
+/* Фон-подложка для окна предупреждения */
+.warning-overlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85) !important; /* Чуть темнее обычного */
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important; /* Сильное размытие */
+}
+
+/* Сама карточка окна (Красный неон) */
+.warning-modal {
+  background: #0d0d0d !important;
+  border: 1px solid #ff3333 !important; /* КРАСНАЯ РАМКА */
+  box-shadow: 0 0 50px rgba(255, 51, 51, 0.3) !important; /* Красное свечение */
+  padding: 40px !important;
+  border-radius: 25px !important;
+  width: 420px !important;
+  text-align: center !important;
+  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Иконка предупреждения сверху */
+.warning-icon {
+  font-size: 44px;
+  color: #ff3333;
+  margin-bottom: 15px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+}
+
+/* Красный заголовок */
+.warning-modal h2 {
+  color: #ff3333 !important;
+  font-family: 'Orbitron', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+  font-size: 24px;
+  text-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
+}
+
+.warning-modal p {
+  color: #cccccc !important;
+  font-size: 15px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+/* Контейнер для кнопок */
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+/* Кнопка CANCEL */
+.cancel-modal-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #999 !important;
+  padding: 12px 25px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 11px;
+  transition: all 0.3s;
+}
+
+.cancel-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: #fff !important;
+}
+
+/* Кнопка YES, RESET ALL */
+.confirm-reset-btn {
+  background: #ff3333 !important; /* Яркий красный */
+  border: 1px solid #ff3333 !important;
+  color: #000 !important; /* Черный текст на красном — это классика */
+  padding: 12px 30px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 11px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.confirm-reset-btn:hover {
+  box-shadow: 0 0 30px #ff3333 !important;
+  transform: scale(1.05);
+}

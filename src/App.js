@@ -16,6 +16,7 @@ function App() {
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [] });
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [hoveredBlockId, setHoveredBlockId] = useState(null);
   const [filters, setFilters] = useState({
@@ -699,10 +700,9 @@ if (
   };
 
   const handleResetAll = () => {
-    if (window.confirm("Очистить проект?")) {
-      stopSound();
-      setTracks({ guitar: [], synth: [], bass: [] });
-    }
+    stopSound(); // Это важно, чтобы звук не завис при удалении нот
+    setTracks({ guitar: [], synth: [], bass: [] });
+    console.log("Project cleared successfully");
   };
   const handleLogout = () => {
     localStorage.removeItem("struna_user");
@@ -1095,8 +1095,12 @@ onClick={() => handleStartCreating("guitar")}
           <div className="record-dot"></div>
           {isRecording ? 'REC' : 'RECORD'}
         </button>
-
-        <button onClick={handleResetAll} className="reset-btn">RESET 🗑️</button>
+        <button 
+  onClick={() => setShowResetConfirm(true)} 
+  className="reset-btn"
+>
+  RESET
+</button>
       </div>
 
       <div style={{ display: "flex", gap: "15px", alignItems: "center", marginBottom: 25, background: "#161B33", padding: "15px", borderRadius: "10px", width: "fit-content" }}>
@@ -1330,6 +1334,21 @@ onClick={() => handleStartCreating("guitar")}
               <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
             </div>
             <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Got it!</button>
+          </div>
+        </div>
+      )}
+     
+      {/* ВСТАВЛЯЙ ВЫРЕЗАННЫЙ БЛОК СЮДА */}
+      {showResetConfirm && (
+        <div className="custom-modal-overlay warning-overlay" onClick={() => setShowResetConfirm(false)}>
+          <div className="custom-modal warning-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="warning-icon">⚠</div>
+            <h2>DANGER ZONE</h2>
+            <p>Clear entire project? All notes will be permanently deleted.</p>
+            <div className="modal-buttons">
+              <button className="cancel-modal-btn" onClick={() => setShowResetConfirm(false)}>CANCEL</button>
+              <button className="confirm-reset-btn" onClick={() => { handleResetAll(); setShowResetConfirm(false); }}>YES, RESET ALL</button>
+            </div>
           </div>
         </div>
       )}

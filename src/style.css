@@ -693,3 +693,44 @@ div[style*="background-color"],
   transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease;
   will-change: transform, filter;
 }
+.neon-struna {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(50px, 15vw, 120px);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  
+  /* ЦЕНТРОВКА */
+  display: block;
+  margin: 0 auto 30px auto;
+  line-height: 1.6; /* Чтобы не резало неон сверху */
+
+  /* ТВОЙ ЛЮБИМЫЙ НЕОН */
+background: linear-gradient(90deg, #00ffff, #0066ff, #9d00ff, #00ffff);
+background-size: 200% auto;
+background-clip: text;
+-webkit-background-clip: text; /* для Safari/Chrome */
+-webkit-text-fill-color: transparent;
+filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.7));
+animation: neon-flow 3s linear infinite;
+}
+
+@keyframes neon-flow {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+.app.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;    /* Центрирует по горизонтали */
+  justify-content: center; /* Центрирует по вертикали */
+  width: 100%;
+  min-height: 100vh;
+}
+.landing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Центрирует всё внутри (логотип, кнопку, превью) */
+  text-align: center;
+  width: 100%;
+}

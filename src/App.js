@@ -848,7 +848,9 @@ if (
     
         <div className="landing-content">
     
-          <h1 className="logo">STRUNA</h1>
+        <div className="logo-wrapper">
+  <h1 className="neon-struna">STRUNA</h1>
+</div>
     
           <p className="tagline" style={{ marginTop: "-50px" }}>UNBOUND SOUND</p>
     

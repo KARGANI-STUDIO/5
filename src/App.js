@@ -15,7 +15,7 @@ function App() {
   const strings = ["E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [] });
   const [instrument, setInstrument] = useState("guitar");
-
+  const [showHelp, setShowHelp] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [hoveredBlockId, setHoveredBlockId] = useState(null);
   const [filters, setFilters] = useState({
@@ -1039,7 +1039,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.2.0-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.2.1-BETA</span>
       </div>
     </div>
   </div>
@@ -1312,6 +1312,27 @@ onClick={() => handleStartCreating("guitar")}
 
         </div>
       </div>
+      <button 
+        className="controls-help-btn"
+        onClick={() => setShowHelp(true)}
+      >
+        Controls Help
+      </button>
+
+      {showHelp && (
+        <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Controls Guide</h2>
+            <div className="modal-content">
+              <div className="control-item"><span>Shift + Left Click</span> — Move playhead</div>
+              <div className="control-item"><span>Alt + Scroll</span> — Track volume</div>
+              <div className="control-item"><span>Right Click</span> — Delete block</div>
+              <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
+            </div>
+            <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Got it!</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

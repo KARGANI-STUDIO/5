@@ -734,3 +734,120 @@ animation: neon-flow 3s linear infinite;
   text-align: center;
   width: 100%;
 }
+.controls-help-btn {
+  /* УБИРАЕМ FIXED. Теперь она не будет летать поверх нот */
+  position: relative !important; 
+  display: block !important;
+  
+  /* Делаем отступ от сетки сверху (40px) и центрируем по горизонтали (auto) */
+  margin: 40px auto 20px auto !important; 
+  
+  /* Слой */
+  z-index: 9999 !important;
+
+  /* Красивое оформление */
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid #00f3ff !important;
+  color: #00f3ff !important;
+  padding: 10px 25px !important;
+  border-radius: 30px !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Эффект свечения при наведении */
+.controls-help-btn:hover {
+  background: rgba(0, 243, 255, 0.2) !important;
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.6) !important;
+  transform: scale(1.05) !important;
+}
+/* 1. Темный фон-подложка с размытием */
+.custom-modal-overlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8) !important; /* Глубокий темный */
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000 !important; /* Максимальный приоритет */
+  backdrop-filter: blur(10px); /* Сильное размытие заднего плана */
+}
+
+/* 2. Само окно */
+.custom-modal {
+  background: #0d0d12 !important; /* Цвет как у твоих панелей */
+  border: 1px solid #00f3ff !important;
+  box-shadow: 0 0 50px rgba(0, 243, 255, 0.25) !important;
+  padding: 40px !important;
+  border-radius: 25px !important;
+  width: 450px !important;
+  text-align: center;
+  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 3. Заголовок */
+.custom-modal h2 {
+  color: #00f3ff !important;
+  font-family: 'Orbitron', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 30px;
+  font-size: 22px;
+  text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+/* 4. Контент со списком */
+.modal-content {
+  text-align: left !important;
+  margin-bottom: 35px !important;
+}
+
+.control-item {
+  margin-bottom: 18px !important;
+  color: #e0e0e0 !important;
+  font-size: 15px !important;
+  line-height: 1.4;
+  border-left: 3px solid rgba(0, 243, 255, 0.3);
+  padding-left: 15px;
+}
+
+.control-item span {
+  color: #00f3ff !important; /* Подсветка клавиш */
+  font-weight: bold !important;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+/* 5. Кнопка "Got it!" */
+.close-modal-btn {
+  background: transparent !important;
+  border: 1px solid #00f3ff !important;
+  color: #00f3ff !important;
+  padding: 12px 45px !important;
+  border-radius: 50px !important;
+  cursor: pointer !important;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 13px !important;
+  transition: all 0.3s ease !important;
+  text-transform: uppercase;
+}
+
+.close-modal-btn:hover {
+  background: #00f3ff !important;
+  color: #000 !important;
+  box-shadow: 0 0 25px #00f3ff !important;
+}
+
+/* Анимация вылета окна снизу */
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}

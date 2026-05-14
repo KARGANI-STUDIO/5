@@ -34,6 +34,9 @@ function App() {
   const [showFX, setShowFX] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [activeStep, setActiveStep] = useState(null);
+  const [selectedBlockIds, setSelectedBlockIds] = useState(new Set());
+  const copiedBlocksRef = useRef([]);
+  const playheadXRef = useRef(0);
   const scrollRef = useRef(null);
   const isDraggingRef = useRef(false);
   const scrollSpeedRef = useRef(0);
@@ -374,6 +377,7 @@ if (
   
     loadFromUrl();
   }, []);
+    
   const handleShare = async () => {
     try {
       // Собираем все данные проекта (как в твоем handleSaveProject)
@@ -582,6 +586,7 @@ if (
         });
       });
       const x = (elapsed / STEP_TIME) * STEP_WIDTH;
+      playheadXRef.current = x;
     
     // Вычисляем шаг для подсветки
     const currentStep = Math.floor(x / STEP_WIDTH);
@@ -704,6 +709,161 @@ if (
     setTracks({ guitar: [], synth: [], bass: [] });
     console.log("Project cleared successfully");
   };
+    // Выделение блока с учётом Ctrl
+    const handleSelectBlock = (e, block, instName) => {
+      e.stopPropagation();
+      if (e.ctrlKey || e.metaKey) {
+        setSelectedBlockIds(prev => {
+          const newSet = new Set(prev);
+          if (newSet.has(block.id)) newSet.delete(block.id);
+          else newSet.add(block.id);
+          return newSet;
+        });
+      } else {
+        setSelectedBlockIds(new Set([block.id]));
+      }
+    };
+  // --- ИСПРАВЛЕННОЕ КОПИРОВАНИЕ И ВСТАВКА (ПОСЛЕДОВАТЕЛЬНО) ---
+
+  const copySelectedBlocks = () => {
+    const blocksToCopy = [];
+    for (const [inst, blocks] of Object.entries(tracks)) {
+      blocks.forEach(block => {
+        if (selectedBlockIds.has(block.id)) {
+          blocksToCopy.push({
+            instrument: inst,
+            block: { ...block } 
+          });
+        }
+      });
+    }
+
+    // Сортируем блоки по X, чтобы правильно вычислить границы группы
+    copiedBlocksRef.current = blocksToCopy.sort((a, b) => a.block.x - b.block.x);
+    console.log("Скопировано:", copiedBlocksRef.current.length);
+  };
+
+  const pasteBlocks = () => {
+    if (copiedBlocksRef.current.length === 0) return;
+
+    // 1. Вычисляем границы всей группы скопированных блоков
+    const minX = Math.min(...copiedBlocksRef.current.map(i => i.block.x));
+    const maxEndX = Math.max(...copiedBlocksRef.current.map(i => i.block.x + i.block.length));
+    
+    // Сдвиг равен полной ширине группы (от начала самого первого до конца самого последнего блока)
+    const offset = maxEndX - minX || STEP_WIDTH;
+
+    // 2. Генерируем новые блоки ЗАРАНЕЕ (не внутри setTracks), чтобы обновить буфер
+    const nextClipboard = copiedBlocksRef.current.map(item => ({
+      instrument: item.instrument,
+      block: {
+        ...item.block,
+        id: Date.now() + Math.random(), // Новый уникальный ID
+        x: item.block.x + offset        // Сдвигаем ровно за оригинал
+      }
+    }));
+
+    // 3. Обновляем состояние треков
+    setTracks(prev => {
+      const updated = { ...prev };
+      nextClipboard.forEach(({ instrument: inst, block: newBlock }) => {
+        updated[inst] = [...(updated[inst] || []), newBlock];
+      });
+      return updated;
+    });
+
+    // 4. Обновляем буфер обмена на только что вставленные блоки.
+    // Это позволяет зажать Ctrl+V и строить "паровозик" из блоков без наложений.
+    copiedBlocksRef.current = nextClipboard;
+    console.log("Вставлено последовательно");
+  };
+// Найди или добавь эти функции перед useEffect
+const startPlayback = async () => {
+  if (Tone.context.state !== 'running') await Tone.start();
+  const now = Tone.now();
+  startTimeRef.current = now - pauseOffsetRef.current;
+  triggeredRef.current.clear();
+  setIsPlaying(true);
+  startEngine();
+};
+const stopPlayback = () => {
+  const now = Tone.now();
+  cancelAnimationFrame(animationRef.current);
+  pauseOffsetRef.current = now - startTimeRef.current; 
+  setIsPlaying(false);
+  Object.values(synthsRef.current).forEach(s => { 
+    try { if (s.releaseAll) s.releaseAll(); } catch(e) {} 
+  });
+};
+// 1. Добавляем саму логику удаления
+const deleteSelectedBlocks = () => {
+  // Если ничего не выбрано — ничего не делаем
+  if (selectedBlockIds.size === 0) return;
+
+  setTracks(prev => {
+    const updated = { ...prev };
+    // Проходим по всем инструментам и выкидываем блоки, чьи ID есть в списке выделенных
+    Object.keys(updated).forEach(inst => {
+      updated[inst] = updated[inst].filter(block => !selectedBlockIds.has(block.id));
+    });
+    return updated;
+  });
+
+  // Очищаем список выделения, так как блоков больше нет
+  setSelectedBlockIds(new Set());
+  console.log("Selected blocks deleted");
+};
+  // Горячие клавиши с поддержкой русской раскладки и Chrome
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 1. Игнорируем в инпутах
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      // 2. УДАЛЕНИЕ (добавляем сюда)
+      if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (selectedBlockIds.size > 0) {
+          e.preventDefault();
+          deleteSelectedBlocks(); // Вызываем нашу новую функцию
+        }
+      }
+  
+      // 2. Глобальный перехват ПРОБЕЛА
+      if (e.code === 'Space') {
+        e.preventDefault(); // Запрет скролла
+        e.stopPropagation(); // Запрет клика по кнопке в фокусе
+        
+        // Снимаем фокус с любой кнопки, чтобы она не «нажималась»
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+          document.activeElement.blur();
+        }
+  
+        if (isPlaying) {
+          stopPlayback();
+        } else {
+          startPlayback();
+        }
+        return;
+      }
+  
+      // 3. Копирование и Вставка (с поддержкой разных раскладок)
+      const isC = e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'с' || e.code === 'KeyC';
+      const isV = e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'м' || e.code === 'KeyV';
+  
+      if ((e.ctrlKey || e.metaKey) && isC) {
+        e.preventDefault();
+        copySelectedBlocks();
+      } 
+      else if ((e.ctrlKey || e.metaKey) && isV) {
+        e.preventDefault();
+        pasteBlocks();
+      }
+    
+    };
+  
+    // Добавляем true в конце — это перехват события на самом верхнем уровне
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    
+  }, [selectedBlockIds, tracks, instrument, isPlaying]); // Важно: isPlaying в зависимостях!
   const handleLogout = () => {
     localStorage.removeItem("struna_user");
     setUser(null);
@@ -1039,7 +1199,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.2.1-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.0-BETA</span>
       </div>
     </div>
   </div>
@@ -1218,77 +1378,88 @@ onClick={() => handleStartCreating("guitar")}
                     
                     return (
                       <div 
-                        key={b.id} 
-                        className={`block ${
-                          isPlaying && 
-                          activeStep >= Math.floor(b.x / STEP_WIDTH) && 
-                          activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) 
-                            ? 'playing' : ''
-                        }`}
-                        data-id={b.id}
-                        onMouseEnter={() => setHoveredBlockId(b.id)}   // 👈 ДОБАВИТЬ
-                        onMouseLeave={() => setHoveredBlockId(null)}   // 👈 ДОБАВИТЬ
-                        onMouseDown={(e) => {
-                          if (!isActive) return;
-                        
-                          isDraggingRef.current = true; // 🔥 ВОТ ЭТО ДОБАВЬ
-                          startDrag(b, e);
-                        }}
-                        onDoubleClick={() => {
-                          if (!isActive) return;
-                          setTracks(prev => ({
-                            ...prev,
-                            [instrument]: prev[instrument].map(it => 
-                              it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it
-                            )
-                          }));
-                        }}
-                        onTouchStart={(e) => isActive && handleTouchStart(e, b, false)}
-                        onTouchMove={(e) => isActive && handleTouchMove(e)}
-                        onTouchEnd={handleTouchEnd}
-                        onContextMenu={(e) => { 
-                          e.preventDefault(); 
-                          if (!isActive) return;
-                          setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)})); 
-                        }} 
-                        style={{
-                          position: "absolute",
-                          left: b.x,
-                          width: b.length,
-                          height: 45,
-                          backgroundColor: isActive ? getColor(b.fret) : "rgba(100, 100, 100, 0.3)",
-                          "--neon-color": isActive ? getColor(b.fret) : "transparent",
-                          opacity: isActive ? (b.velocity || 1) : 0.4,
-                          border: isActive ? "none" : "1px dashed rgba(255,255,255,0.2)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: isActive ? "white" : "rgba(255,255,255,0.2)",
-                          fontWeight: "bold",
-                          cursor: isActive ? "grab" : "default",
-                          zIndex: isActive ? 10 : 5,
-                          borderRadius: 6,
-                          pointerEvents: isActive ? "auto" : "none",
-                          touchAction: "none" 
-                        }}>
-                        {b.fret}
-                        {isActive && (
-                          <div 
-                            onMouseDown={(e) => startResize(b, e)}
-                            onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
-                            style={{
-                              position: "absolute",
-                              right: 0,
-                              top: 0,
-                              width: 15,
-                              height: "100%",
-                              cursor: "ew-resize",
-                              background: "rgba(0,0,0,0.1)",
-                              borderRadius: "0 6px 6px 0",
-                            }} 
-                          />
-                        )}
-                      </div>
+  key={b.id} 
+  className={`block ${
+    isPlaying && 
+    activeStep >= Math.floor(b.x / STEP_WIDTH) && 
+    activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) 
+      ? 'playing' : ''
+  }`}
+  data-id={b.id}
+  onMouseEnter={() => setHoveredBlockId(b.id)}
+  onMouseLeave={() => setHoveredBlockId(null)}
+  onMouseDown={(e) => {
+    // ВСЕГДА вызываем выделение (для любого инструмента)
+    handleSelectBlock(e, b, instName);
+    // Перетаскивание только для активного инструмента
+    if (instName === instrument) {
+      isDraggingRef.current = true;
+      startDrag(b, e);
+    }
+  }}
+  onDoubleClick={() => {
+    if (instName !== instrument) return;
+    setTracks(prev => ({
+      ...prev,
+      [instrument]: prev[instrument].map(it => 
+        it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it
+      )
+    }));
+  }}
+  onTouchStart={(e) => {
+    handleSelectBlock(e, b, instName);
+    if (instName === instrument) handleTouchStart(e, b, false);
+  }}
+  onTouchMove={(e) => {
+    if (instName === instrument) handleTouchMove(e);
+  }}
+  onTouchEnd={handleTouchEnd}
+  onContextMenu={(e) => { 
+    e.preventDefault(); 
+    if (instName !== instrument) return;
+    setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)}));
+    setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
+  }} 
+  style={{
+    position: "absolute",
+    left: b.x,
+    width: b.length,
+    height: 45,
+    backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.3)",
+    "--neon-color": instName === instrument ? getColor(b.fret) : "transparent",
+    opacity: instName === instrument ? (b.velocity || 1) : 0.4,
+    border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
+    outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
+    outlineOffset: "2px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: instName === instrument ? "white" : "rgba(255,255,255,0.2)",
+    fontWeight: "bold",
+    cursor: instName === instrument ? "grab" : "default",
+    zIndex: instName === instrument ? 10 : 5,
+    borderRadius: 6,
+    pointerEvents: "auto",   // ← теперь ВСЕ блоки можно выделять
+    touchAction: "none" 
+  }}>
+  {b.fret}
+  {instName === instrument && (
+    <div 
+      onMouseDown={(e) => startResize(b, e)}
+      onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
+      style={{
+        position: "absolute",
+        right: 0,
+        top: 0,
+        width: 15,
+        height: "100%",
+        cursor: "ew-resize",
+        background: "rgba(0,0,0,0.1)",
+        borderRadius: "0 6px 6px 0",
+      }} 
+    />
+  )}
+</div>
                     );
                   })
               )}
@@ -1324,20 +1495,35 @@ onClick={() => handleStartCreating("guitar")}
       </button>
 
       {showHelp && (
-        <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
-          <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Controls Guide</h2>
-            <div className="modal-content">
-              <div className="control-item"><span>Shift + Left Click</span> — Move playhead</div>
-              <div className="control-item"><span>Alt + Scroll</span> — Track volume</div>
-              <div className="control-item"><span>Right Click</span> — Delete block</div>
-              <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
-            </div>
-            <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Got it!</button>
-          </div>
+  <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
+    <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header">
+        <h2>Controls Guide</h2>
+        <div className="header-line"></div>
+      </div>
+      
+      <div className="modal-content">
+        <div className="help-section">
+          <h3>Mouse & Navigation</h3>
+          <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
+          <div className="control-item"><span>Right Click</span> — Delete block</div>
+          <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
         </div>
-      )}
-     
+
+        <div className="help-section">
+  <p><strong>⌨️ Keyboard Shortcuts</strong></p>
+  <div className="control-item"><span>Space</span> — Play / Stop</div>
+  <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
+  <div className="control-item"><span>Ctrl + V</span> — Smart Paste (sequential)</div>
+  <div className="control-item"><span>Del / Backspace</span> — Delete selected blocks</div>
+</div>
+      </div>
+
+      <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Let's Rock!</button>
+    </div>
+  </div>
+)}
+
       {/* ВСТАВЛЯЙ ВЫРЕЗАННЫЙ БЛОК СЮДА */}
       {showResetConfirm && (
         <div className="custom-modal-overlay warning-overlay" onClick={() => setShowResetConfirm(false)}>

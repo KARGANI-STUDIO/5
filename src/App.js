@@ -35,6 +35,8 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [activeStep, setActiveStep] = useState(null);
   const [selectedBlockIds, setSelectedBlockIds] = useState(new Set());
+  const [isGroupDragging, setIsGroupDragging] = useState(false);
+  const [dragStartInfo, setDragStartInfo] = useState(null);
   const copiedBlocksRef = useRef([]);
   const playheadXRef = useRef(0);
   const scrollRef = useRef(null);
@@ -165,15 +167,54 @@ if (
     } // ← закрыли if
     
     };
+    const handleGroupDragStart = (e, block) => {
+      setIsGroupDragging(true);
+      const initialPositions = new Map();
+      
+      // Сохраняем позиции всех блоков, которые сейчас выделены
+      tracks[instrument].forEach(b => {
+        if (selectedBlockIds.has(b.id)) {
+          initialPositions.set(b.id, { x: b.x, string: b.string });
+        }
+      });
+  
+      setDragStartInfo({
+        startX: e.clientX,
+        initialBlocks: initialPositions
+      });
+    };
+  
+    const handleGroupDragMove = (e) => {
+      if (!isGroupDragging || !dragStartInfo) return;
+  
+      const deltaX = e.clientX - dragStartInfo.startX;
+      const deltaSteps = Math.round(deltaX / 20); // Твоя сетка 20px
+  
+      setTracks(prev => ({
+        ...prev,
+        [instrument]: prev[instrument].map(b => {
+          if (dragStartInfo.initialBlocks.has(b.id)) {
+            const initial = dragStartInfo.initialBlocks.get(b.id);
+            return {
+              ...b,
+              x: Math.max(0, initial.x + deltaSteps * 20)
+            };
+          }
+          return b;
+        })
+      }));
+    };
   useEffect(() => {
     const handleMove = (e) => {
       if (!isDraggingRef.current) return;
+      if (isGroupDragging) handleGroupDragMove(e);
          autoScrollIfNeeded(e.clientX);
     };
   
     const handleUp = () => {
       isDraggingRef.current = false;
       scrollSpeedRef.current = 0;
+      setIsGroupDragging(false);
     
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -188,48 +229,47 @@ if (
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, []);
+  },[isGroupDragging, dragStartInfo, instrument, tracks, selectedBlockIds]);
   useEffect(() => {
     const grid = scrollRef.current;
     if (!grid) return;
   
     const handleWheel = (e) => {
-      // 👉 если НЕ над нотой — вообще ничего не трогаем
-      if (!hoveredBlockId) return;
-    
-      // 👉 блокируем только когда реально редактируем
-      e.preventDefault();
-    
-      setTracks(prev => ({
-        ...prev,
-        [instrument]: prev[instrument].map((it) => {
-          if (it.id === hoveredBlockId) {
-            
-            // ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
-            if (e.altKey) {
-              // Шаг изменения громкости, например 0.1
-              const volDelta = e.deltaY < 0 ? 0.1 : -0.1; 
-              // Ограничиваем velocity от 0 до 1
-              const newVelocity = Math.max(0, Math.min(1, (it.velocity ?? 1) + volDelta));
+      // 👉 1. Если мы над кубиком (нотой) — меняем его параметры, сетку не трогаем
+      if (hoveredBlockId) {
+        e.preventDefault(); // блокируем скролл страницы
+        
+        setTracks(prev => ({
+          ...prev,
+          [instrument]: prev[instrument].map((it) => {
+            if (it.id === hoveredBlockId) {
               
-              return {
-                ...it,
-                velocity: newVelocity
-              };
-            } 
-            
-            // ИНАЧЕ МЕНЯЕМ ЛАД (FRET)
-            else {
-              const fretDelta = e.deltaY < 0 ? 1 : -1;
-              return {
-                ...it,
-                fret: Math.max(0, it.fret + fretDelta)
-              };
+              // ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
+              if (e.altKey) {
+                const volDelta = e.deltaY < 0 ? 0.1 : -0.1; 
+                const newVelocity = Math.max(0, Math.min(1, (it.velocity ?? 1) + volDelta));
+                return { ...it, velocity: newVelocity };
+              } 
+              // ИНАЧЕ МЕНЯЕМ ЛАД (FRET)
+              else {
+                const fretDelta = e.deltaY < 0 ? 1 : -1;
+                return { ...it, fret: Math.max(0, it.fret + fretDelta) };
+              }
             }
-          }
-          return it;
-        })
-      }));
+            return it;
+          })
+        }));
+        
+        return; // Важно! Выходим из функции, чтобы не сработал код ниже
+      }
+  
+      // 👉 2. Если мы внутри сетки, но НЕ над кубиком — скроллим по горизонтали
+      e.preventDefault(); // Отключаем стандартный вертикальный скролл
+      // Добавляем e.deltaY (колесико мыши) и e.deltaX (если у юзера тачпад)
+      grid.scrollTo({
+        left: grid.scrollLeft + (e.deltaY * 2), 
+        behavior: 'smooth'
+      }); 
     };
   
     // Слушатель с passive: false заставляет браузер слушаться команды preventDefault()
@@ -1199,7 +1239,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.0-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.1-BETA</span>
       </div>
     </div>
   </div>
@@ -1389,10 +1429,15 @@ onClick={() => handleStartCreating("guitar")}
   onMouseEnter={() => setHoveredBlockId(b.id)}
   onMouseLeave={() => setHoveredBlockId(null)}
   onMouseDown={(e) => {
-    // ВСЕГДА вызываем выделение (для любого инструмента)
     handleSelectBlock(e, b, instName);
-    // Перетаскивание только для активного инструмента
+    
     if (instName === instrument) {
+      // Если тянем выделенный блок — включаем режим группы
+      if (selectedBlockIds.has(b.id)) {
+        handleGroupDragStart(e, b);
+      }
+      
+      // В любом случае запускаем стандартный драг, чтобы ничего не «стояло»
       isDraggingRef.current = true;
       startDrag(b, e);
     }
@@ -1513,8 +1558,9 @@ onClick={() => handleStartCreating("guitar")}
         <div className="help-section">
   <p><strong>⌨️ Keyboard Shortcuts</strong></p>
   <div className="control-item"><span>Space</span> — Play / Stop</div>
+  <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
   <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
-  <div className="control-item"><span>Ctrl + V</span> — Smart Paste (sequential)</div>
+  <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>
   <div className="control-item"><span>Del / Backspace</span> — Delete selected blocks</div>
 </div>
       </div>

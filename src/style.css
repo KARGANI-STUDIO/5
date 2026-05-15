@@ -950,6 +950,3 @@ animation: neon-flow 3s linear infinite;
   box-shadow: 0 0 30px #ff3333 !important;
   transform: scale(1.05);
 }
-.sequencer-scroll {
-  scroll-behavior: smooth;
-}

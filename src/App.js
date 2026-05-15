@@ -1549,15 +1549,16 @@ onClick={() => handleStartCreating("guitar")}
       
       <div className="modal-content">
         <div className="help-section">
-          <h3>Mouse & Navigation</h3>
-          <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
-          <div className="control-item"><span>Right Click</span> — Delete block</div>
+        <p><strong>🖱️ Mouse Controls</strong></p>
           <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
+          <div className="control-item"><span>Alt + Scroll</span> — Change note volume</div>
+          <div className="control-item"><span>Right Click</span> — Delete block</div>
         </div>
 
         <div className="help-section">
   <p><strong>⌨️ Keyboard Shortcuts</strong></p>
   <div className="control-item"><span>Space</span> — Play / Stop</div>
+  <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
   <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
   <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
   <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>

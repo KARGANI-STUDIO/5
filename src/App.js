@@ -233,57 +233,61 @@ if (
   useEffect(() => {
     const grid = scrollRef.current;
     if (!grid) return;
-  
+
     const handleWheel = (e) => {
-      // 👉 1. Если мы над кубиком (нотой) — меняем его параметры, сетку не трогаем
+      // 1. Если мы над кубиком (нотой)
       if (hoveredBlockId) {
-        e.preventDefault(); // блокируем скролл страницы
-        
-        setTracks(prev => ({
-          ...prev,
-          [instrument]: prev[instrument].map((it) => {
-            if (it.id === hoveredBlockId) {
-              
-              // ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
-              if (e.altKey) {
-                const volDelta = e.deltaY < 0 ? 0.1 : -0.1; 
-                const newVelocity = Math.max(0, Math.min(1, (it.velocity ?? 1) + volDelta));
-                return { ...it, velocity: newVelocity };
-              } 
-              // ИНАЧЕ МЕНЯЕМ ЛАД (FRET)
-              else {
-                const fretDelta = e.deltaY < 0 ? 1 : -1;
-                return { ...it, fret: Math.max(0, it.fret + fretDelta) };
+        e.preventDefault();
+
+        setTracks(prev => {
+          // ИСПРАВЛЕННАЯ ПРОВЕРКА: используем .has(), так как это Set
+          const isSelected = selectedBlockIds.has(hoveredBlockId);
+          if (!isSelected) return prev;
+
+          return {
+            ...prev,
+            [instrument]: prev[instrument].map((it) => {
+              if (it.id === hoveredBlockId) {
+                // А) ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
+                if (e.altKey) {
+                  const volDelta = e.deltaY > 0 ? -0.1 : 0.1;
+                  const currentVel = it.velocity ?? 1;
+                  const newVelocity = Math.max(0.1, Math.min(1.5, currentVel + volDelta));
+                  return { ...it, velocity: newVelocity };
+                } 
+                // Б) ИНАЧЕ — МЕНЯЕМ ЛАД (ТОН / FRET)
+                else {
+                  const fretDelta = e.deltaY > 0 ? -1 : 1;
+                  const newFret = Math.max(0, (it.fret || 0) + fretDelta);
+                  return { ...it, fret: newFret };
+                }
               }
-            }
-            return it;
-          })
-        }));
-        
-        return; // Важно! Выходим из функции, чтобы не сработал код ниже
+              return it;
+            })
+          };
+        });
+        return;
       }
-  
-      // 👉 2. Если мы внутри сетки, но НЕ над кубиком — скроллим по горизонтали
-      e.preventDefault(); // Отключаем стандартный вертикальный скролл
-      // Добавляем e.deltaY (колесико мыши) и e.deltaX (если у юзера тачпад)
-      grid.scrollTo({
-        left: grid.scrollLeft + (e.deltaY * 2), 
-        behavior: 'smooth'
-      }); 
+
+      // 2. Если мы просто крутим колесо над пустой сеткой — скроллим
+      if (!hoveredBlockId) {
+        e.preventDefault();
+        grid.scrollTo({
+          left: grid.scrollLeft + (e.deltaY * 2),
+          behavior: 'smooth'
+        });
+      }
     };
-  
-    // Слушатель с passive: false заставляет браузер слушаться команды preventDefault()
+
     grid.addEventListener("wheel", handleWheel, { passive: false });
-  
-    return () => {
-      grid.removeEventListener("wheel", handleWheel);
-    };
-  }, [instrument, hoveredBlockId]);
+    return () => grid.removeEventListener("wheel", handleWheel);
+
+    // ВАЖНО: массив зависимостей должен совпадать с переменными выше
+  }, [instrument, hoveredBlockId, selectedBlockIds]);
   const getColor = (fret) => {
     const colors = ["#FF4D4D", "#FF7A4D", "#FFB84D", "#FFD84D", "#E6FF4D", "#A8FF4D", "#4DFF88", "#4DFFD2", "#4DC3FF", "#4D88FF", "#7A4DFF", "#C84DFF", "#FF4DA6"];
     return colors[fret % colors.length];
   };
-
   // --- AUDIO INIT ---
   useEffect(() => {
     const limiter = new Tone.Limiter(-6).toDestination();

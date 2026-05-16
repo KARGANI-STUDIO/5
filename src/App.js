@@ -19,24 +19,28 @@ function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [hoveredBlockId, setHoveredBlockId] = useState(null);
-  const [filters, setFilters] = useState({
+  const defaultFilters = {
     guitar: { cutoff: 8000, q: 1 },
     synth: { cutoff: 8000, q: 1 },
     bass: { cutoff: 8000, q: 1 },
     chip: { cutoff: 12000, q: 0.8 }
-  });
-  const [fx, setFx] = useState({
+  };
+  const defaultFx = {
     guitar: { reverb: 0.25, chorus: 0.3 },
     synth: { reverb: 0.25, chorus: 0.3 },
     bass: { reverb: 0.1, chorus: 0.2 },
     chip: { reverb: 0.05, chorus: 0.05 }
-  });
-  const [volumes, setVolumes] = useState({
+  };
+  const defaultVolumes = {
     guitar: 0.35,
     synth: 0.4,
     bass: 0.5,
     chip: 0.45
-  });
+  };
+
+  const [filters, setFilters] = useState(defaultFilters);
+  const [fx, setFx] = useState(defaultFx);
+  const [volumes, setVolumes] = useState(defaultVolumes);
   const [mute, setMute] = useState({ guitar: false, synth: false, bass: false, chip: false });
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFX, setShowFX] = useState(true);
@@ -870,29 +874,31 @@ const handleStop = () => {
   };
 
   const handleResetAll = () => {
-    // 1. Останавливаем всё воспроизведение и звук
+    // Останавливаем воспроизведение
     if (isPlaying) {
       cancelAnimationFrame(animationRef.current);
       setIsPlaying(false);
     }
-    // 2. Останавливаем sidechain-лупер
+    // Останавливаем sidechain-лупер
     if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
-    // 3. Глушим все синтезаторы
+    // Глушим синтезаторы
     Object.values(synthsRef.current).forEach(s => {
-      try {
-        if (s.releaseAll) s.releaseAll();
-        else if (s.triggerRelease) s.triggerRelease();
-      } catch(e) {}
+      try { s.releaseAll?.(); s.triggerRelease?.(); } catch(e) {}
     });
-    // 4. Сбрасываем состояние воспроизведения
+    // Сбрасываем состояние времени
     pauseOffsetRef.current = 0;
     startTimeRef.current = Tone.now();
     triggeredRef.current.clear();
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-    // 5. Очищаем треки
+    // Очищаем треки
     setTracks({ guitar: [], synth: [], bass: [], chip: [] });
-    // 6. Снимаем выделение
+    // Сбрасываем все настройки до заводских
+    setFilters(defaultFilters);
+    setFx(defaultFx);
+    setVolumes(defaultVolumes);
+    setBpm(120);
+    // Снимаем выделение блоков
     setSelectedBlockIds(new Set());
   };
   // --- ИСПРАВЛЕННОЕ КОПИРОВАНИЕ И ВСТАВКА (ПОСЛЕДОВАТЕЛЬНО) ---

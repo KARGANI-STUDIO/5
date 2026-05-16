@@ -13,7 +13,7 @@ function App() {
   });
   const [mode, setMode] = useState("landing");
   const strings = ["E", "A", "D", "G", "B", "e"];
-  const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [] });
+  const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [], chip: [] });
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -22,14 +22,16 @@ function App() {
   const [filters, setFilters] = useState({
     guitar: { cutoff: 8000, q: 1 },
     synth: { cutoff: 8000, q: 1 },
-    bass: { cutoff: 8000, q: 1 }
+    bass: { cutoff: 8000, q: 1 },
+    chip: { cutoff: 12000, q: 0.8 }
   });
   const [fx, setFx] = useState({
     guitar: { reverb: 0.25, chorus: 0.3 },
     synth: { reverb: 0.25, chorus: 0.3 },
-    bass: { reverb: 0.1, chorus: 0.2 }
+    bass: { reverb: 0.1, chorus: 0.2 },
+    chip: { reverb: 0.05, chorus: 0.05 }
   });
-  const [mute, setMute] = useState({ guitar: false, synth: false, bass: false });
+  const [mute, setMute] = useState({ guitar: false, synth: false, bass: false, chip: false });
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFX, setShowFX] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
@@ -349,10 +351,11 @@ useEffect(() => {
   window.__sidechain = { kickLoop, bassSidechainComp };
 
   // 5. Создаём инструменты
-  ["guitar", "synth", "bass"].forEach((type) => {
-    let volume = type === 'bass' ? 0.5 : (type === 'guitar' ? 0.35 : 0.4);
-    let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : 0);
-    let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : 6000);
+  ["guitar", "synth", "bass", "chip"].forEach((type) => {
+    let volume = type === 'bass' ? 0.5 : (type === 'guitar' ? 0.35 : (type === 'synth' ? 0.4 : 0.45));
+let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : 0));
+let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : 10000));
+
 
     const gain = new Tone.Gain(volume).connect(master);
     const panner = new Tone.Panner(panValue).connect(gain);
@@ -379,12 +382,10 @@ useEffect(() => {
 
     // Создаём синтезатор
     if (type === "bass") {
-      // Басовый синтезатор с sidechain-компрессором
       const bassSynth = new Tone.MonoSynth({
         oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
         envelope: { attack: 0.03, decay: 0.4, sustain: 0.8, release: 0.6 }
       });
-      // Сигнал баса → sidechain компрессор → фильтр
       bassSynth.connect(bassSidechainComp);
       bassSidechainComp.connect(filter);
       synthsRef.current[type] = bassSynth;
@@ -394,7 +395,19 @@ useEffect(() => {
         envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
         modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
       }).connect(filter);
-    } else { // synth
+    } 
+    else if (type === "chip") {
+      const chipSynth = new Tone.PolySynth(Tone.Synth, {
+          oscillator: { type: "square" },
+          envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
+      });
+      // Биткрашер с максимальным "денди" эффектом
+      const bitCrusher = new Tone.BitCrusher(8);
+      if (bitCrusher.frequency) bitCrusher.frequency.value = 8000;
+      chipSynth.connect(bitCrusher);
+      bitCrusher.connect(filter);
+      synthsRef.current[type] = chipSynth; // обрати внимание: synthsRef (с s)
+    } else { // synth (по умолчанию)
       synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "sawtooth" },
         envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
@@ -684,6 +697,7 @@ useEffect(() => {
         }
       }
       Object.entries(tracks).forEach(([type, blocks]) => {
+        if (!filtersRef.current[type]) return; // защита от сброса
         blocks.forEach((b) => {
           const startStep = Math.floor(b.x / STEP_WIDTH);
           const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
@@ -842,111 +856,96 @@ const handleStop = () => {
   };
 
   const handleResetAll = () => {
-    stopSound(); // Это важно, чтобы звук не завис при удалении нот
-    setTracks({ guitar: [], synth: [], bass: [] });
-    console.log("Project cleared successfully");
+    // 1. Останавливаем всё воспроизведение и звук
+    if (isPlaying) {
+      cancelAnimationFrame(animationRef.current);
+      setIsPlaying(false);
+    }
+    // 2. Останавливаем sidechain-лупер
+    if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
+    // 3. Глушим все синтезаторы
+    Object.values(synthsRef.current).forEach(s => {
+      try {
+        if (s.releaseAll) s.releaseAll();
+        else if (s.triggerRelease) s.triggerRelease();
+      } catch(e) {}
+    });
+    // 4. Сбрасываем состояние воспроизведения
+    pauseOffsetRef.current = 0;
+    startTimeRef.current = Tone.now();
+    triggeredRef.current.clear();
+    if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+    // 5. Очищаем треки
+    setTracks({ guitar: [], synth: [], bass: [], chip: [] });
+    // 6. Снимаем выделение
+    setSelectedBlockIds(new Set());
   };
-    // Выделение блока с учётом Ctrl
-    const handleSelectBlock = (e, block, instName) => {
-      e.stopPropagation();
-      if (e.ctrlKey || e.metaKey) {
-        setSelectedBlockIds(prev => {
-          const newSet = new Set(prev);
-          if (newSet.has(block.id)) newSet.delete(block.id);
-          else newSet.add(block.id);
-          return newSet;
-        });
-      } else {
-        setSelectedBlockIds(new Set([block.id]));
-      }
-    };
   // --- ИСПРАВЛЕННОЕ КОПИРОВАНИЕ И ВСТАВКА (ПОСЛЕДОВАТЕЛЬНО) ---
 
-  const copySelectedBlocks = () => {
-    const blocksToCopy = [];
-    for (const [inst, blocks] of Object.entries(tracks)) {
-      blocks.forEach(block => {
-        if (selectedBlockIds.has(block.id)) {
-          blocksToCopy.push({
-            instrument: inst,
-            block: { ...block } 
-          });
-        }
-      });
-    }
-
-    // Сортируем блоки по X, чтобы правильно вычислить границы группы
-    copiedBlocksRef.current = blocksToCopy.sort((a, b) => a.block.x - b.block.x);
-    console.log("Скопировано:", copiedBlocksRef.current.length);
-  };
-
-  const pasteBlocks = () => {
-    if (copiedBlocksRef.current.length === 0) return;
-
-    // 1. Вычисляем границы всей группы скопированных блоков
-    const minX = Math.min(...copiedBlocksRef.current.map(i => i.block.x));
-    const maxEndX = Math.max(...copiedBlocksRef.current.map(i => i.block.x + i.block.length));
-    
-    // Сдвиг равен полной ширине группы (от начала самого первого до конца самого последнего блока)
-    const offset = maxEndX - minX || STEP_WIDTH;
-
-    // 2. Генерируем новые блоки ЗАРАНЕЕ (не внутри setTracks), чтобы обновить буфер
-    const nextClipboard = copiedBlocksRef.current.map(item => ({
-      instrument: item.instrument,
-      block: {
-        ...item.block,
-        id: Date.now() + Math.random(), // Новый уникальный ID
-        x: item.block.x + offset        // Сдвигаем ровно за оригинал
-      }
-    }));
-
-    // 3. Обновляем состояние треков
-    setTracks(prev => {
-      const updated = { ...prev };
-      nextClipboard.forEach(({ instrument: inst, block: newBlock }) => {
-        updated[inst] = [...(updated[inst] || []), newBlock];
-      });
-      return updated;
+const handleSelectBlock = (e, block, instName) => {
+  e.stopPropagation();
+  if (e.ctrlKey || e.metaKey) {
+    setSelectedBlockIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(block.id)) newSet.delete(block.id);
+      else newSet.add(block.id);
+      return newSet;
     });
-
-    // 4. Обновляем буфер обмена на только что вставленные блоки.
-    // Это позволяет зажать Ctrl+V и строить "паровозик" из блоков без наложений.
-    copiedBlocksRef.current = nextClipboard;
-    console.log("Вставлено последовательно");
-  };
-// Найди или добавь эти функции перед useEffect
-const startPlayback = async () => {
-  if (Tone.context.state !== 'running') await Tone.start();
-  const now = Tone.now();
-  startTimeRef.current = now - pauseOffsetRef.current;
-  triggeredRef.current.clear();
-  setIsPlaying(true);
-  startEngine();
+  } else {
+    setSelectedBlockIds(new Set([block.id]));
+  }
 };
-const stopPlayback = () => {
-  const now = Tone.now();
-  cancelAnimationFrame(animationRef.current);
-  pauseOffsetRef.current = now - startTimeRef.current; 
-  setIsPlaying(false);
-  Object.values(synthsRef.current).forEach(s => { 
-    try { if (s.releaseAll) s.releaseAll(); } catch(e) {} 
-  });
-};
-// 1. Добавляем саму логику удаления
-const deleteSelectedBlocks = () => {
-  // Если ничего не выбрано — ничего не делаем
-  if (selectedBlockIds.size === 0) return;
 
+const copySelectedBlocks = () => {
+  const blocksToCopy = [];
+  for (const [inst, blocks] of Object.entries(tracks)) {
+    blocks.forEach(block => {
+      if (selectedBlockIds.has(block.id)) {
+        blocksToCopy.push({
+          instrument: inst,
+          block: { ...block }
+        });
+      }
+    });
+  }
+  copiedBlocksRef.current = blocksToCopy.sort((a, b) => a.block.x - b.block.x);
+  console.log("Скопировано:", copiedBlocksRef.current.length);
+};
+
+const pasteBlocks = () => {
+  if (copiedBlocksRef.current.length === 0) return;
+  const minX = Math.min(...copiedBlocksRef.current.map(i => i.block.x));
+  const maxEndX = Math.max(...copiedBlocksRef.current.map(i => i.block.x + i.block.length));
+  const offset = (maxEndX - minX) || STEP_WIDTH; // исправлено: || вместо |
+  const nextClipboard = copiedBlocksRef.current.map(item => ({
+    instrument: item.instrument,
+    block: {
+      ...item.block,
+      id: Date.now() + Math.random(),
+      x: item.block.x + offset
+    }
+  }));
   setTracks(prev => {
     const updated = { ...prev };
-    // Проходим по всем инструментам и выкидываем блоки, чьи ID есть в списке выделенных
+    nextClipboard.forEach(({ instrument: inst, block: newBlock }) => {
+      updated[inst] = [...(updated[inst] || []), newBlock];
+    });
+    return updated;
+  });
+  copiedBlocksRef.current = nextClipboard;
+  console.log("Вставлено последовательно");
+};
+
+const deleteSelectedBlocks = () => {
+  if (selectedBlockIds.size === 0) return;
+  setTracks(prev => {
+    const updated = { ...prev };
     Object.keys(updated).forEach(inst => {
       updated[inst] = updated[inst].filter(block => !selectedBlockIds.has(block.id));
     });
     return updated;
   });
-
-  // Очищаем список выделения, так как блоков больше нет
   setSelectedBlockIds(new Set());
   console.log("Selected blocks deleted");
 };
@@ -1239,6 +1238,17 @@ onClick={() => handleStartCreating("guitar")}
 </div>
 </div>
 
+<div className="preview-track chip" onClick={() => handleStartCreating("chip")}>
+  <span>CHIP</span>
+  <div className="wave">
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+
 </div>
 <div style={{
   position: "absolute",
@@ -1336,7 +1346,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.2-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.0-BETA</span>
       </div>
     </div>
   </div>
@@ -1409,26 +1419,26 @@ onClick={() => handleStartCreating("guitar")}
       </div>
 
       <div className="instrument-selector">
-        {["guitar", "synth", "bass"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setInstrument(t)}
-            className={`inst-btn ${instrument === t ? "active" : ""} ${t}-btn`}
-          >
-            <span className="inst-icon">
-              {t === "guitar" ? "🎸" : t === "synth" ? "🎹" : "🔊"}
-            </span>
-            <span className="inst-text">{t.toUpperCase()}</span>
-            {instrument === t && <div className="active-glow"></div>}
-          </button>
-        ))}
+  {["guitar", "synth", "bass", "chip"].map((t) => (
+    <button
+      key={t}
+      onClick={() => setInstrument(t)}
+      className={`inst-btn ${instrument === t ? "active" : ""} ${t}-btn`}
+    >
+      <span className="inst-icon">
+        {t === "guitar" ? "🎸" : t === "synth" ? "🎹" : t === "bass" ? "🔊" : "🕹️"}
+      </span>
+      <span className="inst-text">{t.toUpperCase()}</span>
+      {instrument === t && <div className="active-glow"></div>}
+    </button>
+  ))}
 
-        <button onClick={() => setShowFX(!showFX)} className={`inst-btn fx-toggle-btn ${showFX ? "fx-active" : ""}`}>
-          <span className="inst-icon">⚙️</span>
-          <span className="inst-text">{showFX ? "HIDE FX" : "SHOW FX"}</span>
-          {showFX && <div className="active-glow"></div>}
-        </button>
-      </div>
+  <button onClick={() => setShowFX(!showFX)} className={`inst-btn fx-toggle-btn ${showFX ? "fx-active" : ""}`}>
+    <span className="inst-icon">⚙️</span>
+    <span className="inst-text">{showFX ? "HIDE FX" : "SHOW FX"}</span>
+    {showFX && <div className="active-glow"></div>}
+  </button>
+</div>
 
       <div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0 }}>
         <div style={{ display: "flex", gap: "25px", background: "#161B33", padding: "20px", borderRadius: "12px", width: "fit-content" }}>

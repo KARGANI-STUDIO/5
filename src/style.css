@@ -394,6 +394,16 @@ div[style*="background-color"],
   font-family: sans-serif;
   user-select: none;
 }
+/* --- CHIP (Зелёный неон, 8-bit) --- */
+.chip-btn.active, .chip-btn:hover {
+  border-color: #2ecc71 !important;
+  color: #2ecc71 !important;
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+}
+
+.chip-btn.active .inst-icon {
+  filter: drop-shadow(0 0 8px #2ecc71);
+}
 /* START BUTTON (Landing) */
 .start-btn {
   padding: 15px 40px;
@@ -554,6 +564,14 @@ div[style*="background-color"],
 }
 .preview-track.bass .wave {
   background: linear-gradient(90deg, transparent, #BD00FF, transparent);
+}
+/* 🕹️ CHIP (8-bit) */
+.preview-track.chip {
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+.preview-track.chip .wave {
+  background: linear-gradient(90deg, transparent, #2ecc71, transparent);
 }
 
 /* ANIMATION */

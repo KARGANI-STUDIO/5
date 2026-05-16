@@ -1497,14 +1497,30 @@ onClick={() => handleStartCreating("guitar")}
               if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
               isDraggingRef.current = true;
               const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
-              setTracks(prev => ({...prev, [instrument]: [...prev[instrument], { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 }]}));
+              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
+              
+              // Проверка перекрытия с существующими блоками на этой струне
+              const existingOnString = tracks[instrument].filter(b => b.string === i);
+              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
+              
+              if (!overlapping) {
+                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
+              }
             }}
             onTouchStart={(e) => {
               if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
               const touchX = e.touches[0].clientX;
               const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
-              setTracks(prev => ({...prev, [instrument]: [...prev[instrument], { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 }]}));
-            }} style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}>
+              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
+              
+              const existingOnString = tracks[instrument].filter(b => b.string === i);
+              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
+              
+              if (!overlapping) {
+                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
+              }
+            }}
+             style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}>
               <span style={{ width: 30, fontWeight: "bold" }}>{s}</span>
               
               {Object.keys(tracks).map(instName => 

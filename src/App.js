@@ -970,56 +970,53 @@ const deleteSelectedBlocks = () => {
   console.log("Selected blocks deleted");
 };
   // Горячие клавиши с поддержкой русской раскладки и Chrome
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // 1. Игнорируем в инпутах
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      // 2. УДАЛЕНИЕ (добавляем сюда)
-      if (e.code === 'Delete' || e.code === 'Backspace') {
-        if (selectedBlockIds.size > 0) {
-          e.preventDefault();
-          deleteSelectedBlocks(); // Вызываем нашу новую функцию
-        }
-      }
-  
-      // 2. Глобальный перехват ПРОБЕЛА
-      if (e.code === 'Space') {
-        e.preventDefault(); // Запрет скролла
-        e.stopPropagation(); // Запрет клика по кнопке в фокусе
-        
-        // Снимаем фокус с любой кнопки, чтобы она не «нажималась»
-        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
-          document.activeElement.blur();
-        }
-  
-        if (isPlaying) {
-          stopPlayback();
-        } else {
-          startPlayback();
-        }
-        return;
-      }
-  
-      // 3. Копирование и Вставка (с поддержкой разных раскладок)
-      const isC = e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'с' || e.code === 'KeyC';
-      const isV = e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'м' || e.code === 'KeyV';
-  
-      if ((e.ctrlKey || e.metaKey) && isC) {
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    // 1. Игнорируем в инпутах
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // 2. Удаление (Delete / Backspace)
+    if (e.code === 'Delete' || e.code === 'Backspace') {
+      if (selectedBlockIds.size > 0) {
         e.preventDefault();
-        copySelectedBlocks();
-      } 
-      else if ((e.ctrlKey || e.metaKey) && isV) {
-        e.preventDefault();
-        pasteBlocks();
+        deleteSelectedBlocks();
       }
-    
-    };
-  
-    // Добавляем true в конце — это перехват события на самом верхнем уровне
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-    
-  }, [selectedBlockIds, tracks, instrument, isPlaying]); // Важно: isPlaying в зависимостях!
+      return;
+    }
+
+    // 3. Пробел – Play / Pause
+    if (e.code === 'Space') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+        document.activeElement.blur();
+      }
+      handleTogglePlay();  // ← основная функция play/pause
+      return;
+    }
+    // 4. Клавиша S – STOP (остановка с возвратом в начало)
+    if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      handleStop();
+      return;
+    }
+
+    // 4. Копирование / Вставка (Ctrl+C / Ctrl+V)
+    const isC = e.key === 'c' || e.key === 'с' || e.code === 'KeyC';
+    const isV = e.key === 'v' || e.key === 'м' || e.code === 'KeyV';
+
+    if ((e.ctrlKey || e.metaKey) && isC) {
+      e.preventDefault();
+      copySelectedBlocks();
+    } else if ((e.ctrlKey || e.metaKey) && isV) {
+      e.preventDefault();
+      pasteBlocks();
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown, true);
+  return () => window.removeEventListener('keydown', handleKeyDown, true);
+}, [selectedBlockIds, handleTogglePlay, copySelectedBlocks, pasteBlocks, deleteSelectedBlocks]);
   const handleLogout = () => {
     localStorage.removeItem("struna_user");
     setUser(null);
@@ -1713,7 +1710,8 @@ onClick={() => handleStartCreating("guitar")}
 
         <div className="help-section">
   <p><strong>⌨️ Keyboard Shortcuts</strong></p>
-  <div className="control-item"><span>Space</span> — Play / Stop</div>
+  <div className="control-item"><span>S</span> — Stop</div>
+  <div className="control-item"><span>Space</span> — Play / Pause</div>
   <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
   <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
   <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>

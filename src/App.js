@@ -171,34 +171,40 @@ if (
       setIsGroupDragging(true);
       const initialPositions = new Map();
       
-      // Сохраняем позиции всех блоков, которые сейчас выделены
+      // Сохраняем позиции и строки всех выделенных блоков
       tracks[instrument].forEach(b => {
         if (selectedBlockIds.has(b.id)) {
           initialPositions.set(b.id, { x: b.x, string: b.string });
         }
       });
-  
+    
       setDragStartInfo({
         startX: e.clientX,
+        startY: e.clientY,                 // ← сохраняем начальную Y
         initialBlocks: initialPositions
       });
     };
   
     const handleGroupDragMove = (e) => {
       if (!isGroupDragging || !dragStartInfo) return;
-  
+    
       const deltaX = e.clientX - dragStartInfo.startX;
-      const deltaSteps = Math.round(deltaX / 20); // Твоя сетка 20px
-  
+      const deltaY = e.clientY - dragStartInfo.startY;
+      
+      const deltaStepsX = Math.round(deltaX / STEP_WIDTH);
+      const deltaStepsY = Math.round(deltaY / 60); // высота одной струны 60px
+    
       setTracks(prev => ({
         ...prev,
         [instrument]: prev[instrument].map(b => {
           if (dragStartInfo.initialBlocks.has(b.id)) {
             const initial = dragStartInfo.initialBlocks.get(b.id);
-            return {
-              ...b,
-              x: Math.max(0, initial.x + deltaSteps * 20)
-            };
+            // Новая горизонтальная позиция
+            const newX = Math.max(0, initial.x + deltaStepsX * STEP_WIDTH);
+            // Новая вертикальная позиция (струна)
+            let newString = initial.string + deltaStepsY;
+            newString = Math.max(0, Math.min(strings.length - 1, newString));
+            return { ...b, x: newX, string: newString };
           }
           return b;
         })

@@ -1710,8 +1710,8 @@ onClick={() => handleStartCreating("guitar")}
 
         <div className="help-section">
   <p><strong>⌨️ Keyboard Shortcuts</strong></p>
-  <div className="control-item"><span>S</span> — Stop</div>
   <div className="control-item"><span>Space</span> — Play / Pause</div>
+  <div className="control-item"><span>S</span> — Stop</div>
   <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
   <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
   <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>

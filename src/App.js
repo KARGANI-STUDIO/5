@@ -289,70 +289,138 @@ if (
     return colors[fret % colors.length];
   };
   // --- AUDIO INIT ---
-  useEffect(() => {
-    const limiter = new Tone.Limiter(-6).toDestination();
-    const master = new Tone.Gain(0.8).connect(limiter);
-    masterGainRef.current = master;
+useEffect(() => {
+  // 1. Мастер-компрессор (идёт в самый конец цепи)
+  const masterCompressor = new Tone.Compressor({
+    threshold: -12,
+    ratio: 3,
+    attack: 0.01,
+    release: 0.2,
+    knee: 5
+  }).toDestination(); // отправляем на колонки
 
-    recorderRef.current = new Tone.Recorder();
-    master.connect(recorderRef.current);
+  // 2. Лимитер для защиты от перегрузки
+  const limiter = new Tone.Limiter(-3).connect(masterCompressor);
 
-    ["guitar", "synth", "bass"].forEach(type => {
-      const gain = new Tone.Gain(0.5).connect(master);
-      const filter = new Tone.Filter(8000, "lowpass");
-      const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
-      const reverb = new Tone.Reverb({ decay: 1.5, wet: 1 });
-      const chorusGain = new Tone.Gain(0);
-      const reverbGain = new Tone.Gain(0);
+  // 3. Мастер-гейн (общая громкость)
+  const master = new Tone.Gain(0.9).connect(limiter);
+  masterGainRef.current = master;
 
-      fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
-      filter.connect(gain);
-      filter.connect(chorus);
-      chorus.connect(chorusGain);
-      chorusGain.connect(gain);
-      filter.connect(reverb);
-      reverb.connect(reverbGain);
-      reverbGain.connect(gain);
+  // 4. Recorder
+  recorderRef.current = new Tone.Recorder();
+  master.connect(recorderRef.current);
 
-      gainsRef.current[type] = gain;
-      filtersRef.current[type] = filter;
+  // ---------- SIDECHAIN KICK (невидимый ритмический импульс) ----------
+  const kickNoise = new Tone.Noise("brown");
+  const kickFilter = new Tone.Filter(80, "lowpass");
+  const kickEnv = new Tone.Gain(0);
+  kickNoise.connect(kickFilter);
+  kickFilter.connect(kickEnv);
+  kickEnv.gain.value = 0; // не слышен в мастере
 
-      if (type === "bass") {
-        synthsRef.current[type] = new Tone.MonoSynth({
-          oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
-          envelope: { attack: 0.03, decay: 0.4, sustain: 0.8, release: 0.6 }
-        }).connect(filter);
-      } else if (type === "guitar") {
-        synthsRef.current[type] = new Tone.PolySynth(Tone.FMSynth, {
-          harmonicity: 2, modulationIndex: 10, oscillator: { type: "triangle" },
-          envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
-          modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
-        }).connect(filter);
-      } else {
-        synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "sawtooth" },
-          envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
-        }).connect(filter);
-      }
-    });
+  // Компрессор для баса с sidechain-входом
+  const bassSidechainComp = new Tone.Compressor({
+    threshold: -20,
+    ratio: 4,
+    attack: 0.01,
+    release: 0.2,
+    knee: 5
+  });
 
-    return () => {
-      master.dispose();
-      limiter.dispose();
-      if (recorderRef.current) recorderRef.current.dispose();
-      
-      Object.values(synthsRef.current).forEach(s => { if (s) s.dispose(); });
-      Object.values(filtersRef.current).forEach(f => { if (f) f.dispose(); });
-      Object.values(gainsRef.current).forEach(g => { if (g) g.dispose(); });
-      
-      Object.values(fxRef.current).forEach(fx => {
-        if (fx.chorus) fx.chorus.dispose();
-        if (fx.reverb) fx.reverb.dispose();
-        if (fx.chorusGain) fx.chorusGain.dispose();
-        if (fx.reverbGain) fx.reverbGain.dispose();
+  // Подключаем источник импульса к sidechain-входу компрессора
+  kickEnv.connect(bassSidechainComp);
+
+  // Функция короткого "удара"
+  const triggerKick = () => {
+    kickEnv.gain.setTargetAtTime(0.8, Tone.now(), 0.005);
+    kickEnv.gain.setTargetAtTime(0, Tone.now() + 0.05, 0.05);
+  };
+
+  // Лупер, тикающий каждую четверть
+  const kickLoop = new Tone.Loop(() => triggerKick(), "4n");
+
+  // Сохраняем для управления из других мест (временное решение)
+  window.__sidechain = { kickLoop, bassSidechainComp };
+
+  // 5. Создаём инструменты
+  ["guitar", "synth", "bass"].forEach((type) => {
+    let volume = type === 'bass' ? 0.5 : (type === 'guitar' ? 0.35 : 0.4);
+    let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : 0);
+    let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : 6000);
+
+    const gain = new Tone.Gain(volume).connect(master);
+    const panner = new Tone.Panner(panValue).connect(gain);
+    const filter = new Tone.Filter(cutoffFreq, "lowpass");
+
+    const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
+    const reverb = new Tone.Reverb({ decay: 1.2, wet: 1 });
+    const chorusGain = new Tone.Gain(0);
+    const reverbGain = new Tone.Gain(0);
+
+    fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
+
+    // Подключение эффектов: всё идёт через panner -> gain -> master
+    filter.connect(panner);
+    filter.connect(chorus);
+    chorus.connect(chorusGain);
+    chorusGain.connect(panner);
+    filter.connect(reverb);
+    reverb.connect(reverbGain);
+    reverbGain.connect(panner);
+
+    gainsRef.current[type] = gain;
+    filtersRef.current[type] = filter;
+
+    // Создаём синтезатор
+    if (type === "bass") {
+      // Басовый синтезатор с sidechain-компрессором
+      const bassSynth = new Tone.MonoSynth({
+        oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
+        envelope: { attack: 0.03, decay: 0.4, sustain: 0.8, release: 0.6 }
       });
-    };
-  }, []);
+      // Сигнал баса → sidechain компрессор → фильтр
+      bassSynth.connect(bassSidechainComp);
+      bassSidechainComp.connect(filter);
+      synthsRef.current[type] = bassSynth;
+    } else if (type === "guitar") {
+      synthsRef.current[type] = new Tone.PolySynth(Tone.FMSynth, {
+        harmonicity: 2, modulationIndex: 10, oscillator: { type: "triangle" },
+        envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
+        modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
+      }).connect(filter);
+    } else { // synth
+      synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "sawtooth" },
+        envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
+      }).connect(filter);
+    }
+  });
+
+  // Cleanup function (очистка при размонтировании компонента)
+  return () => {
+    // Останавливаем лупер, если он активен
+    if (window.__sidechain?.kickLoop) {
+      window.__sidechain.kickLoop.stop();
+    }
+    // Отключаем и уничтожаем все узлы
+    masterGainRef.current?.dispose();
+    Object.values(synthsRef.current).forEach(s => s?.dispose());
+    Object.values(filtersRef.current).forEach(f => f?.dispose());
+    Object.values(gainsRef.current).forEach(g => g?.dispose());
+    Object.values(fxRef.current).forEach(fx => {
+      fx.chorus?.dispose();
+      fx.reverb?.dispose();
+      fx.chorusGain?.dispose();
+      fx.reverbGain?.dispose();
+    });
+    kickNoise?.dispose();
+    kickFilter?.dispose();
+    kickEnv?.dispose();
+    bassSidechainComp?.dispose();
+    kickLoop?.dispose();
+    delete window.__sidechain;
+  };
+}, []);
 
   useEffect(() => {
     Object.entries(mute).forEach(([type, isMuted]) => {
@@ -378,6 +446,7 @@ if (
     const now = Tone.now();
     Object.entries(fx).forEach(([type, values]) => {
       const fxUnit = fxRef.current[type];
+
       if (fxUnit) {
         fxUnit.chorusGain.gain.setTargetAtTime(values.chorus, now, 0.05);
         fxUnit.reverbGain.gain.setTargetAtTime(values.reverb, now, 0.05);
@@ -654,51 +723,69 @@ if (
   loop(); // Запуск цикла
 }; // <--- Закрывающая скобка функции startEngine
 
-  const handleTogglePlay = async () => {
-    // Эта проверка — ключ к успеху на мобилках
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
-      console.log("Audio Context started!");
+const handleTogglePlay = async () => {
+  // Эта проверка — ключ к успеху на мобилках
+  if (Tone.context.state !== 'running') {
+    await Tone.start();
+    console.log("Audio Context started!");
   }
-    if (isPlaying) {
-      const now = Tone.now();
-      cancelAnimationFrame(animationRef.current);
-      pauseOffsetRef.current = now - startTimeRef.current; 
-      setIsPlaying(false);
-      
-      Object.values(synthsRef.current).forEach(s => { 
-        try { 
-          if (s.releaseAll) s.releaseAll(); 
-          else if (s.triggerRelease) s.triggerRelease(); 
-        } catch(e) {} 
-      });
-    } else {
-      await Tone.start();
-      const now = Tone.now();
-      startTimeRef.current = now - pauseOffsetRef.current;
-      triggeredRef.current.clear();
-      setIsPlaying(true);
-      startEngine();
-    }
-  };
-
-  const handleStop = () => {
+  
+  if (isPlaying) {
+    // Остановка воспроизведения
+    const now = Tone.now();
     cancelAnimationFrame(animationRef.current);
-    pauseOffsetRef.current = 0;
-    startTimeRef.current = Tone.now();
-    triggeredRef.current.clear();
+    pauseOffsetRef.current = now - startTimeRef.current; 
     setIsPlaying(false);
     
-    if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
-    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-
+    // Останавливаем sidechain-лупер (если существует)
+    if (window.__sidechain?.kickLoop) {
+      window.__sidechain.kickLoop.stop();
+    }
+    
+    // Глушим все синтезаторы
     Object.values(synthsRef.current).forEach(s => { 
       try { 
         if (s.releaseAll) s.releaseAll(); 
         else if (s.triggerRelease) s.triggerRelease(); 
       } catch(e) {} 
     });
-  };
+  } else {
+    // Запуск воспроизведения
+    await Tone.start();
+    const now = Tone.now();
+    startTimeRef.current = now - pauseOffsetRef.current;
+    triggeredRef.current.clear();
+    setIsPlaying(true);
+    
+    // Запускаем sidechain-лупер (синхронизируем с началом)
+    if (window.__sidechain?.kickLoop) {
+      window.__sidechain.kickLoop.start(0);
+    }
+    
+    startEngine();
+  }
+};
+
+const handleStop = () => {
+  cancelAnimationFrame(animationRef.current);
+  pauseOffsetRef.current = 0;
+  startTimeRef.current = Tone.now();
+  triggeredRef.current.clear();
+  setIsPlaying(false);
+  
+  // Останавливаем sidechain-лупер
+  if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
+  
+  if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
+  if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+  
+  Object.values(synthsRef.current).forEach(s => { 
+    try { 
+      if (s.releaseAll) s.releaseAll(); 
+      else if (s.triggerRelease) s.triggerRelease(); 
+    } catch(e) {} 
+  });
+};
 
   const handleRecord = async () => {
     if (!isRecording) {
@@ -1243,7 +1330,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.1-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.3.2-BETA</span>
       </div>
     </div>
   </div>

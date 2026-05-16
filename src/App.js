@@ -31,6 +31,12 @@ function App() {
     bass: { reverb: 0.1, chorus: 0.2 },
     chip: { reverb: 0.05, chorus: 0.05 }
   });
+  const [volumes, setVolumes] = useState({
+    guitar: 0.35,
+    synth: 0.4,
+    bass: 0.5,
+    chip: 0.45
+  });
   const [mute, setMute] = useState({ guitar: false, synth: false, bass: false, chip: false });
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFX, setShowFX] = useState(true);
@@ -352,7 +358,7 @@ useEffect(() => {
 
   // 5. Создаём инструменты
   ["guitar", "synth", "bass", "chip"].forEach((type) => {
-    let volume = type === 'bass' ? 0.5 : (type === 'guitar' ? 0.35 : (type === 'synth' ? 0.4 : 0.45));
+    let volume = volumes[type];   // берём громкость из состояния
 let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : 0));
 let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : 10000));
 
@@ -509,6 +515,14 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
   
     loadFromUrl();
   }, []);
+  useEffect(() => {
+    Object.entries(volumes).forEach(([type, vol]) => {
+      const gain = gainsRef.current[type];
+      if (gain) {
+        gain.gain.rampTo(vol, 0.05);
+      }
+    });
+  }, [volumes]);
     
   const handleShare = async () => {
     try {
@@ -1442,6 +1456,19 @@ onClick={() => handleStartCreating("guitar")}
 
       <div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0 }}>
         <div style={{ display: "flex", gap: "25px", background: "#161B33", padding: "20px", borderRadius: "12px", width: "fit-content" }}>
+        <div style={mixerColumnStyle}>
+  <span style={labelStyle}>VOLUME<br/>{volumes[instrument].toFixed(2)}</span>
+  <input 
+    type="range" 
+    min="0" 
+    max="1" 
+    step="0.01" 
+    value={volumes[instrument]} 
+    onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} 
+    style={verticalSliderStyle} 
+  />
+  <button style={resetBtnStyle} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 0.5 }))}>Reset</button>
+</div>
           <div style={mixerColumnStyle}>
             <span style={labelStyle}>CUTOFF<br/>{filters[instrument].cutoff}</span>
             <input type="range" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({...p, [instrument]: {...p[instrument], cutoff: Number(e.target.value)}}))} style={verticalSliderStyle} />

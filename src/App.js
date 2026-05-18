@@ -19,6 +19,7 @@ function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [bpm, setBpm] = useState(120);
   const [hoveredBlockId, setHoveredBlockId] = useState(null);
+  const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
   const defaultFilters = {
     guitar: { cutoff: 8000, q: 1 },
     synth: { cutoff: 8000, q: 1 },
@@ -67,6 +68,7 @@ function App() {
   const triggeredRef = useRef(new Set());
   const fileInputRef = useRef(null);
   const recorderRef = useRef(null);
+  const demoRef = useRef(null); // ссылка на текущий демо-синтезатор
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -87,10 +89,117 @@ function App() {
     mode: null, initialFret: 0, initialVelocity: 1, hasMoved: false
   });
   const handleStartCreating = async (inst = "guitar") => {
+    // Останавливаем демо, если играет
+    if (demoRef.current) {
+      try {
+        demoRef.current.dispose();
+      } catch(e) {}
+      demoRef.current = null;
+    }
+    setDemoPlaying(null); // сбрасываем подсветку
+  
     await Tone.start(); // Разблокируем звук для мобильных браузеров
     console.log("Audio is ready!"); 
     setInstrument(inst); // Устанавливаем выбранный инструмент
     setMode("app"); // Переходим в интерфейс DAW
+  };
+ const playDemo = async (inst) => {
+  // Если уже играет какое-то демо – остановим его
+  if (demoRef.current) {
+    try {
+      demoRef.current.dispose();
+    } catch(e) {}
+    demoRef.current = null;
+  }
+
+  // Активируем звук (на мобильных устройствах требуется жест пользователя)
+  if (Tone.context.state !== 'running') {
+    await Tone.start();
+  }
+
+  // Включаем визуальную подсветку
+  setDemoPlaying(inst);
+  setTimeout(() => setDemoPlaying(null), 800);
+
+  let synth;
+  let notes = [];
+  const now = Tone.now();
+
+  switch (inst) {
+    case "guitar":
+      synth = new Tone.PolySynth(Tone.FMSynth, {
+        harmonicity: 2,
+        modulationIndex: 6,
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.8 },
+        modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 1, release: 0.5 }
+      }).toDestination();
+      notes = [
+        { note: "C4", time: now + 0.0, duration: 0.4 },
+        { note: "E4", time: now + 0.5, duration: 0.4 },
+        { note: "G4", time: now + 1.0, duration: 0.8 }
+      ];
+      break;
+
+    case "synth":
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "sawtooth" },
+        envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.0 }
+      }).toDestination();
+      notes = [
+        { note: "D4", time: now + 0.0, duration: 0.3 },
+        { note: "F#4", time: now + 0.4, duration: 0.3 },
+        { note: "A4", time: now + 0.8, duration: 0.6 },
+        { note: "D5", time: now + 1.3, duration: 0.8 }
+      ];
+      break;
+
+    case "bass":
+      synth = new Tone.MonoSynth({
+        oscillator: { type: "fatsawtooth", count: 2, spread: 10 },
+        envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.5 }
+      }).toDestination();
+      notes = [
+        { note: "E2", time: now + 0.0, duration: 0.5 },
+        { note: "G2", time: now + 0.6, duration: 0.5 },
+        { note: "A2", time: now + 1.2, duration: 0.8 }
+      ];
+      break;
+
+    case "chip":
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "square" },
+        envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.1 }
+      }).toDestination();
+      const bitCrusher = new Tone.BitCrusher(4).toDestination();
+      synth.connect(bitCrusher);
+      notes = [
+        { note: "C5", time: now + 0.0, duration: 0.1 },
+        { note: "E5", time: now + 0.2, duration: 0.1 },
+        { note: "G5", time: now + 0.4, duration: 0.2 },
+        { note: "C6", time: now + 0.7, duration: 0.3 }
+      ];
+      break;
+
+    default:
+      return;
+  }
+
+  // Сохраняем синтезатор в ref для возможной остановки
+  demoRef.current = synth;
+
+  // Воспроизводим ноты
+  notes.forEach(n => {
+    synth.triggerAttackRelease(n.note, n.duration, n.time);
+  });
+
+  // Уничтожаем синтезатор через 3 секунды (после окончания звучания)
+  setTimeout(() => {
+    if (demoRef.current === synth) {
+      demoRef.current = null;
+    }
+    synth.dispose();
+  }, 3000);
 };
   const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
@@ -1218,44 +1327,66 @@ onClick={() => handleStartCreating("guitar")}
 
 <div
   className="preview-track guitar"
-  onClick={() => handleStartCreating("guitar")}>
+  onClick={(e) => {
+    e.stopPropagation();
+    playDemo("guitar");
+  }}
+  onDoubleClick={() => handleStartCreating("guitar")}
+>
   <span>GUITAR</span>
   <div className="wave">
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-</div>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
 </div>
 
 <div
   className="preview-track synth"
-  onClick={() => handleStartCreating("synth")}>
+  onClick={(e) => {
+    e.stopPropagation();
+    playDemo("synth");
+  }}
+  onDoubleClick={() => handleStartCreating("synth")}
+>
   <span>SYNTH</span>
   <div className="wave">
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-</div>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
 </div>
 
 <div
   className="preview-track bass"
-  onClick={() => handleStartCreating("bass")}>
+  onClick={(e) => {
+    e.stopPropagation();
+    playDemo("bass");
+  }}
+  onDoubleClick={() => handleStartCreating("bass")}
+>
   <span>BASS</span>
   <div className="wave">
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-  <span></span>
-</div>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
 </div>
 
-<div className="preview-track chip" onClick={() => handleStartCreating("chip")}>
+<div
+  className="preview-track chip"
+  onClick={(e) => {
+    e.stopPropagation();
+    playDemo("chip");
+  }}
+  onDoubleClick={() => handleStartCreating("chip")}
+>
   <span>CHIP</span>
   <div className="wave">
     <span></span>
@@ -1363,7 +1494,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.0-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.1-BETA</span>
       </div>
     </div>
   </div>

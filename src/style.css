@@ -971,3 +971,8 @@ animation: neon-flow 3s linear infinite;
 .sequencer-scroll {
   scroll-behavior: smooth;
 }
+.preview-track.demo-active {
+  filter: brightness(1.4) drop-shadow(0 0 12px currentColor);
+  transform: scale(1.02);
+  transition: all 0.1s ease;
+}

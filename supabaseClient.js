@@ -1,0 +1,978 @@
+/* Обнуляем отступы браузера для всей страницы */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100% !important;
+  /* Защита от горизонтальной тряски всей страницы */
+  overflow-x: auto;
+  /* Убираем fixed, чтобы работал внутренний скролл */
+  position: relative !important; 
+  background-color: #0a0b14;
+  /* Важно для мобилок: убираем лишние задержки */
+  touch-action: manipulation; 
+}
+/* Убеждаемся, что элементы не выходят за границы из-за рамок */
+* {
+  box-sizing: border-box;
+}
+/* --- КАСТОМНЫЙ СКРОЛЛБАР --- */
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+  background: #050814;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e2a50;
+  border-radius: 10px;
+  border: 1px solid #4d88ff;
+  box-shadow: inset 0 0 5px rgba(77, 136, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4d88ff;
+  box-shadow: 0 0 10px #4d88ff;
+}
+
+::-webkit-scrollbar-corner {
+  background: #050814;
+}
+
+/* --- КНОПКА PLAY/PAUSE --- */
+.play-pause-btn {
+  width: 80px;
+  height: 45px;
+  border-radius: 8px;
+  background: #0a0e1a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+.play-pause-btn.stopped {
+  border-color: #4dff88;
+  box-shadow: 0 0 15px rgba(77, 255, 136, 0.4);
+}
+
+.play-pause-btn.playing {
+  border-color: #4d88ff;
+  box-shadow: 0 0 15px rgba(77, 136, 255, 0.5);
+}
+/* КНОПКА STOP */
+.stop-btn {
+  width: 55px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* ПРИНУДИТЕЛЬНЫЙ ТЕМНЫЙ ФОН */
+  background-color: #0f172a !important; 
+  border: 1px solid #ff4d4d !important;
+  border-radius: 10px;
+  
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.2);
+}
+
+/* Эффект свечения для иконки внутри */
+.stop-btn svg rect {
+  filter: drop-shadow(0 0 5px #ff4d4d);
+}
+
+.stop-btn svg {
+  fill: #ff4d4d;
+  filter: drop-shadow(0 0 5px #ff4d4d);
+  transition: transform 0.2s ease;
+}
+.stop-btn:hover {
+  background-color: #1e293b !important;
+  /* Внешнее красное свечение + легкий блик внутри */
+  box-shadow: 0 0 20px rgba(255, 77, 77, 0.4), 
+              inset 0 0 10px rgba(255, 77, 77, 0.1);
+  transform: translateY(-2px); /* Кнопка чуть-чуть приподнимается */
+  filter: brightness(1.2);    /* Вся кнопка становится чуть сочнее */
+}
+/* Эффект при клике (анимация нажатия) */
+.stop-btn:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 5px rgba(255, 77, 77, 0.6);
+}
+
+.stop-btn:active svg {
+  transform: scale(0.8);
+}
+/* Эффект наведения для кнопки PLAY/PAUSE */
+.play-pause-btn:hover {
+  background-color: rgba(77, 255, 136, 0.1) !important;
+  /* Внешняя неоновая аура */
+  box-shadow: 0 0 20px rgba(77, 255, 136, 0.4), 
+              inset 0 0 10px rgba(77, 255, 136, 0.1);
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+
+/* Если кнопка в режиме паузы (активна), сделаем свечение чуть другим */
+.play-pause-btn.playing:hover {
+  background-color: rgba(77, 136, 255, 0.1) !important;
+  box-shadow: 0 0 20px rgba(77, 136, 255, 0.4);
+}
+/* --- СТИЛИ ДЛЯ ЦИФР В КУБИКАХ --- */
+
+/* Это правило перекрасит текст в любой ячейке, у которой есть фоновый цвет */
+div[style*="background-color"], 
+.step-cell {
+    color: #000000 !important;      /* Черный цвет цифр */
+    font-weight: 900 !important;    /* Максимальная жирность */
+    text-shadow: none !important;   /* Убираем тени, чтобы было четко */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Базовый стиль кнопки RECORD */
+.record-btn {
+  background-color: #0f172a !important; /* Тёмный фон как у Stop */
+  border: 1px solid #ff4d4d !important;
+  color: #ff4d4d !important;
+  border-radius: 8px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.record-btn:hover {
+  background-color: #1e293b !important;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+/* Стиль, когда запись включена */
+.record-btn.recording {
+  background-color: rgba(255, 77, 77, 0.1) !important;
+  animation: pulse-red 1.5s infinite ease-in-out;
+}
+
+/* Красная точка внутри кнопки */
+.record-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ff4d4d;
+  border-radius: 50%;
+  display: inline-block;
+}
+/* Базовый стиль для кнопок SAVE и LOAD */
+.save-btn, .load-btn {
+  background-color: #1e2a50 !important;
+  border: 1px solid rgba(77, 136, 255, 0.4) !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Эффект для SAVE (фиолетовый неон) */
+.save-btn:hover {
+  border-color: #8a2be2 !important;
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.6) !important;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+/* Эффект для LOAD (бирюзовый/зеленый неон) */
+.load-btn:hover {
+  border-color: #4dff88 !important;
+  box-shadow: 0 0 15px rgba(77, 255, 136, 0.5) !important;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+/* --- СТИЛЬ ДЛЯ КНОПКИ RESET --- */
+.reset-btn {
+  background-color: #0f172a !important; /* Глубокий темный фон */
+  border: 1px solid #ff4d4d !important; /* Красная рамка */
+  color: #ff4d4d !important;            /* Красный текст */
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.3s ease !important;
+  margin-left: auto; /* Сохраняем привязку к правому краю */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Эффект при наведении на RESET */
+.reset-btn:hover {
+  background-color: rgba(255, 77, 77, 0.1) !important;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.5) !important;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+
+/* Эффект при нажатии */
+.reset-btn:active {
+  transform: scale(0.95);
+}
+/* --- СТИЛИЗАЦИЯ ТАБЛО ТЕМПА (BPM) --- */
+.bpm-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0px;
+  line-height: 1.1;
+  min-width: 90px;
+  padding: 2px 5px; /* Немного отступа для свечения */
+}
+
+/* Верхняя надпись TEMPO - сделаем её бирюзовой */
+.bpm-label {
+  font-size: 11px;
+  color: #4dff88; /* Яркий неон-бирюзовый */
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: bold;
+  /* Яркое неоновое свечение для текста */
+  text-shadow: 
+      0 0 5px #4dff88,
+      0 0 10px #4dff88,
+      0 0 20px rgba(77, 255, 136, 0.7);
+}
+
+/* Само число {bpm} BPM - сделаем его классическим синим */
+.bpm-value {
+  font-size: 20px;
+  color: #4D88FF; /* Насыщенный синий */
+  font-family: 'Courier New', Courier, monospace; /* "Приборный" шрифт */
+  font-weight: 900;
+  /* Усиленное неоновое свечение для числа */
+  text-shadow: 
+      0 0 5px #4D88FF,
+      0 0 12px #4D88FF,
+      0 0 25px rgba(77, 136, 255, 0.8),
+      0 0 35px rgba(77, 136, 255, 0.5); /* Глубокая аура */
+}
+/* Контейнер для выбора инструментов */
+.instrument-selector {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Базовая кнопка инструмента */
+.inst-btn {
+  position: relative;
+  background: #1e2a50 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding: 12px 24px !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+/* Эффект наведения (общий) */
+.inst-btn:hover {
+  transform: translateY(-3px);
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* --- ГИТАРА (Золотой неон) --- */
+.guitar-btn.active, .guitar-btn:hover {
+  border-color: #ffaa00 !important;
+  color: #ffaa00 !important;
+  box-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
+}
+
+.guitar-btn.active .inst-icon {
+  filter: drop-shadow(0 0 8px #ffaa00);
+}
+
+/* Полоска под активной кнопкой */
+.active-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.inst-icon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.inst-btn:hover .inst-icon {
+  transform: scale(1.2) rotate(5deg);
+}
+
+.inst-text {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+/* Кнопка переключения FX */
+.fx-toggle-btn {
+  margin-left: auto; /* Отодвинет её немного вправо, если есть место */
+  border-style: dashed !important; /* Сделаем её визуально другой */
+}
+
+.fx-toggle-btn.fx-active, .fx-toggle-btn:hover {
+  border-color: #ff4dfc !important; /* Яркий розовый неон */
+  color: #ff4dfc !important;
+  box-shadow: 0 0 15px rgba(255, 77, 252, 0.4);
+}
+
+.fx-toggle-btn.fx-active .inst-icon {
+  filter: drop-shadow(0 0 8px #ff4dfc);
+}
+/* --- СИНТЕЗАТОР (Синий электрический неон) --- */
+.synth-btn.active, .synth-btn:hover {
+  border-color: #00d2ff !important;
+  color: #00d2ff !important;
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+}
+
+.synth-btn.active .inst-icon {
+  filter: drop-shadow(0 0 8px #00d2ff);
+}
+
+/* --- БАС (Фиолетовый глубокий неон) --- */
+.bass-btn.active, .bass-btn:hover {
+  border-color: #bd00ff !important;
+  color: #bd00ff !important;
+  box-shadow: 0 0 20px rgba(189, 0, 255, 0.4);
+}
+
+.bass-btn.active .inst-icon {
+  filter: drop-shadow(0 0 8px #bd00ff);
+}
+.app {
+  background: #0B1020;
+  min-height: 100vh;
+  padding: 20px;
+  color: white;
+  font-family: sans-serif;
+  user-select: none;
+}
+/* --- CHIP (Зелёный неон, 8-bit) --- */
+.chip-btn.active, .chip-btn:hover {
+  border-color: #2ecc71 !important;
+  color: #2ecc71 !important;
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+}
+
+.chip-btn.active .inst-icon {
+  filter: drop-shadow(0 0 8px #2ecc71);
+}
+/* START BUTTON (Landing) */
+.start-btn {
+  padding: 15px 40px;
+  font-size: 16px;
+  background: linear-gradient(90deg, #4D88FF, #7A4DFF);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+  box-shadow: 0 0 20px rgba(77, 136, 255, 0.4);
+}
+
+.start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(122, 77, 255, 0.6);
+}
+.app::before {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(122, 77, 255, 0.25), transparent 70%);
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app {
+  position: relative;
+  overflow: hidden;
+}
+.logo {
+  font-size: 64px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(255,255,255,0.15);
+}
+/* LANDING LAYOUT */
+.landing {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  text-align: center;
+}
+
+.landing-content {
+  z-index: 1;
+}
+
+/* TAGLINE */
+.tagline {
+  color: #4D88FF;
+  letter-spacing: 4px;
+  margin-bottom: 30px;
+}
+
+/* FEATURES */
+.features {
+  margin-top: 50px;
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.features div {
+  padding: 10px 15px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  transition: 0.3s;
+}
+
+.features div:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 15px rgba(122,77,255,0.4);
+}
+.features button {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.features button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 15px rgba(122,77,255,0.4);
+}
+/* =========================
+   DAW PREVIEW (LANDING)
+========================= */
+
+.preview {
+  margin-top: 60px;
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* TRACK BLOCK */
+.preview-track {
+  padding: 12px 15px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: white;
+}
+
+/* LABEL */
+.preview-track span {
+  opacity: 0.8;
+}
+
+/* WAVE LINE */
+.wave {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 100%;
+  opacity: 0.7;
+  animation: waveMove 2s linear infinite;
+}
+
+/* 🎸 GUITAR */
+.preview-track.guitar {
+  box-shadow: 0 0 20px rgba(255, 180, 0, 0.15);
+}
+.preview-track.guitar .wave {
+  background: linear-gradient(90deg, transparent, #FFB400, transparent);
+}
+
+/* 🎹 SYNTH */
+.preview-track.synth {
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.15);
+}
+.preview-track.synth .wave {
+  background: linear-gradient(90deg, transparent, #00D2FF, transparent);
+}
+
+/* 🔊 BASS */
+.preview-track.bass {
+  box-shadow: 0 0 20px rgba(189, 0, 255, 0.15);
+}
+.preview-track.bass .wave {
+  background: linear-gradient(90deg, transparent, #BD00FF, transparent);
+}
+/* 🕹️ CHIP (8-bit) */
+.preview-track.chip {
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+.preview-track.chip .wave {
+  background: linear-gradient(90deg, transparent, #2ecc71, transparent);
+}
+
+/* ANIMATION */
+@keyframes waveMove {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 20px;
+  margin-top: 6px;
+}
+
+.wave span {
+  width: 3px;
+  height: 6px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: waveAnim 1s infinite ease-in-out;
+}
+
+/* задержки — чтобы было "живо" */
+.wave span:nth-child(1) { animation-delay: 0s; }
+.wave span:nth-child(2) { animation-delay: 0.1s; }
+.wave span:nth-child(3) { animation-delay: 0.2s; }
+.wave span:nth-child(4) { animation-delay: 0.3s; }
+.wave span:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes waveAnim {
+  0%, 100% {
+    height: 6px;
+    opacity: 0.5;
+  }
+  50% {
+    height: 18px;
+    opacity: 1;
+  }
+}
+.preview-track.guitar {
+  color: #ffb347;
+}
+
+.preview-track.synth {
+  color: #00e5ff;
+}
+
+.preview-track.bass {
+  color: #c77dff;
+}
+.preview-track {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.preview-track:hover {
+  transform: scale(1.03);
+  filter: brightness(1.2);
+}
+/* Стиль для кнопки EXIT */
+.back-to-home-btn {
+  background: rgba(77, 136, 255, 0.05) !important; /* Почти прозрачный фон */
+  border: 1px solid rgba(77, 136, 255, 0.3) !important; /* Тонкая рамка */
+  color: #4D88FF !important;
+  padding: 5px 12px !important;
+  border-radius: 4px !important;
+  font-family: 'Inter', sans-serif; /* Или твой шрифт */
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 2px !important;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  outline: none;
+  opacity: 0.15;
+}
+
+/* Эффект при наведении */
+.back-to-home-btn:hover {
+  background: rgba(77, 136, 255, 0.15) !important;
+  border-color: #4D88FF !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(77, 136, 255, 0.4); /* Неоновое свечение */
+  opacity: 1 !important;
+  transform: translateY(-1px);
+}
+
+/* Эффект при нажатии */
+.back-to-home-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 0 5px rgba(77, 136, 255, 0.2);
+}
+/* Теперь ползунки будут видны */
+.scroll-x::-webkit-scrollbar {
+  height: 8px;
+  display: block !important;
+}
+
+.scroll-x::-webkit-scrollbar-thumb {
+  background: #555; 
+  border-radius: 10px;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  z-index: 1;
+}
+.tracks {
+  display: inline-flex;      /* ключ */
+  gap: 16px;
+  min-width: max-content;    /* ключ */
+}
+.tracks > * {
+  width: 20px;      /* можно 200–300px под твой дизайн */
+  flex-shrink: 0;    /* КЛЮЧЕВОЕ */
+}
+/* Эффект подсветки кубика при проигрывании */
+.block.playing {
+  filter: brightness(1.5) contrast(1.1);
+  box-shadow: 0 0 20px currentColor;
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+/* Плавный переход */
+.block {
+  transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease;
+  will-change: transform, filter;
+}
+.neon-struna {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(50px, 15vw, 120px);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  
+  /* ЦЕНТРОВКА */
+  display: block;
+  margin: 0 auto 30px auto;
+  line-height: 1.6; /* Чтобы не резало неон сверху */
+
+  /* ТВОЙ ЛЮБИМЫЙ НЕОН */
+background: linear-gradient(90deg, #00ffff, #0066ff, #9d00ff, #00ffff);
+background-size: 200% auto;
+background-clip: text;
+-webkit-background-clip: text; /* для Safari/Chrome */
+-webkit-text-fill-color: transparent;
+filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.7));
+animation: neon-flow 3s linear infinite;
+}
+
+@keyframes neon-flow {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+.app.landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;    /* Центрирует по горизонтали */
+  justify-content: center; /* Центрирует по вертикали */
+  width: 100%;
+  min-height: 100vh;
+}
+.landing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Центрирует всё внутри (логотип, кнопку, превью) */
+  text-align: center;
+  width: 100%;
+}
+.controls-help-btn {
+  /* УБИРАЕМ FIXED. Теперь она не будет летать поверх нот */
+  position: relative !important; 
+  display: block !important;
+  
+  /* Делаем отступ от сетки сверху (40px) и центрируем по горизонтали (auto) */
+  margin: 40px auto 20px auto !important; 
+  
+  /* Слой */
+  z-index: 9999 !important;
+
+  /* Красивое оформление */
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid #00f3ff !important;
+  color: #00f3ff !important;
+  padding: 10px 25px !important;
+  border-radius: 30px !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Эффект свечения при наведении */
+.controls-help-btn:hover {
+  background: rgba(0, 243, 255, 0.2) !important;
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.6) !important;
+  transform: scale(1.05) !important;
+}
+/* 1. Темный фон-подложка с размытием */
+.custom-modal-overlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8) !important; /* Глубокий темный */
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000 !important; /* Максимальный приоритет */
+  backdrop-filter: blur(10px); /* Сильное размытие заднего плана */
+}
+
+/* 2. Само окно */
+.custom-modal {
+  background: #0d0d12 !important; /* Цвет как у твоих панелей */
+  border: 1px solid #00f3ff !important;
+  box-shadow: 0 0 50px rgba(0, 243, 255, 0.25) !important;
+  padding: 40px !important;
+  border-radius: 25px !important;
+  width: 450px !important;
+  text-align: center;
+  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 3. Заголовок */
+.custom-modal h2 {
+  color: #00f3ff !important;
+  font-family: 'Orbitron', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 30px;
+  font-size: 22px;
+  text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+/* 4. Контент со списком */
+.modal-content {
+  text-align: left !important;
+  margin-bottom: 35px !important;
+}
+
+.control-item {
+  margin-bottom: 18px !important;
+  color: #e0e0e0 !important;
+  font-size: 15px !important;
+  line-height: 1.4;
+  border-left: 3px solid rgba(0, 243, 255, 0.3);
+  padding-left: 15px;
+}
+
+.control-item span {
+  color: #00f3ff !important; /* Подсветка клавиш */
+  font-weight: bold !important;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+/* 5. Кнопка "Got it!" */
+.close-modal-btn {
+  background: transparent !important;
+  border: 1px solid #00f3ff !important;
+  color: #00f3ff !important;
+  padding: 12px 45px !important;
+  border-radius: 50px !important;
+  cursor: pointer !important;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 13px !important;
+  transition: all 0.3s ease !important;
+  text-transform: uppercase;
+}
+
+.close-modal-btn:hover {
+  background: #00f3ff !important;
+  color: #000 !important;
+  box-shadow: 0 0 25px #00f3ff !important;
+}
+
+/* Анимация вылета окна снизу */
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* --- КРАСНОЕ ОКНО RESET (DANGER ZONE) --- */
+
+/* Фон-подложка для окна предупреждения */
+.warning-overlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85) !important; /* Чуть темнее обычного */
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important; /* Сильное размытие */
+}
+
+/* Сама карточка окна (Красный неон) */
+.warning-modal {
+  background: #0d0d0d !important;
+  border: 1px solid #ff3333 !important; /* КРАСНАЯ РАМКА */
+  box-shadow: 0 0 50px rgba(255, 51, 51, 0.3) !important; /* Красное свечение */
+  padding: 40px !important;
+  border-radius: 25px !important;
+  width: 420px !important;
+  text-align: center !important;
+  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Иконка предупреждения сверху */
+.warning-icon {
+  font-size: 44px;
+  color: #ff3333;
+  margin-bottom: 15px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.6);
+}
+
+/* Красный заголовок */
+.warning-modal h2 {
+  color: #ff3333 !important;
+  font-family: 'Orbitron', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+  font-size: 24px;
+  text-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
+}
+
+.warning-modal p {
+  color: #cccccc !important;
+  font-size: 15px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+/* Контейнер для кнопок */
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+/* Кнопка CANCEL */
+.cancel-modal-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #999 !important;
+  padding: 12px 25px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 11px;
+  transition: all 0.3s;
+}
+
+.cancel-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: #fff !important;
+}
+
+/* Кнопка YES, RESET ALL */
+.confirm-reset-btn {
+  background: #ff3333 !important; /* Яркий красный */
+  border: 1px solid #ff3333 !important;
+  color: #000 !important; /* Черный текст на красном — это классика */
+  padding: 12px 30px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif !important;
+  font-size: 11px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.confirm-reset-btn:hover {
+  box-shadow: 0 0 30px #ff3333 !important;
+  transform: scale(1.05);
+}
+.sequencer-scroll {
+  scroll-behavior: smooth;
+}
+.preview-track.demo-active {
+  filter: brightness(1.4) drop-shadow(0 0 12px currentColor);
+  transform: scale(1.02);
+  transition: all 0.1s ease;
+}

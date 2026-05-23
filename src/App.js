@@ -12,7 +12,7 @@ function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [mode, setMode] = useState("landing");
-  const strings = ["E", "A", "D", "G", "B", "e"];
+  const strings = ["E1", "A1", "E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [], chip: [] });
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
@@ -222,7 +222,7 @@ function App() {
   const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
-  const OPEN_STRINGS = [82.41, 110, 146.83, 196, 246.94, 329.63];
+  const OPEN_STRINGS = [41.20, 55.00, 82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
   const autoScrollIfNeeded = (clientX) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -1538,7 +1538,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.2-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.3-BETA(2)</span>
       </div>
     </div>
   </div>
@@ -1847,7 +1847,7 @@ onClick={() => handleStartCreating("guitar")}
             display: "inline-block",
             minWidth: '100%', 
             position: "relative", 
-            height: 360, 
+            height: 480, 
             backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
             backgroundSize: `${STEP_WIDTH}px 60px` 
           }}>

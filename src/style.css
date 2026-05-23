@@ -976,3 +976,41 @@ animation: neon-flow 3s linear infinite;
   transform: scale(1.02);
   transition: all 0.1s ease;
 }
+/* Мобильная адаптация (ширина экрана до 768px) */
+@media (max-width: 768px) {
+  .app {
+    padding: 10px !important;
+  }
+  .instrument-selector {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .inst-btn {
+    min-width: 70px;
+    padding: 6px 10px !important;
+  }
+  .inst-text {
+    font-size: 8px;
+  }
+  .mixer-columns, .fx-panel {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .bpm-display, .master-block {
+    width: 140px !important;
+  }
+  .scroll-container {
+    touch-action: pan-x pinch-zoom;
+  }
+  .block {
+    min-height: 40px;
+  }
+  .playhead-grabber {
+    width: 40px !important;
+    margin-left: -20px !important;
+  }
+  .controls-help-btn {
+    font-size: 10px;
+    padding: 6px 12px !important;
+  }
+}

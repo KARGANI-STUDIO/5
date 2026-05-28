@@ -976,3 +976,143 @@ animation: neon-flow 3s linear infinite;
   transform: scale(1.02);
   transition: all 0.1s ease;
 }
+/* Мобильная адаптация (ширина экрана до 768px) */
+@media (max-width: 768px) {
+  .app {
+    padding: 10px !important;
+  }
+  .instrument-selector {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .inst-btn {
+    min-width: 70px;
+    padding: 6px 10px !important;
+  }
+  .inst-text {
+    font-size: 8px;
+  }
+  .mixer-columns, .fx-panel {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .bpm-display, .master-block {
+    width: 140px !important;
+  }
+  .scroll-container {
+    touch-action: pan-x pinch-zoom;
+  }
+  .block {
+    min-height: 40px;
+  }
+  .playhead-grabber {
+    width: 40px !important;
+    margin-left: -20px !important;
+  }
+  .controls-help-btn {
+    font-size: 10px;
+    padding: 6px 12px !important;
+  }
+}
+/* Вспышка кнопки при клике */
+.btn-flash {
+  background: #4DFF88 !important;
+  color: #0a0e1a !important;
+  box-shadow: 0 0 12px #4DFF88 !important;
+  transform: scale(0.95);
+  transition: all 0.05s linear !important;
+}
+/* Красная вспышка для кнопок удаления */
+.btn-flash-red {
+  background: #FF4D4D !important;
+  color: #0a0e1a !important;
+  box-shadow: 0 0 12px #FF4D4D !important;
+  transform: scale(0.95);
+  transition: all 0.05s linear !important;
+}
+/* Объёмный неон для блоков */
+.block {
+  transition: all 0.08s linear;
+  border-radius: 8px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4), 0 0 8px currentColor, inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  will-change: transform;
+}
+
+/* Эффект нажатия при перетаскивании */
+.block:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 0 12px currentColor;
+}
+
+/* Подсветка при воспроизведении */
+.block.playing {
+  filter: brightness(1.3);
+  box-shadow: 0 0 15px currentColor, inset 0 0 8px rgba(255, 255, 255, 0.6);
+  transform: scale(1.02);
+  transition: all 0.05s ease;
+}
+/* Пульсация при воспроизведении */
+@keyframes notePulse {
+  0% {
+    filter: brightness(1.2);
+    box-shadow: 0 0 5px currentColor, 0 4px 0 rgba(0,0,0,0.5);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.8);
+    box-shadow: 0 0 25px currentColor, 0 4px 0 rgba(0,0,0,0.5);
+    transform: scale(1.03);
+  }
+  100% {
+    filter: brightness(1.2);
+    box-shadow: 0 0 5px currentColor, 0 4px 0 rgba(0,0,0,0.5);
+    transform: scale(1);
+  }
+}
+
+.block.playing {
+  animation: notePulse 0.2s ease-in-out 2;
+}
+/* Неоновая анимация для кнопок лупа */
+.loop-btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.loop-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.loop-btn.active {
+  animation: neonPulse 1.2s infinite;
+  box-shadow: 0 0 12px #4DFF88, inset 0 0 6px #4DFF88;
+}
+
+@keyframes neonPulse {
+  0% {
+    box-shadow: 0 0 4px #4DFF88, inset 0 0 2px #4DFF88;
+  }
+  50% {
+    box-shadow: 0 0 18px #4DFF88, inset 0 0 10px #4DFF88;
+  }
+  100% {
+    box-shadow: 0 0 4px #4DFF88, inset 0 0 2px #4DFF88;
+  }
+}
+.info-modal {
+  border-color: #4D88FF !important;
+  box-shadow: 0 0 40px rgba(77, 136, 255, 0.4) !important;
+}
+.info-modal h2 {
+  color: #4D88FF !important;
+  text-shadow: 0 0 10px #4D88FF;
+}
+.neon-icon {
+  font-size: 48px;
+  color: #4D88FF;
+  text-shadow: 0 0 8px #4D88FF, 0 0 16px #4D88FF;
+  display: inline-block;
+  margin-bottom: 10px;
+}

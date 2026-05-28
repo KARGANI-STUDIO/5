@@ -12,11 +12,12 @@ function App() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
   const [mode, setMode] = useState("landing");
-  const strings = ["E", "A", "D", "G", "B", "e"];
+  const strings = ["E1", "A1", "E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [], chip: [] });
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [infoModal, setInfoModal] = useState({ visible: false, message: '' });;
   const [bpm, setBpm] = useState(120);
   const [hoveredBlockId, setHoveredBlockId] = useState(null);
   const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
@@ -53,6 +54,16 @@ function App() {
   const [isGroupDragging, setIsGroupDragging] = useState(false);
   const [dragStartInfo, setDragStartInfo] = useState(null);
   const [masterVolume, setMasterVolume] = useState(0);
+  const [uiSoundsEnabled, setUiSoundsEnabled] = useState(true);
+  const [fxVolume, setFxVolume] = useState(0.5);
+  const [loopActive, setLoopActive] = useState(false);
+  const [loopStart, setLoopStart] = useState(0);
+  const [loopEnd, setLoopEnd] = useState(0);
+  const [previewLoopEnd, setPreviewLoopEnd] = useState(0);
+  const loopStartRef = useRef(0);
+  const loopEndRef = useRef(0);
+  window.__currentFxVolume = fxVolume;
+  const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
   const meterRef = useRef(null);
   const copiedBlocksRef = useRef([]);
   const playheadXRef = useRef(0);
@@ -219,10 +230,66 @@ function App() {
       if (guitarBoost) guitarBoost.dispose();
     }, 3000);
   };
+  // Единые синтезаторы для каждого типа эффекта (переиспользование)
+const effectSynths = {};
+
+const uiSounds = {
+  getSynth: (effectName) => {
+    if (effectSynths[effectName]) return effectSynths[effectName];
+    let synth;
+    switch (effectName) {
+      case 'click':
+        synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 } });
+        break;
+      case 'pop':
+        synth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.002, decay: 0.08, sustain: 0, release: 0.04 } });
+        break;
+      case 'pixel':
+        synth = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 } });
+        break;
+      case 'boom':
+        synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.2 } });
+        break;
+      case 'chirp':
+        synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.002, decay: 0.1, sustain: 0, release: 0.05 } });
+        break;
+      default: return null;
+    }
+    effectSynths[effectName] = synth;
+    // Подключаем к мастер-гейну эффектов (который у вас уже есть)
+    if (window.__fxMasterGain) {
+      synth.connect(window.__fxMasterGain);
+    } else {
+      synth.toDestination(); // fallback
+    }
+    return synth;
+  },
+  playEffect: (effectName, velocity = 1) => {
+    if (!uiSoundsEnabled) return;
+    const synth = uiSounds.getSynth(effectName);
+    if (!synth) return;
+    let freq;
+    let duration = '32n';
+    switch (effectName) {
+      case 'click': freq = 1047; break;
+      case 'pop':   freq = 784;  break;
+      case 'pixel': freq = 659;  duration = '16n'; break;
+      case 'boom':  freq = 65;   duration = '8n';  break;
+      case 'chirp': freq = 880;  break;
+      default: return;
+    }
+    synth.triggerAttackRelease(freq, duration, Tone.now(), velocity);
+  },
+  playClick: () => { if (uiSoundsEnabled) uiSounds.playEffect('click', 1); },
+  playPop: () => { if (uiSoundsEnabled) uiSounds.playEffect('pop', 1); },
+  playPixel: () => { if (uiSoundsEnabled) uiSounds.playEffect('pixel', 1); },
+  playBoom: () => { if (uiSoundsEnabled) uiSounds.playEffect('boom', 1); },
+  playChirp: () => { if (uiSoundsEnabled) uiSounds.playEffect('chirp', 1); }
+};
   const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
-  const OPEN_STRINGS = [82.41, 110, 146.83, 196, 246.94, 329.63];
+  const OPEN_STRINGS = [41.20, 55.00, 82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
   const autoScrollIfNeeded = (clientX) => {
     const el = scrollRef.current;
     if (!el) return;
@@ -309,39 +376,45 @@ if (
     const handleGroupDragStart = (e, block) => {
       setIsGroupDragging(true);
       const initialPositions = new Map();
-      
-      // Сохраняем позиции и строки всех выделенных блоков
       tracks[instrument].forEach(b => {
         if (selectedBlockIds.has(b.id)) {
           initialPositions.set(b.id, { x: b.x, string: b.string });
         }
       });
+      if (initialPositions.size === 0) return;
+    
+      // Находим самый левый блок и самую верхнюю струну (для единого смещения)
+      const minX = Math.min(...Array.from(initialPositions.values()).map(p => p.x));
+      const minString = Math.min(...Array.from(initialPositions.values()).map(p => p.string));
+    
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const offsetX = startX - minX;
+      const offsetY = startY - (minString * 60); // 60px – высота строки
     
       setDragStartInfo({
-        startX: e.clientX,
-        startY: e.clientY,                 // ← сохраняем начальную Y
+        startX,
+        startY,
+        offsetX,
+        offsetY,
         initialBlocks: initialPositions
       });
     };
-  
     const handleGroupDragMove = (e) => {
       if (!isGroupDragging || !dragStartInfo) return;
     
       const deltaX = e.clientX - dragStartInfo.startX;
       const deltaY = e.clientY - dragStartInfo.startY;
-      
-      const deltaStepsX = Math.round(deltaX / STEP_WIDTH);
-      const deltaStepsY = Math.round(deltaY / 60); // высота одной струны 60px
     
       setTracks(prev => ({
         ...prev,
         [instrument]: prev[instrument].map(b => {
           if (dragStartInfo.initialBlocks.has(b.id)) {
             const initial = dragStartInfo.initialBlocks.get(b.id);
-            // Новая горизонтальная позиция
-            const newX = Math.max(0, initial.x + deltaStepsX * STEP_WIDTH);
-            // Новая вертикальная позиция (струна)
-            let newString = initial.string + deltaStepsY;
+            let newX = initial.x + deltaX;
+            newX = Math.round(newX / STEP_WIDTH) * STEP_WIDTH;
+            newX = Math.max(0, newX);
+            let newString = initial.string + Math.round(deltaY / 60);
             newString = Math.max(0, Math.min(strings.length - 1, newString));
             return { ...b, x: newX, string: newString };
           }
@@ -453,6 +526,10 @@ useEffect(() => {
   const meter = new Tone.Meter();
   master.connect(meter);
   meterRef.current = meter; 
+  // Общий узел для громкости спецэффектов (не зависит от инструментов)
+const fxMasterGain = new Tone.Gain(fxVolume);
+fxMasterGain.connect(master);
+window.__fxMasterGain = fxMasterGain;
 
   // 4. Recorder
   recorderRef.current = new Tone.Recorder();
@@ -557,9 +634,10 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
 
   // Cleanup function (очистка при размонтировании компонента)
   return () => {
-    // Останавливаем лупер, если он активен
-    if (window.__sidechain?.kickLoop) {
-      window.__sidechain.kickLoop.stop();
+    if (window.__fxMasterGain) {
+      window.__fxMasterGain.dispose();
+      Object.values(effectSynths).forEach(synth => synth?.dispose());
+      delete window.__fxMasterGain;
     }
     // Отключаем и уничтожаем все узлы
     masterGainRef.current?.dispose();
@@ -657,7 +735,22 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
       }
     });
   }, [volumes]);
-    
+  useEffect(() => {
+    if (isPlaying) {
+      // Перезапускаем движок с новым темпом
+      cancelAnimationFrame(animationRef.current);
+      startEngine();
+    }
+  }, [bpm]);
+  useEffect(() => {
+    if (window.__fxMasterGain) {
+      window.__fxMasterGain.gain.rampTo(fxVolume, 0.05);
+    }
+  }, [fxVolume]);
+  useEffect(() => {
+    loopStartRef.current = loopStart;
+    loopEndRef.current = loopEnd;
+  }, [loopStart, loopEnd]);
   const handleShare = async () => {
     try {
       // Собираем все данные проекта (как в твоем handleSaveProject)
@@ -733,33 +826,38 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
   const startDrag = (block, e) => {
     e.stopPropagation();
     const startX = e.clientX || (e.touches && e.touches[0].clientX);
-    const initialBlockX = block.x;
-
+    const startBlockX = block.x;
+    const offsetX = startX - startBlockX; // смещение курсора внутри блока
+  
     const onMove = (moveEvent) => {
       const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-      const deltaX = currentX - startX;
-      const newX = Math.max(0, Math.floor((initialBlockX + deltaX) / STEP_WIDTH) * STEP_WIDTH);
-      
+      // новое положение левого края = текущий курсор минус смещение
+      let rawX = currentX - offsetX;
+      // округление до сетки (20px)
+      let newX = Math.round(rawX / STEP_WIDTH) * STEP_WIDTH;
+      newX = Math.max(0, newX);
+  
       const rect = scrollRef.current.getBoundingClientRect();
       const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
       const relativeY = currentY - rect.top;
-      const newString = Math.max(0, Math.min(strings.length - 1, Math.floor(relativeY / 60)));
-      
+      let newString = Math.floor(relativeY / 60);
+      newString = Math.max(0, Math.min(strings.length - 1, newString));
+  
       setTracks(prev => ({
         ...prev,
         [instrument]: prev[instrument].map(b => b.id === block.id ? { ...b, x: newX, string: newString } : b)
       }));
     };
-
+  
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-
+  
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
-
+  
   const startResize = (block, e) => {
     e.stopPropagation();
     const clientX = e.clientX; 
@@ -787,12 +885,13 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
   }; 
 
   const startPlayheadDrag = (e) => {
-    if (!e.shiftKey && e.type === 'mousedown') return;
+    // Не перетаскиваем, если клик был по блоку (ноте)
+    if (e.target.closest(".block")) return;
     
     e.preventDefault();
     const grid = scrollRef.current;
     const startClientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-
+  
     const onMove = (moveEvent) => {
       const currentClientX = moveEvent.type.includes('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
       
@@ -800,6 +899,11 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
       const xInView = currentClientX - rect.left;
       const xInGrid = xInView + grid.scrollLeft;
       const boundedX = Math.max(0, xInGrid);
+      playheadXRef.current = boundedX;
+      // Если мы в режиме установки лупа (начало установлено, конец ещё нет)
+      if (loopStart !== 0 && loopEnd === 0) {
+      setPreviewLoopEnd(boundedX);
+      }
       
       if (playheadRef.current) playheadRef.current.style.transform = `translateX(${boundedX}px)`;
       
@@ -808,20 +912,20 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
       if (xInView > rect.width - edgeThreshold) grid.scrollLeft += scrollSpeed;
       else if (xInView < edgeThreshold) grid.scrollLeft -= scrollSpeed;
       
-      const newTime = (boundedX / STEP_WIDTH) * STEP_TIME;
+      const newTime = (boundedX / STEP_WIDTH) * (60 / bpm / 4);
       const now = Tone.now();
       startTimeRef.current = now - newTime;
       pauseOffsetRef.current = newTime;
       triggeredRef.current.clear();
     };
-
+  
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onUp);
     };
-
+  
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     window.addEventListener("touchmove", onMove, { passive: false });
@@ -832,36 +936,58 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     const loop = () => {
       const now = Tone.now();
+      const stepTime = 60 / bpm / 4;
       let elapsed = now - startTimeRef.current;
       const allBlocks = Object.values(tracks).flat();
+  
+      // Глобальная логика окончания всего трека (только если есть блоки и луп выключен)
       if (allBlocks.length > 0) {
         const lastBlockEndPX = Math.max(...allBlocks.map(b => b.x + b.length));
-        const loopEndTime = (lastBlockEndPX / STEP_WIDTH) * STEP_TIME;
-        // Отображение времени: такт / доля / секунды
+        const globalLoopEndTime = (lastBlockEndPX / STEP_WIDTH) * stepTime;
+        
+        // Отображение времени: такт / доля / секунды (всегда)
         const elapsedSeconds = elapsed;
-        const secondsPerBeat = 60 / bpm;        // длительность одной четверти
+        const secondsPerBeat = 60 / bpm;
         const beats = elapsedSeconds / secondsPerBeat;
         const currentBar = Math.floor(beats / 4) + 1;
         const currentBeat = (Math.floor(beats) % 4) + 1;
         setCurrentPosition({
-        bar: currentBar,
-        beat: currentBeat,
-        seconds: elapsedSeconds
+          bar: currentBar,
+          beat: currentBeat,
+          seconds: elapsedSeconds
         });
-        if (elapsed >= loopEndTime) {
+  
+        // Сброс трека только если луп НЕ активен
+        if (!loopActive && elapsed >= globalLoopEndTime) {
           startTimeRef.current = now;
           pauseOffsetRef.current = 0;
           elapsed = 0;
           triggeredRef.current.clear();
         }
       }
+  
+      // Логика лупа
+      if (loopActive && loopStartRef.current !== 0 && loopEndRef.current !== 0 && loopEndRef.current > loopStartRef.current) {
+        const loopStartTime = (loopStartRef.current / STEP_WIDTH) * stepTime;
+        const loopEndTime = (loopEndRef.current / STEP_WIDTH) * stepTime;
+        const delta = loopEndTime - loopStartTime;
+        if (elapsed >= loopEndTime && delta > 0) {
+          startTimeRef.current += delta;
+          elapsed = loopStartTime;
+          triggeredRef.current.clear();
+          // Добавляем микро-сдвиг, чтобы избежать точного совпадения времени
+          // Это необязательно, но может помочь
+        }
+      }
+  
+      // Обработка нот (без изменений)
       Object.entries(tracks).forEach(([type, blocks]) => {
-        if (!filtersRef.current[type]) return; // защита от сброса
+        if (!filtersRef.current[type]) return;
         blocks.forEach((b) => {
           const startStep = Math.floor(b.x / STEP_WIDTH);
           const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
-          const startTime = startStep * STEP_TIME;
-          const duration = durationSteps * STEP_TIME;
+          const startTime = startStep * stepTime;
+          const duration = durationSteps * stepTime;
           const key = `${type}_${b.id}_${startStep}`;
           if (elapsed >= startTime && elapsed <= startTime + duration && !triggeredRef.current.has(key)) {
             const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
@@ -874,38 +1000,41 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
               synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
             }
             triggeredRef.current.add(key);
+            if (b.effect && uiSoundsEnabled) {
+              uiSounds.playEffect(b.effect, velocity);
+            }
           }
         });
       });
-      const x = (elapsed / STEP_TIME) * STEP_WIDTH;
+  
+      const x = (elapsed / stepTime) * STEP_WIDTH;
       playheadXRef.current = x;
-    
-    // Вычисляем шаг для подсветки
-    const currentStep = Math.floor(x / STEP_WIDTH);
-    if (activeStep !== currentStep) {
-      setActiveStep(currentStep);
-    }
-
-    if (playheadRef.current) {
-      playheadRef.current.style.transform = `translateX(${x}px)`;
-    }
-
-    if (scrollRef.current) {
-      const target = Math.max(0, x - FOLLOW_OFFSET);
-      scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
-    }
-    if (meterRef.current) {
-      const level = meterRef.current.getValue();
-      let normalized = (level + 60) / 60;
-      normalized = Math.min(1, Math.max(0, normalized));
-      setMasterVolume(normalized);
-    }
-    // Вот эта строка должна быть ОДНА:
-    animationRef.current = requestAnimationFrame(loop);
-  }; // <--- Закрывающая скобка самой функции loop
-
-  loop(); // Запуск цикла
-}; // <--- Закрывающая скобка функции startEngine
+  
+      const currentStep = Math.floor(x / STEP_WIDTH);
+      if (activeStep !== currentStep) {
+        setActiveStep(currentStep);
+      }
+  
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${x}px)`;
+      }
+  
+      if (scrollRef.current) {
+        const target = Math.max(0, x - FOLLOW_OFFSET);
+        scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
+      }
+  
+      if (meterRef.current) {
+        const level = meterRef.current.getValue();
+        let normalized = (level + 60) / 60;
+        normalized = Math.min(1, Math.max(0, normalized));
+        setMasterVolume(normalized);
+      }
+  
+      animationRef.current = requestAnimationFrame(loop);
+    };
+    loop();
+  };
 
 const handleTogglePlay = async () => {
   if (Tone.context.state !== 'running') {
@@ -1053,6 +1182,15 @@ const handleStop = () => {
     setSelectedBlockIds(new Set());
     setMasterVolume(0);
     setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
+    setLoopStart(0);
+    setLoopEnd(0);
+    setPreviewLoopEnd(0);
+    setLoopActive(false);
+    // возможно, сбросить playheadXRef.current = 0;
+    playheadXRef.current = 0;
+    // также перезаписать ref-ы
+    loopStartRef.current = 0;
+    loopEndRef.current = 0;
   };
   // --- ИСПРАВЛЕННОЕ КОПИРОВАНИЕ И ВСТАВКА (ПОСЛЕДОВАТЕЛЬНО) ---
 
@@ -1121,9 +1259,9 @@ const deleteSelectedBlocks = () => {
   });
   setSelectedBlockIds(new Set());
   console.log("Selected blocks deleted");
-};
+ };
   // Горячие клавиши с поддержкой русской раскладки и Chrome
-useEffect(() => {
+ useEffect(() => {
   const handleKeyDown = (e) => {
     // 1. Игнорируем в инпутах
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -1170,6 +1308,46 @@ useEffect(() => {
   window.addEventListener('keydown', handleKeyDown, true);
   return () => window.removeEventListener('keydown', handleKeyDown, true);
 }, [selectedBlockIds, handleTogglePlay, copySelectedBlocks, pasteBlocks, deleteSelectedBlocks]);
+const clearAllEffects = () => {
+  setTracks(prev => {
+    const updated = { ...prev };
+    Object.keys(updated).forEach(inst => {
+      updated[inst] = updated[inst].map(block => {
+        // Удаляем поле effect, если оно есть
+        if (block.effect) {
+          const { effect, ...rest } = block;
+          return rest;
+        }
+        return block;
+      });
+    });
+    return updated;
+  });
+};
+const applyEffectToSelectedBlocks = (effectName) => {
+  if (selectedBlockIds.size === 0) return;
+  setTracks(prev => {
+    const updated = { ...prev };
+    Object.keys(updated).forEach(inst => {
+      updated[inst] = updated[inst].map(block => {
+        if (selectedBlockIds.has(block.id)) {
+          return { ...block, effect: effectName };
+        }
+        return block;
+      });
+    });
+    return updated;
+  });
+};
+const removeAllEffects = () => {
+  setTracks(prev => {
+    const updated = { ...prev };
+    Object.keys(updated).forEach(inst => {
+      updated[inst] = updated[inst].map(block => ({ ...block, effect: null }));
+    });
+    return updated;
+  });
+};
   const handleLogout = () => {
     localStorage.removeItem("struna_user");
     setUser(null);
@@ -1538,7 +1716,7 @@ onClick={() => handleStartCreating("guitar")}
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.2-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.3-BETA</span>
       </div>
     </div>
   </div>
@@ -1624,19 +1802,245 @@ onClick={() => handleStartCreating("guitar")}
   width: "200px",
   textAlign: "center"
 }}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "8px" }}>TEMPO</div>
+  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>TEMPO</div>
   <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "4px" }}>
     {bpm}
   </div>
   <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "12px" }}>BPM</div>
+  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginTop: "10px" }}>
+  {/* Кнопка SET LOOP / SET END / RESET LOOP */}
+  <button
+    onClick={() => {
+      const currentX = playheadXRef.current;
+      if (loopStart === 0 && loopEnd === 0) {
+        setLoopStart(currentX);
+        setLoopEnd(0);
+        setPreviewLoopEnd(currentX);
+      } else if (loopStart !== 0 && loopEnd === 0) {
+        if (previewLoopEnd > loopStart) {
+          setLoopEnd(previewLoopEnd);
+        } else {
+          setLoopStart(previewLoopEnd);
+          setLoopEnd(loopStart);
+        }
+        setPreviewLoopEnd(0);
+      } else {
+        setLoopStart(0);
+        setLoopEnd(0);
+        setPreviewLoopEnd(0);
+        setLoopActive(false);
+      }
+    }}
+    style={{
+      background: "#0a0e1a",
+      border: `2px solid ${
+        loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")
+      }`,
+      borderRadius: "6px",
+      padding: "3px 6px",
+      flex: 1,
+      color: loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D"),
+      fontSize: "9px",
+      fontWeight: "bold",
+      letterSpacing: "0.5px",
+      cursor: "pointer",
+      textShadow: `0 0 3px ${
+        loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")
+      }`,
+      boxShadow: `0 0 6px rgba(${
+        loopStart === 0 ? "77, 255, 136" : (loopEnd === 0 ? "255, 165, 0" : "255, 77, 77")
+      }, 0.5), inset 0 0 2px rgba(${
+        loopStart === 0 ? "77, 255, 136" : (loopEnd === 0 ? "255, 165, 0" : "255, 77, 77")
+      }, 0.2)`,
+      transition: "all 0.2s ease",
+      backdropFilter: "blur(2px)"
+    }}
+    onMouseEnter={(e) => {
+      let color, rgba;
+      if (loopStart === 0) { color = "#4DFF88"; rgba = "77, 255, 136"; }
+      else if (loopEnd === 0) { color = "#FFA500"; rgba = "255, 165, 0"; }
+      else { color = "#FF4D4D"; rgba = "255, 77, 77"; }
+      e.currentTarget.style.background = `rgba(${rgba}, 0.2)`;
+      e.currentTarget.style.boxShadow = `0 0 12px ${color}`;
+      e.currentTarget.style.transform = "scale(1.02)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = "#0a0e1a";
+      let color, rgba;
+      if (loopStart === 0) { color = "#4DFF88"; rgba = "77, 255, 136"; }
+      else if (loopEnd === 0) { color = "#FFA500"; rgba = "255, 165, 0"; }
+      else { color = "#FF4D4D"; rgba = "255, 77, 77"; }
+      e.currentTarget.style.boxShadow = `0 0 6px rgba(${rgba}, 0.5)`;
+      e.currentTarget.style.transform = "scale(1)";
+    }}
+  >
+    {loopStart === 0 ? "SET LOOP" : (loopEnd === 0 ? "SET END" : "RESET LOOP")}
+  </button>
+
+  {/* Кнопка LOOP ON / OFF — теперь с модальным окном вместо alert */}
+  <button
+    onClick={() => {
+      if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) {
+        setLoopActive(!loopActive);
+      } else {
+        setInfoModal({
+          visible: true,
+          message: "First set the loop area (press SET LOOP twice at desired positions)"
+        });
+      }
+    }}
+    style={{
+      background: loopActive ? "#4DFF88" : "#0a0e1a",
+      border: `2px solid ${loopActive ? "#4DFF88" : "#FF4D4D"}`,
+      borderRadius: "6px",
+      padding: "3px 6px",
+      flex: 1,
+      color: loopActive ? "#0a0e1a" : "#FF4D4D",
+      fontSize: "9px",
+      fontWeight: "bold",
+      letterSpacing: "0.5px",
+      cursor: "pointer",
+      textShadow: loopActive ? "none" : "0 0 3px #FF4D4D",
+      boxShadow: loopActive
+        ? "0 0 10px #4DFF88, inset 0 0 2px rgba(0,0,0,0.2)"
+        : "0 0 6px rgba(255, 77, 77, 0.5), inset 0 0 2px rgba(255, 77, 77, 0.2)",
+      transition: "all 0.2s ease",
+      backdropFilter: "blur(2px)"
+    }}
+    onMouseEnter={(e) => {
+      if (!loopActive) {
+        e.currentTarget.style.background = "rgba(255, 77, 77, 0.2)";
+        e.currentTarget.style.boxShadow = "0 0 12px #FF4D4D";
+      } else {
+        e.currentTarget.style.boxShadow = "0 0 14px #4DFF88";
+      }
+      e.currentTarget.style.transform = "scale(1.02)";
+    }}
+    onMouseLeave={(e) => {
+      if (!loopActive) {
+        e.currentTarget.style.background = "#0a0e1a";
+        e.currentTarget.style.boxShadow = "0 0 6px rgba(255, 77, 77, 0.5)";
+      } else {
+        e.currentTarget.style.background = "#4DFF88";
+        e.currentTarget.style.boxShadow = "0 0 10px #4DFF88";
+      }
+      e.currentTarget.style.transform = "scale(1)";
+    }}
+  >
+    LOOP {loopActive ? "ON" : "OFF"}
+  </button>
+</div>
   <input
     type="range"
     min="60"
     max="200"
     value={bpm}
     onChange={(e) => setBpm(Number(e.target.value))}
-    style={{ width: "100%", cursor: "pointer", marginTop: "4px" }}
+    style={{ width: "100%", cursor: "pointer", marginTop: "25px" }}
   />
+</div>
+{/* НОВЫЙ БЛОК UI SOUNDS */}
+<div style={{
+  background: "#0a0e1a",
+  padding: "12px",
+  borderRadius: "12px",
+  border: "1px solid #2a3a6e",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+  width: "200px",
+  textAlign: "center"
+}}>
+  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>ATTACH EFFECT</div>
+  <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+    {[
+      { name: 'click', icon: '🔊', title: 'Щелчок', play: () => uiSounds.playClick() },
+      { name: 'pop', icon: '🎯', title: 'Цок', play: () => uiSounds.playPop() },
+      { name: 'pixel', icon: '🕹️', title: 'Пиксельный', play: () => uiSounds.playPixel() },
+      { name: 'boom', icon: '💥', title: 'Бум', play: () => uiSounds.playBoom() },
+      { name: 'chirp', icon: '🐤', title: 'Чирп', play: () => uiSounds.playChirp() }
+    ].map(effect => (
+      <button
+        key={effect.name}
+        onClick={(e) => {
+          const btn = e.currentTarget;
+          btn.classList.add('btn-flash');
+          setTimeout(() => btn.classList.remove('btn-flash'), 120);
+          // Применяем эффект к выделенным блокам
+          applyEffectToSelectedBlocks(effect.name);
+          // Проигрываем демо-звук (всегда, чтобы можно было услышать)
+          effect.play();
+        }}
+        style={{
+          background: "#1e2a50",
+          border: "none",
+          borderRadius: "20px",
+          padding: "6px 8px",
+          color: "#4DFF88",
+          cursor: "pointer",
+          fontSize: "12px",
+          transition: "all 0.1s ease"
+        }}
+        title={effect.title}
+      >
+        {effect.icon}
+      </button>
+    ))}
+    <button
+  onClick={(e) => {
+    const btn = e.currentTarget;
+    btn.classList.add('btn-flash-red');   // ← красная вспышка
+    setTimeout(() => btn.classList.remove('btn-flash-red'), 120);
+    applyEffectToSelectedBlocks(null);
+  }}
+  style={{
+    background: "#2A3350",
+    border: "none",
+    borderRadius: "20px",
+    padding: "6px 8px",
+    color: "#FFB84D",
+    cursor: "pointer",
+    fontSize: "12px",
+    transition: "all 0.1s ease"
+  }}
+  title="Сбросить эффект с выделенных блоков"
+>
+  ❌
+</button>
+  </div>
+  <div style={{ fontSize: "9px", color: "#AAB3C2", marginBottom: "8px" }}>Select block(s) → choose effect</div>
+
+  {/* Кнопка удаления ВСЕХ эффектов (стиль как у RESET) */}
+  <button
+  onClick={(e) => {
+    const btn = e.currentTarget;
+    btn.classList.add('btn-flash-red');   // ← красная вспышка
+    setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
+    removeAllEffects();
+  }}
+  style={{
+    backgroundColor: "#0f172a",
+    border: "1px solid #ff4d4d",
+    borderRadius: "6px",
+    padding: "6px 8px",
+    width: "100%",
+    color: "#ff4d4d",
+    cursor: "pointer",
+    fontSize: "10px",
+    fontWeight: "bold",
+    marginTop: "6px",
+    transition: "all 0.3s ease",
+    textTransform: "uppercase"
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.backgroundColor = "#1e293b";
+    e.currentTarget.style.boxShadow = "0 0 8px rgba(255, 77, 77, 0.5)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.backgroundColor = "#0f172a";
+    e.currentTarget.style.boxShadow = "none";
+  }}
+>
+  REMOVE ALL EFFECTS
+</button>
 </div>
 
 {/* Блок MASTER — без неона, стильная рамка */}
@@ -1752,6 +2156,20 @@ onClick={() => handleStartCreating("guitar")}
       />
       <button style={resetBtnStyle} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 0.5 }))}>Reset</button>
     </div>
+    {/*FX VOLUME*/}
+    <div style={mixerColumnStyle}>
+  <span style={labelStyle}>FX VOLUME<br/>{fxVolume.toFixed(2)}</span>
+  <input
+    type="range"
+    min="0"
+    max="1"
+    step="0.01"
+    value={fxVolume}
+    onChange={(e) => setFxVolume(parseFloat(e.target.value))}
+    style={verticalSliderStyle}
+  />
+  <button style={resetBtnStyle} onClick={() => setFxVolume(0.5)}>Reset</button>
+</div>
 
     {/* CUTOFF */}
     <div style={mixerColumnStyle}>
@@ -1847,10 +2265,27 @@ onClick={() => handleStartCreating("guitar")}
             display: "inline-block",
             minWidth: '100%', 
             position: "relative", 
-            height: 360, 
+            minHeight: 480, 
             backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
             backgroundSize: `${STEP_WIDTH}px 60px` 
           }}>
+             {loopStart !== 0 && (
+  (loopEnd !== 0 && loopEnd > loopStart) || (previewLoopEnd > loopStart)
+) && (
+  <div style={{
+    position: "absolute",
+    top: 0,
+    left: loopStart,
+    width: (loopEnd !== 0 ? loopEnd : previewLoopEnd) - loopStart,
+    height: "100%",
+    backgroundColor: "rgba(77, 255, 136, 0.15)",
+    borderLeft: "2px solid #4DFF88",
+    borderRight: "2px solid #4DFF88",
+    pointerEvents: "none",
+    zIndex: 5,
+    transition: "width 0.05s linear"
+  }} />
+)}
           {strings.map((s, i) => (
             <div key={i} 
             onMouseDown={(e) => {
@@ -1858,7 +2293,7 @@ onClick={() => handleStartCreating("guitar")}
               if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
               isDraggingRef.current = true;
               const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
+              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
               const existingOnString = tracks[instrument].filter(b => b.string === i);
               const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
               if (!overlapping) {
@@ -1869,7 +2304,7 @@ onClick={() => handleStartCreating("guitar")}
               if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
               const touchX = e.touches[0].clientX;
               const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
+              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
               const existingOnString = tracks[instrument].filter(b => b.string === i);
               const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
               if (!overlapping) {
@@ -1940,24 +2375,34 @@ onClick={() => handleStartCreating("guitar")}
     left: b.x,
     width: b.length,
     height: 45,
-    backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.3)",
-    "--neon-color": instName === instrument ? getColor(b.fret) : "transparent",
-    opacity: instName === instrument ? (b.velocity || 1) : 0.4,
+    backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.2)",
+    boxShadow: instName === instrument 
+      ? `0 4px 0 rgba(0,0,0,0.5), 0 0 8px ${getColor(b.fret)}` 
+      : "none",
+    opacity: instName === instrument ? (b.velocity || 1) : 0.5,
     border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
     outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
     outlineOffset: "2px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: instName === instrument ? "white" : "rgba(255,255,255,0.2)",
+    color: "white",
     fontWeight: "bold",
     cursor: instName === instrument ? "grab" : "default",
     zIndex: instName === instrument ? 10 : 5,
-    borderRadius: 6,
-    pointerEvents: "auto",   // ← теперь ВСЕ блоки можно выделять
-    touchAction: "none" 
+    borderRadius: 8,
+    pointerEvents: "auto",
+    touchAction: "none",
+    transition: "all 0.05s linear"
   }}>
-  {b.fret}
+  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+  <span>{b.fret}</span>
+  {b.effect === 'click' && <span style={{ fontSize: "10px" }}>🔊</span>}
+  {b.effect === 'pop' && <span style={{ fontSize: "10px" }}>🎯</span>}
+  {b.effect === 'pixel' && <span style={{ fontSize: "10px" }}>🕹️</span>}
+  {b.effect === 'boom' && <span style={{ fontSize: "10px" }}>💥</span>}
+  {b.effect === 'chirp' && <span style={{ fontSize: "10px" }}>🐤</span>}
+</div>
   {instName === instrument && (
     <div 
       onMouseDown={(e) => startResize(b, e)}
@@ -2029,7 +2474,6 @@ onClick={() => handleStartCreating("guitar")}
   <p><strong>⌨️ Keyboard Shortcuts</strong></p>
   <div className="control-item"><span>Space</span> — Play / Pause</div>
   <div className="control-item"><span>S</span> — Stop</div>
-  <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
   <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
   <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
   <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>
@@ -2056,6 +2500,18 @@ onClick={() => handleStartCreating("guitar")}
           </div>
         </div>
       )}
+      {infoModal.visible && (
+  <div className="custom-modal-overlay" onClick={() => setInfoModal({ visible: false, message: '' })}>
+    <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="neon-icon">ℹ️</div>
+      <h2 style={{ color: '#4D88FF', textShadow: '0 0 8px #4D88FF' }}>INFORMATION</h2>
+      <p>{infoModal.message}</p>
+      <div className="modal-buttons">
+        <button className="cancel-modal-btn" onClick={() => setInfoModal({ visible: false, message: '' })}>OK</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

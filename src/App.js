@@ -13,7 +13,7 @@ function App() {
   });
   const [mode, setMode] = useState("landing");
   const strings = ["E1", "A1", "E", "A", "D", "G", "B", "e"];
-  const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [], chip: [] });
+  const [tracks, setTracks] = useState({ guitar: [], synth: [], drum: [], bass: [], chip: [] });
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false)
@@ -25,18 +25,21 @@ function App() {
   const defaultFilters = {
     guitar: { cutoff: 8000, q: 1 },
     synth: { cutoff: 8000, q: 1 },
+    drum: { cutoff: 10000, q: 1 },
     bass: { cutoff: 8000, q: 1 },
     chip: { cutoff: 12000, q: 0.8 }
   };
   const defaultFx = {
     guitar: { reverb: 0.25, chorus: 0.3 },
     synth: { reverb: 0.25, chorus: 0.3 },
+    drum: { reverb: 0.2, chorus: 0.1 },
     bass: { reverb: 0.1, chorus: 0.2 },
     chip: { reverb: 0.05, chorus: 0.05 }
   };
   const defaultVolumes = {
     guitar: 0.35,
     synth: 0.4,
+    drum: 0.6,
     bass: 0.5,
     chip: 0.45
   };
@@ -44,7 +47,7 @@ function App() {
   const [filters, setFilters] = useState(defaultFilters);
   const [fx, setFx] = useState(defaultFx);
   const [volumes, setVolumes] = useState(defaultVolumes);
-  const [mute, setMute] = useState({ guitar: false, synth: false, bass: false, chip: false });
+  const [mute, setMute] = useState({ guitar: false, synth: false, drum: false, bass: false, chip: false });
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFX, setShowFX] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
@@ -54,11 +57,13 @@ function App() {
   const [isGroupDragging, setIsGroupDragging] = useState(false);
   const [dragStartInfo, setDragStartInfo] = useState(null);
   const [masterVolume, setMasterVolume] = useState(0);
+  const [masterDisplayMode, setMasterDisplayMode] = useState("vu");
   const [uiSoundsEnabled, setUiSoundsEnabled] = useState(true);
   const [fxVolume, setFxVolume] = useState(0.5);
   const [loopActive, setLoopActive] = useState(false);
   const [loopStart, setLoopStart] = useState(0);
   const [loopEnd, setLoopEnd] = useState(0);
+  const [waveAmp, setWaveAmp] = useState(5);
   const [previewLoopEnd, setPreviewLoopEnd] = useState(0);
   const loopStartRef = useRef(0);
   const loopEndRef = useRef(0);
@@ -103,134 +108,159 @@ function App() {
     startX: 0, startY: 0, blockX: 0, blockLength: 0, block: null,
     mode: null, initialFret: 0, initialVelocity: 1, hasMoved: false
   });
-  const handleStartCreating = async (inst = "guitar") => {
-    if (demoRef.current) {
-      try {
-        demoRef.current.synth?.dispose();
-        demoRef.current.masterGain?.dispose();
-        demoRef.current.bitCrusher?.dispose();
-        demoRef.current.extra?.forEach(node => node?.dispose());
-      } catch(e) {}
-      demoRef.current = null;
-    }
-    setDemoPlaying(null);
+
+// ==================== handleStartCreating ====================
+const handleStartCreating = async (inst = "guitar") => {
+  // Мгновенно заглушаем звук текущего демо, не удаляя узлы (избегаем ошибок)
+  if (demoRef.current && demoRef.current.masterGain) {
+    demoRef.current.masterGain.gain.value = 0;
+  }
+  demoRef.current = null;
+  setDemoPlaying(null);
+  await Tone.start();
+  setInstrument(inst);
+  setMode("app");
+};
+
+// ==================== playDemo ====================
+const playDemo = async (inst) => {
+  // Останавливаем предыдущее демо (заглушаем и забываем)
+  if (demoRef.current && demoRef.current.masterGain) {
+    demoRef.current.masterGain.gain.value = 0;
+  }
+  demoRef.current = null;
+
+  if (Tone.context.state !== 'running') {
     await Tone.start();
-    setInstrument(inst);
-    setMode("app");
-  };
-  const playDemo = async (inst) => {
-    // Останавливаем предыдущее демо
-    if (demoRef.current) {
-      try {
-        if (demoRef.current.synth) demoRef.current.synth.dispose();
-        if (demoRef.current.masterGain) demoRef.current.masterGain.dispose();
-        if (demoRef.current.extra) {
-          demoRef.current.extra.forEach(node => node?.dispose());
-        }
-      } catch(e) {}
+  }
+
+  setDemoPlaying(inst);
+  setTimeout(() => setDemoPlaying(null), 800);
+
+  const now = Tone.now();
+  let synth;
+  let masterGain;
+  let bitCrusher = null;
+  let guitarBoost = null;
+  let notes = [];
+
+  masterGain = new Tone.Gain(0.5).toDestination();
+
+  switch (inst) {
+    case "guitar":
+      synth = new Tone.PolySynth(Tone.FMSynth, {
+        harmonicity: 2,
+        modulationIndex: 6,
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.8 },
+        modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 1, release: 0.5 }
+      });
+      guitarBoost = new Tone.Gain(2.0);
+      synth.connect(guitarBoost);
+      guitarBoost.connect(masterGain);
+      notes = [
+        { note: "C4", time: now + 0.0, duration: 0.4 },
+        { note: "D4", time: now + 0.5, duration: 0.4 },
+        { note: "E4", time: now + 1.0, duration: 0.5 },
+        { note: "G4", time: now + 1.6, duration: 0.6 },
+        { note: "C5", time: now + 2.3, duration: 0.8 }
+      ];
+      break;
+
+    case "synth":
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "sawtooth" },
+        envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.0 }
+      });
+      synth.connect(masterGain);
+      notes = [
+        { note: "D4", time: now + 0.0, duration: 0.3 },
+        { note: "F#4", time: now + 0.4, duration: 0.3 },
+        { note: "A4", time: now + 0.8, duration: 0.6 },
+        { note: "D5", time: now + 1.3, duration: 0.5 },
+        { note: "E5", time: now + 1.9, duration: 0.7 }
+      ];
+      break;
+
+    case "bass":
+      synth = new Tone.MonoSynth({
+        oscillator: { type: "fatsawtooth", count: 2, spread: 10 },
+        envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.5 }
+      });
+      synth.connect(masterGain);
+      notes = [
+        { note: "E2", time: now + 0.0, duration: 0.5 },
+        { note: "G2", time: now + 0.6, duration: 0.5 },
+        { note: "A2", time: now + 1.2, duration: 0.6 },
+        { note: "B2", time: now + 1.9, duration: 0.6 },
+        { note: "E3", time: now + 2.6, duration: 0.8 }
+      ];
+      break;
+
+    case "chip":
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "square" },
+        envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.1 }
+      });
+      bitCrusher = new Tone.BitCrusher(4);
+      synth.connect(bitCrusher);
+      bitCrusher.connect(masterGain);
+      notes = [
+        { note: "C5", time: now + 0.0, duration: 0.1 },
+        { note: "D5", time: now + 0.2, duration: 0.1 },
+        { note: "E5", time: now + 0.4, duration: 0.2 },
+        { note: "G5", time: now + 0.7, duration: 0.2 },
+        { note: "C6", time: now + 1.0, duration: 0.3 }
+      ];
+      break;
+
+    case "drum":
+      const drumMembrane = new Tone.MembraneSynth({
+        pitchDecay: 0.05,
+        octaves: 4,
+        oscillator: { type: "sine" },
+        envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
+      }).connect(masterGain);
+
+      const drumNoise = new Tone.NoiseSynth({
+        noise: { type: "white" },
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
+      }).connect(masterGain);
+
+      demoRef.current = { synth: { membrane: drumMembrane, noise: drumNoise }, masterGain };
+
+      drumMembrane.triggerAttackRelease("C2", "8n", now);
+      drumNoise.triggerAttackRelease("8n", now + 0.3);
+      drumMembrane.triggerAttackRelease("D2", "8n", now + 0.6);
+      drumNoise.triggerAttackRelease("8n", now + 0.9);
+      drumNoise.envelope.decay = 0.05;
+      drumNoise.triggerAttackRelease("16n", now + 1.1);
+      drumNoise.envelope.decay = 0.2;
+      drumMembrane.triggerAttackRelease("E2", "8n", now + 1.4);
+      drumNoise.triggerAttackRelease("8n", now + 1.7);
+      drumNoise.envelope.decay = 0.05;
+      drumNoise.triggerAttackRelease("16n", now + 1.9);
+      drumNoise.triggerAttackRelease("16n", now + 2.0);
+      return; // выходим, чтобы не создавать notes
+
+    default:
+      return;
+  }
+
+  // Общий код для инструментов, кроме DRUM
+  demoRef.current = { synth, masterGain, bitCrusher, extra: [guitarBoost].filter(Boolean) };
+  notes.forEach(n => {
+    synth.triggerAttackRelease(n.note, n.duration, n.time);
+  });
+  setTimeout(() => {
+    // Через 3.5 секунды забываем о демо, если оно ещё активно
+    if (demoRef.current && demoRef.current.synth === synth) {
       demoRef.current = null;
     }
-  
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
-    }
-  
-    setDemoPlaying(inst);
-    setTimeout(() => setDemoPlaying(null), 800);
-  
-    const now = Tone.now();
-    let synth;
-    let masterGain;
-    let bitCrusher = null;
-    let guitarBoost = null;
-    let notes = [];
-  
-    masterGain = new Tone.Gain(0.5).toDestination();
-  
-    switch (inst) {
-      case "guitar":
-        synth = new Tone.PolySynth(Tone.FMSynth, {
-          harmonicity: 2,
-          modulationIndex: 6,
-          oscillator: { type: "triangle" },
-          envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.8 },
-          modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 1, release: 0.5 }
-        });
-        guitarBoost = new Tone.Gain(4.0);
-        synth.connect(guitarBoost);
-        guitarBoost.connect(masterGain);
-        notes = [
-          { note: "C4", time: now + 0.0, duration: 0.4 },
-          { note: "E4", time: now + 0.5, duration: 0.4 },
-          { note: "G4", time: now + 1.0, duration: 0.8 }
-        ];
-        break;
-  
-      case "synth":
-        synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "sawtooth" },
-          envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.0 }
-        });
-        synth.connect(masterGain);
-        notes = [
-          { note: "D4", time: now + 0.0, duration: 0.3 },
-          { note: "F#4", time: now + 0.4, duration: 0.3 },
-          { note: "A4", time: now + 0.8, duration: 0.6 },
-          { note: "D5", time: now + 1.3, duration: 0.8 }
-        ];
-        break;
-  
-      case "bass":
-        synth = new Tone.MonoSynth({
-          oscillator: { type: "fatsawtooth", count: 2, spread: 10 },
-          envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.5 }
-        });
-        synth.connect(masterGain);
-        notes = [
-          { note: "E2", time: now + 0.0, duration: 0.5 },
-          { note: "G2", time: now + 0.6, duration: 0.5 },
-          { note: "A2", time: now + 1.2, duration: 0.8 }
-        ];
-        break;
-  
-      case "chip":
-        synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "square" },
-          envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.1 }
-        });
-        bitCrusher = new Tone.BitCrusher(4);
-        synth.connect(bitCrusher);
-        bitCrusher.connect(masterGain);
-        notes = [
-          { note: "C5", time: now + 0.0, duration: 0.1 },
-          { note: "E5", time: now + 0.2, duration: 0.1 },
-          { note: "G5", time: now + 0.4, duration: 0.2 },
-          { note: "C6", time: now + 0.7, duration: 0.3 }
-        ];
-        break;
-  
-      default:
-        return;
-    }
-  
-    // Сохраняем всё для очистки
-    demoRef.current = { synth, masterGain, bitCrusher, extra: [guitarBoost].filter(Boolean) };
-  
-    notes.forEach(n => {
-      synth.triggerAttackRelease(n.note, n.duration, n.time);
-    });
-  
-    setTimeout(() => {
-      if (demoRef.current && demoRef.current.synth === synth) {
-        demoRef.current = null;
-      }
-      synth.dispose();
-      masterGain.dispose();
-      if (bitCrusher) bitCrusher.dispose();
-      if (guitarBoost) guitarBoost.dispose();
-    }, 3000);
-  };
+  }, 3500);
+};
   // Единые синтезаторы для каждого типа эффекта (переиспользование)
+// Единые синтезаторы для каждого типа эффекта (переиспользование)
 const effectSynths = {};
 
 const uiSounds = {
@@ -256,11 +286,10 @@ const uiSounds = {
       default: return null;
     }
     effectSynths[effectName] = synth;
-    // Подключаем к мастер-гейну эффектов (который у вас уже есть)
     if (window.__fxMasterGain) {
       synth.connect(window.__fxMasterGain);
     } else {
-      synth.toDestination(); // fallback
+      synth.toDestination();
     }
     return synth;
   },
@@ -278,7 +307,10 @@ const uiSounds = {
       case 'chirp': freq = 880;  break;
       default: return;
     }
-    synth.triggerAttackRelease(freq, duration, Tone.now(), velocity);
+    // Генерируем уникальный микро-сдвиг (0 .. 0.005 секунды)
+    const shift = (performance.now() % 100) * 0.0001;
+    const time = Tone.now() + 0.01 + shift;
+    synth.triggerAttackRelease(freq, duration, time, velocity);
   },
   playClick: () => { if (uiSoundsEnabled) uiSounds.playEffect('click', 1); },
   playPop: () => { if (uiSoundsEnabled) uiSounds.playEffect('pop', 1); },
@@ -568,24 +600,22 @@ window.__fxMasterGain = fxMasterGain;
   window.__sidechain = { kickLoop, bassSidechainComp };
 
   // 5. Создаём инструменты
-  ["guitar", "synth", "bass", "chip"].forEach((type) => {
-    let volume = volumes[type];   // берём громкость из состояния
-let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : 0));
-let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : 10000));
-
-
+  ["guitar", "synth", "drum", "bass", "chip"].forEach((type) => {
+    let volume = volumes[type];
+    let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : (type === 'drum' ? 0 : 0)));
+    let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : (type === 'chip' ? 10000 : 8000)));
+  
     const gain = new Tone.Gain(volume).connect(master);
     const panner = new Tone.Panner(panValue).connect(gain);
     const filter = new Tone.Filter(cutoffFreq, "lowpass");
-
+  
     const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
     const reverb = new Tone.Reverb({ decay: 1.2, wet: 1 });
     const chorusGain = new Tone.Gain(0);
     const reverbGain = new Tone.Gain(0);
-
+  
     fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
-
-    // Подключение эффектов: всё идёт через panner -> gain -> master
+  
     filter.connect(panner);
     filter.connect(chorus);
     chorus.connect(chorusGain);
@@ -593,11 +623,11 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
     filter.connect(reverb);
     reverb.connect(reverbGain);
     reverbGain.connect(panner);
-
+  
     gainsRef.current[type] = gain;
     filtersRef.current[type] = filter;
-
-    // Создаём синтезатор
+  
+    // Создаём синтезаторы
     if (type === "bass") {
       const bassSynth = new Tone.MonoSynth({
         oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
@@ -612,18 +642,35 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
         envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
         modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
       }).connect(filter);
-    } 
+    } else if (type === "drum") {
+      // Создаём пул из 4 мембранных синтезаторов и 4 шумовых
+      const membranePool = [];
+      const noisePool = [];
+      for (let i = 0; i < 8; i++) {
+        membranePool.push(new Tone.MembraneSynth({
+          pitchDecay: 0.05,
+          octaves: 4,
+          oscillator: { type: "sine" },
+          envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
+        }).connect(filter));
+        
+        noisePool.push(new Tone.NoiseSynth({
+          noise: { type: "white" },
+          envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
+        }).connect(filter));
+      }
+      synthsRef.current[type] = { membranePool, noisePool };
+    }
     else if (type === "chip") {
       const chipSynth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "square" },
-          envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
+        oscillator: { type: "square" },
+        envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
       });
-      // Биткрашер с максимальным "денди" эффектом
       const bitCrusher = new Tone.BitCrusher(8);
       if (bitCrusher.frequency) bitCrusher.frequency.value = 8000;
       chipSynth.connect(bitCrusher);
       bitCrusher.connect(filter);
-      synthsRef.current[type] = chipSynth; // обрати внимание: synthsRef (с s)
+      synthsRef.current[type] = chipSynth;
     } else { // synth (по умолчанию)
       synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "sawtooth" },
@@ -641,7 +688,16 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
     }
     // Отключаем и уничтожаем все узлы
     masterGainRef.current?.dispose();
-    Object.values(synthsRef.current).forEach(s => s?.dispose());
+   // Уничтожаем все синтезаторы, включая пулы DRUM
+Object.values(synthsRef.current).forEach(item => {
+  if (!item) return;
+  if (item.membranePool && item.noisePool) {
+    item.membranePool.forEach(s => s.dispose());
+    item.noisePool.forEach(s => s.dispose());
+  } else if (typeof item.dispose === 'function') {
+    item.dispose();
+  }
+});
     Object.values(filtersRef.current).forEach(f => f?.dispose());
     Object.values(gainsRef.current).forEach(g => g?.dispose());
     Object.values(fxRef.current).forEach(fx => {
@@ -933,6 +989,7 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
   };
 
   const startEngine = () => {
+    const lastStartTimeMap = new Map();
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     const loop = () => {
       const now = Tone.now();
@@ -975,12 +1032,10 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
           startTimeRef.current += delta;
           elapsed = loopStartTime;
           triggeredRef.current.clear();
-          // Добавляем микро-сдвиг, чтобы избежать точного совпадения времени
-          // Это необязательно, но может помочь
         }
       }
   
-      // Обработка нот (без изменений)
+      // Обработка нот
       Object.entries(tracks).forEach(([type, blocks]) => {
         if (!filtersRef.current[type]) return;
         blocks.forEach((b) => {
@@ -993,12 +1048,76 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
             const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
             const synth = synthsRef.current[type];
             const velocity = Math.min(1, Math.max(0, b.velocity ?? 1));
-            if (type === "bass") {
+  
+            if (type === "drum") {
+              const pools = synth; // { membranePool, noisePool }
+              if (!pools || !pools.membranePool) return;
+              const durationSec = duration;
+              const velocityAdjusted = Math.min(1, velocity * 1.2);
+              const index = Math.abs(b.id) % pools.membranePool.length;
+              const membraneSynth = pools.membranePool[index];
+              const noiseSynth = pools.noisePool[index];
+              const drumIdx = (b.fret % 20) + (b.string % 3) * 20;
+            
+              // Определяем, какой синтезатор будет использован
+              let targetSynth = null;
+              let isMembrane = true;
+              const typeIdx = drumIdx % 20;
+              if (typeIdx >= 0 && typeIdx <= 7) {
+                targetSynth = membraneSynth;
+                isMembrane = true;
+              } else {
+                targetSynth = noiseSynth;
+                isMembrane = false;
+              }
+              if (!targetSynth) return;
+            
+              // Корректируем время старта
+              let startTime = now + 0.01;
+              const lastTime = lastStartTimeMap.get(targetSynth);
+              if (lastTime !== undefined && startTime <= lastTime) {
+                startTime = lastTime + 0.001;
+              }
+              lastStartTimeMap.set(targetSynth, startTime);
+            
+              // Сброс параметров по умолчанию
+              if (!isMembrane) {
+                noiseSynth.noise.type = "white";
+                noiseSynth.envelope.decay = 0.2;
+              } else {
+                membraneSynth.pitchDecay = 0.05;
+              }
+            
+              switch (typeIdx) {
+                case 0: membraneSynth.triggerAttackRelease("C2", durationSec, startTime, velocityAdjusted); break;
+                case 1: membraneSynth.triggerAttackRelease("D2", durationSec, startTime, velocityAdjusted); break;
+                case 2: membraneSynth.triggerAttackRelease("E2", durationSec, startTime, velocityAdjusted); break;
+                case 3: membraneSynth.triggerAttackRelease("F2", durationSec, startTime, velocityAdjusted); break;
+                case 4: membraneSynth.triggerAttackRelease("G2", durationSec, startTime, velocityAdjusted); break;
+                case 5: membraneSynth.triggerAttackRelease("A2", durationSec, startTime, velocityAdjusted); break;
+                case 6: membraneSynth.triggerAttackRelease("B2", durationSec, startTime, velocityAdjusted); break;
+                case 7: membraneSynth.triggerAttackRelease("C3", durationSec, startTime, velocityAdjusted); break;
+                case 8: noiseSynth.envelope.decay = 0.12; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 9: noiseSynth.envelope.decay = 0.18; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 10: noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 11: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.15; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 12: noiseSynth.envelope.decay = 0.05; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 13: noiseSynth.envelope.decay = 0.04; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 14: noiseSynth.envelope.decay = 0.06; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
+                case 15: noiseSynth.envelope.decay = 0.08; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.9); break;
+                case 16: noiseSynth.envelope.decay = 0.10; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.85); break;
+                case 17: noiseSynth.noise.type = "brown"; noiseSynth.envelope.decay = 0.30; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.7); break;
+                case 18: noiseSynth.noise.type = "white"; noiseSynth.envelope.decay = 0.02; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.6); break;
+                case 19: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.8); break;
+                default: membraneSynth.triggerAttackRelease("C2", durationSec, startTime, velocityAdjusted);
+              }
+            } else if (type === "bass") {
               synth.triggerAttack(freq, now + 0.01, velocity);
               synth.triggerRelease(now + 0.01 + duration);
             } else {
               synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
             }
+  
             triggeredRef.current.add(key);
             if (b.effect && uiSoundsEnabled) {
               uiSounds.playEffect(b.effect, velocity);
@@ -1011,13 +1130,9 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
       playheadXRef.current = x;
   
       const currentStep = Math.floor(x / STEP_WIDTH);
-      if (activeStep !== currentStep) {
-        setActiveStep(currentStep);
-      }
+      if (activeStep !== currentStep) setActiveStep(currentStep);
   
-      if (playheadRef.current) {
-        playheadRef.current.style.transform = `translateX(${x}px)`;
-      }
+      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${x}px)`;
   
       if (scrollRef.current) {
         const target = Math.max(0, x - FOLLOW_OFFSET);
@@ -1029,6 +1144,14 @@ let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 
         let normalized = (level + 60) / 60;
         normalized = Math.min(1, Math.max(0, normalized));
         setMasterVolume(normalized);
+      }
+      if (meterRef.current) {
+        const level = meterRef.current.getValue();
+        let normalized = (level + 60) / 60;
+        normalized = Math.min(1, Math.max(0, normalized));
+        setMasterVolume(normalized);
+        // Мгновенная амплитуда для волны (от 5 до 35)
+        setWaveAmp(5 + normalized * 30);
       }
   
       animationRef.current = requestAnimationFrame(loop);
@@ -1172,7 +1295,7 @@ const handleStop = () => {
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
     // Очищаем треки
-    setTracks({ guitar: [], synth: [], bass: [], chip: [] });
+    setTracks({ guitar: [], synth: [], drum: [], bass: [], chip: [] });
     // Сбрасываем все настройки до заводских
     setFilters(defaultFilters);
     setFx(defaultFx);
@@ -1545,77 +1668,90 @@ onClick={() => handleStartCreating("guitar")}
   </div>
 )}
     
-<div className="preview">
+    <div className="preview">
 
+{/* GUITAR */}
 <div
   className="preview-track guitar"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("guitar");
-  }}
+  onClick={(e) => { e.stopPropagation(); playDemo("guitar"); }}
   onDoubleClick={() => handleStartCreating("guitar")}
 >
+  <div className="bg-wave">
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+    </svg>
+  </div>
   <span>GUITAR</span>
   <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span><span></span><span></span>
   </div>
 </div>
 
+{/* SYNTH */}
 <div
   className="preview-track synth"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("synth");
-  }}
+  onClick={(e) => { e.stopPropagation(); playDemo("synth"); }}
   onDoubleClick={() => handleStartCreating("synth")}
 >
+  <div className="bg-wave">
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+    </svg>
+  </div>
   <span>SYNTH</span>
   <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span><span></span><span></span>
   </div>
 </div>
 
+{/* DRUM */}
+<div
+  className="preview-track drum"
+  onClick={(e) => { e.stopPropagation(); playDemo("drum"); }}
+  onDoubleClick={() => handleStartCreating("drum")}
+>
+  <div className="bg-wave">
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+    </svg>
+  </div>
+  <span>DRUM</span>
+  <div className="wave">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
+</div>
+
+{/* BASS */}
 <div
   className="preview-track bass"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("bass");
-  }}
+  onClick={(e) => { e.stopPropagation(); playDemo("bass"); }}
   onDoubleClick={() => handleStartCreating("bass")}
 >
+  <div className="bg-wave">
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+    </svg>
+  </div>
   <span>BASS</span>
   <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span><span></span><span></span>
   </div>
 </div>
 
+{/* CHIP */}
 <div
   className="preview-track chip"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("chip");
-  }}
+  onClick={(e) => { e.stopPropagation(); playDemo("chip"); }}
   onDoubleClick={() => handleStartCreating("chip")}
 >
+<div className="bg-wave">
+  <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+  </svg>
+</div>
   <span>CHIP</span>
   <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span><span></span><span></span>
   </div>
 </div>
 
@@ -1665,7 +1801,6 @@ onClick={() => handleStartCreating("guitar")}
   }
   return (
     <div className="app">
-     
       <style>{`
         @keyframes pulse-record {
           0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
@@ -1673,83 +1808,463 @@ onClick={() => handleStartCreating("guitar")}
           100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
         }
       `}</style>
-
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
   
-  {/* Левая часть: Кнопка НАЗАД (EXIT) и Логотип */}
-  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-    
-    {/* Кнопка-невидимка EXIT */}
-    <button 
-      onClick={() => {
-        stopSound(); // Остановка звука
-        setMode("landing"); // Возврат на главный экран
-      }} 
+      {/* Верхняя панель: EXIT, логотип, SAVE/LOAD/DRIVE/SHARE */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <button 
+            onClick={() => {
+              stopSound();
+              setMode("landing");
+            }} 
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "rgba(255, 255, 255, 0.3)",
+              cursor: "pointer",
+              padding: "5px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.3s ease",
+            }}
+            onMouseOver={(e) => { 
+              e.currentTarget.style.color = "#FF4D4D"; 
+              e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
+              e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
+            }}
+            onMouseOut={(e) => { 
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.3)"; 
+              e.currentTarget.style.filter = "none";
+              e.currentTarget.style.transform = "translateX(0) scale(1)";
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+              <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
+              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.0-BETA</span>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <UserProfile user={user} onLogout={handleLogout} />
+          <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
+          <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
+          {user && (
+            <button onClick={handleDriveSave} className="save-btn" style={{ background: '#34A853', marginLeft: '10px' }}>
+              ▲ DRIVE SAVE
+            </button>
+          )}
+          {user && (
+            <button onClick={handleShare} className="save-btn share-btn" style={{ marginLeft: '10px' }}>
+              <span>🔗</span> SHARE
+            </button>
+          )}
+          <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
+        </div>
+      </div>
+  
+      {/* ===== НОВОЕ МЕСТО: БЛОК ВЫБОРА ИНСТРУМЕНТОВ ===== */}
+      <div className="instrument-selector">
+  {["guitar", "synth", "drum", "bass", "chip"].map((t) => (
+    <button
+      key={t}
+      onClick={() => setInstrument(t)}
+      className={`inst-btn ${instrument === t ? "active" : ""} ${t}-btn`}
+    >
+      <span className="inst-icon">
+        {t === "guitar" ? "🎸" : t === "synth" ? "🎹" : t === "drum" ? "🥁" : t === "bass" ? "🔊" : "🕹️"}
+      </span>
+      <span className="inst-text">{t.toUpperCase()}</span>
+      {instrument === t && <div className="active-glow"></div>}
+    </button>
+  ))}
+  <div style={{ display: "flex", gap: "2px", marginLeft: "auto" }}>
+    <button
+      onClick={() => setIsTempoMasterVisible(!isTempoMasterVisible)}
+      className={`inst-btn fx-toggle-btn ${isTempoMasterVisible ? "fx-active" : ""}`}
+      style={{ borderRadius: "20px 0 0 20px" }}
+    >
+      <span className="inst-icon">{isTempoMasterVisible ? "🔽" : "🔼"}</span>
+      <span className="inst-text" style={{ fontSize: "9px" }}>INFO</span>
+      {isTempoMasterVisible && <div className="active-glow"></div>}
+    </button>
+    <button
+      onClick={() => setShowFX(!showFX)}
+      className={`inst-btn fx-toggle-btn ${showFX ? "fx-active" : ""}`}
+      style={{ borderRadius: "0 20px 20px 0" }}
+    >
+      <span className="inst-icon">⚙️</span>
+      <span className="inst-text" style={{ fontSize: "9px" }}>FX</span>
+      {showFX && <div className="active-glow"></div>}
+    </button>
+  </div>
+</div>
+  
+            {/* Блоки TEMPO / ATTACH EFFECT / MASTER (анимированный контейнер) */}
+            <div style={{
+        overflow: "hidden",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        maxHeight: isTempoMasterVisible ? "300px" : "0px",
+        opacity: isTempoMasterVisible ? 1 : 0,
+        marginBottom: isTempoMasterVisible ? "20px" : "0px"
+      }}>
+        <div style={{ display: "flex", gap: "20px", alignItems: "stretch", flexWrap: "wrap" }}>
+          {/* TEMPO */}
+          <div style={{ background: "#0a0e1a", padding: "15px", borderRadius: "12px", border: "1px solid #2a3a6e", boxShadow: "0 4px 12px rgba(0,0,0,0.3)", width: "200px", textAlign: "center" }}>
+            <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>TEMPO</div>
+            <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "4px" }}>{bpm}</div>
+            <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "12px" }}>BPM</div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginTop: "10px" }}>
+              {/* кнопки лупа – без изменений */}
+              <button
+                onClick={() => {
+                  const currentX = playheadXRef.current;
+                  if (loopStart === 0 && loopEnd === 0) {
+                    setLoopStart(currentX);
+                    setLoopEnd(0);
+                    setPreviewLoopEnd(currentX);
+                  } else if (loopStart !== 0 && loopEnd === 0) {
+                    if (previewLoopEnd > loopStart) {
+                      setLoopEnd(previewLoopEnd);
+                    } else {
+                      setLoopStart(previewLoopEnd);
+                      setLoopEnd(loopStart);
+                    }
+                    setPreviewLoopEnd(0);
+                  } else {
+                    setLoopStart(0);
+                    setLoopEnd(0);
+                    setPreviewLoopEnd(0);
+                    setLoopActive(false);
+                  }
+                }}
+                style={{
+                  background: "#0a0e1a",
+                  border: `2px solid ${loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")}`,
+                  borderRadius: "6px",
+                  padding: "3px 6px",
+                  flex: 1,
+                  color: loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D"),
+                  fontSize: "9px",
+                  fontWeight: "bold",
+                  letterSpacing: "0.5px",
+                  cursor: "pointer",
+                  textShadow: `0 0 3px ${loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")}`,
+                  boxShadow: `0 0 6px rgba(${loopStart === 0 ? "77, 255, 136" : (loopEnd === 0 ? "255, 165, 0" : "255, 77, 77")}, 0.5)`,
+                  transition: "all 0.2s ease",
+                  backdropFilter: "blur(2px)"
+                }}
+              >
+                {loopStart === 0 ? "SET LOOP" : (loopEnd === 0 ? "SET END" : "RESET LOOP")}
+              </button>
+              <button
+                onClick={() => {
+                  if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) {
+                    setLoopActive(!loopActive);
+                  } else {
+                    setInfoModal({
+                      visible: true,
+                      message: "First set the loop area (press SET LOOP twice at desired positions)"
+                    });
+                  }
+                }}
+                style={{
+                  background: loopActive ? "#4DFF88" : "#0a0e1a",
+                  border: `2px solid ${loopActive ? "#4DFF88" : "#FF4D4D"}`,
+                  borderRadius: "6px",
+                  padding: "3px 6px",
+                  flex: 1,
+                  color: loopActive ? "#0a0e1a" : "#FF4D4D",
+                  fontSize: "9px",
+                  fontWeight: "bold",
+                  letterSpacing: "0.5px",
+                  cursor: "pointer",
+                  textShadow: loopActive ? "none" : "0 0 3px #FF4D4D",
+                  boxShadow: loopActive ? "0 0 10px #4DFF88, inset 0 0 2px rgba(0,0,0,0.2)" : "0 0 6px rgba(255,77,77,0.5)",
+                  transition: "all 0.2s ease",
+                  backdropFilter: "blur(2px)"
+                }}
+              >
+                LOOP {loopActive ? "ON" : "OFF"}
+              </button>
+            </div>
+            <input
+              type="range"
+              min="60"
+              max="200"
+              value={bpm}
+              onChange={(e) => setBpm(Number(e.target.value))}
+              style={{ width: "100%", cursor: "pointer", marginTop: "25px" }}
+            />
+          </div>
+
+          {/* ATTACH EFFECT (UI SOUNDS) */}
+          <div style={{ background: "#0a0e1a", padding: "12px", borderRadius: "12px", border: "1px solid #2a3a6e", boxShadow: "0 4px 12px rgba(0,0,0,0.3)", width: "200px", textAlign: "center" }}>
+            <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>ATTACH EFFECT</div>
+            <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+              {[
+                { name: 'click', icon: '🔊', title: 'Щелчок', play: () => uiSounds.playClick() },
+                { name: 'pop', icon: '🎯', title: 'Цок', play: () => uiSounds.playPop() },
+                { name: 'pixel', icon: '🕹️', title: 'Пиксельный', play: () => uiSounds.playPixel() },
+                { name: 'boom', icon: '💥', title: 'Бум', play: () => uiSounds.playBoom() },
+                { name: 'chirp', icon: '🐤', title: 'Чирп', play: () => uiSounds.playChirp() }
+              ].map(effect => (
+                <button
+                  key={effect.name}
+                  onClick={(e) => {
+                    const btn = e.currentTarget;
+                    btn.classList.add('btn-flash');
+                    setTimeout(() => btn.classList.remove('btn-flash'), 120);
+                    applyEffectToSelectedBlocks(effect.name);
+                    effect.play();
+                  }}
+                  style={{ background: "#1e2a50", border: "none", borderRadius: "20px", padding: "6px 8px", color: "#4DFF88", cursor: "pointer", fontSize: "12px", transition: "all 0.1s ease" }}
+                  title={effect.title}
+                >
+                  {effect.icon}
+                </button>
+              ))}
+              <button
+                onClick={(e) => {
+                  const btn = e.currentTarget;
+                  btn.classList.add('btn-flash-red');
+                  setTimeout(() => btn.classList.remove('btn-flash-red'), 120);
+                  applyEffectToSelectedBlocks(null);
+                }}
+                style={{ background: "#2A3350", border: "none", borderRadius: "20px", padding: "6px 8px", color: "#FFB84D", cursor: "pointer", fontSize: "12px" }}
+                title="Сбросить эффект с выделенных блоков"
+              >
+                ❌
+              </button>
+            </div>
+            <div style={{ fontSize: "9px", color: "#AAB3C2", marginBottom: "8px" }}>Select block(s) → choose effect</div>
+            <button
+              onClick={(e) => {
+                const btn = e.currentTarget;
+                btn.classList.add('btn-flash-red');
+                setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
+                removeAllEffects();
+              }}
+              style={{ backgroundColor: "#0f172a", border: "1px solid #ff4d4d", borderRadius: "6px", padding: "6px 8px", width: "100%", color: "#ff4d4d", cursor: "pointer", fontSize: "10px", fontWeight: "bold", marginTop: "6px", transition: "all 0.3s ease", textTransform: "uppercase" }}
+            >
+              REMOVE ALL EFFECTS
+            </button>
+          </div>
+
+          {/* MASTER — с переключением VU / WAVE, пульсирующим кругом и динамическим цветом */}
+<div style={{
+  background: "#0a0e1a",
+  padding: "15px",
+  borderRadius: "12px",
+  border: "1px solid #2a3a6e",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+  width: "200px",
+  textAlign: "center"
+}}>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+    <button
+      onClick={() => setMasterDisplayMode("vu")}
       style={{
-        background: "transparent",
-        border: "none",
-        color: "rgba(255, 255, 255, 0.3)",
+        background: masterDisplayMode === "vu" ? "#4DFF88" : "transparent",
+        border: `1px solid ${masterDisplayMode === "vu" ? "#4DFF88" : "#4D88FF"}`,
+        borderRadius: "4px",
+        padding: "2px 6px",
+        fontSize: "8px",
+        color: masterDisplayMode === "vu" ? "#0a0e1a" : "#4D88FF",
+        fontWeight: "bold",
         cursor: "pointer",
-        padding: "5px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all 0.3s ease",
-      }}
-      onMouseOver={(e) => { 
-        e.currentTarget.style.color = "#FF4D4D"; 
-        e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
-        e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
-      }}
-      onMouseOut={(e) => { 
-        e.currentTarget.style.color = "rgba(255, 255, 255, 0.3)"; 
-        e.currentTarget.style.filter = "none";
-        e.currentTarget.style.transform = "translateX(0) scale(1)";
+        transition: "all 0.2s"
       }}
     >
-      <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-      </svg>
+      VU
     </button>
+    <span style={{ fontSize: "12px", color: "#4D88FF" }}>MASTER</span>
+    <button
+      onClick={() => setMasterDisplayMode("wave")}
+      style={{
+        background: masterDisplayMode === "wave" ? "#4DFF88" : "transparent",
+        border: `1px solid ${masterDisplayMode === "wave" ? "#4DFF88" : "#4D88FF"}`,
+        borderRadius: "4px",
+        padding: "2px 6px",
+        fontSize: "8px",
+        color: masterDisplayMode === "wave" ? "#0a0e1a" : "#4D88FF",
+        fontWeight: "bold",
+        cursor: "pointer",
+        transition: "all 0.2s"
+      }}
+    >
+      WAVE
+    </button>
+  </div>
 
-    {/* Логотип */}
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-        <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.3-BETA</span>
+  {masterDisplayMode === "vu" ? (
+    <>
+      <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "8px" }}>
+        {Math.floor(masterVolume * 100)}%
       </div>
+      <div style={{ display: "flex", gap: "4px", alignItems: "center", justifyContent: "center", height: "30px", marginBottom: "12px" }}>
+        {[...Array(20)].map((_, idx) => {
+          const intensity = idx / 20;
+          const isActive = masterVolume > intensity;
+          let color = "#4DFF88";
+          if (intensity > 0.7) color = "#FFB84D";
+          if (intensity > 0.9) color = "#FF4D4D";
+          return (
+            <div key={idx} style={{ width: "6px", height: `${10 + intensity * 20}px`, backgroundColor: isActive ? color : "rgba(77,136,255,0.2)", borderRadius: "2px", transition: "height 0.05s linear" }} />
+          );
+        })}
+      </div>
+    </>
+  ) : (
+    <div style={{ marginBottom: "12px", display: "flex", justifyContent: "center", alignItems: "center", height: "80px" }}>
+      <div
+        style={{
+          width: "70px",
+          height: "70px",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${(() => {
+            const vol = masterVolume;
+            if (vol < 0.33) return "rgba(77, 255, 136, 0.3)";
+            if (vol < 0.66) return "rgba(255, 184, 77, 0.3)";
+            return "rgba(255, 77, 77, 0.3)";
+          })()}, rgba(77, 255, 136, 0))`,
+          border: `2px solid ${(() => {
+            const vol = masterVolume;
+            if (vol < 0.33) return "#4DFF88";
+            if (vol < 0.66) return "#FFB84D";
+            return "#FF4D4D";
+          })()}`,
+          boxShadow: `0 0 ${masterVolume * 45}px ${(() => {
+            const vol = masterVolume;
+            if (vol < 0.33) return "#4DFF88";
+            if (vol < 0.66) return "#FFB84D";
+            return "#FF4D4D";
+          })()}`,
+          transform: `scale(${0.1 + masterVolume * 1.4})`,
+          transition: "all 0.05s linear",
+          filter: "drop-shadow(0 0 6px currentColor)",
+          opacity: 0.5 + masterVolume * 0.5
+        }}
+      />
     </div>
-  </div>
+  )}
 
-  {/* Правая часть: Кнопки сохранения и загрузки */}
-  <div style={{ display: "flex", gap: "10px" }}>
-  <UserProfile user={user} onLogout={handleLogout} />
-    <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
-    <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
-{user && (
-  <button
-    onClick={handleDriveSave}
-    className="save-btn"
-    style={{ background: '#34A853', marginLeft: '10px' }}
-  >
-    ▲ DRIVE SAVE
-  </button>
-)}
-{user && (
-  <button 
-    onClick={handleShare} 
-    className="save-btn share-btn" 
-    style={{ marginLeft: '10px' }}
-  >
-    <span>🔗</span> SHARE
-  </button>
-)}
-    <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
+  <div style={{ fontSize: "18px", fontWeight: "bold", color: "#4DFF88", marginTop: "6px" }}>
+    {currentPosition.seconds.toFixed(1)}s
   </div>
-
+  <div style={{ fontSize: "10px", color: "#4D88FF" }}>
+    ({currentPosition.bar}.{currentPosition.beat})
+  </div>
 </div>
+        </div>
+      </div>
 
-<div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: 20, marginTop: 60 }}>
+      {/* FX-панель (ползунки) – выровнена по ширине трёх блоков (640px) */}
+      <div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0, width: "640px" }}>
+        <div style={{
+          background: "#0a0e1a",
+          border: "1px solid #2a3a6e",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          padding: "20px",
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: "20px",
+          width: "100%",
+          boxSizing: "border-box"
+        }}>
+          {/* VOLUME */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>VOLUME<br/>{volumes[instrument].toFixed(2)}</div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={volumes[instrument]}
+              onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 0.5 }))}>Reset</button>
+          </div>
+          {/* FX VOLUME */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>FX VOLUME<br/>{fxVolume.toFixed(2)}</div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={fxVolume}
+              onChange={(e) => setFxVolume(parseFloat(e.target.value))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setFxVolume(0.5)}>Reset</button>
+          </div>
+          {/* CUTOFF */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>CUTOFF<br/>{filters[instrument].cutoff}</div>
+            <input
+              type="range"
+              min="200"
+              max="10000"
+              value={filters[instrument].cutoff}
+              onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>Reset</button>
+          </div>
+          {/* Q (RES) */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>Q (RES)<br/>{filters[instrument].q}</div>
+            <input
+              type="range"
+              min="0.1"
+              max="20"
+              step="0.1"
+              value={filters[instrument].q}
+              onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>Reset</button>
+          </div>
+          {/* CHORUS */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>CHORUS<br/>{fx[instrument].chorus.toFixed(2)}</div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={fx[instrument].chorus}
+              onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>Reset</button>
+          </div>
+          {/* REVERB */}
+          <div style={{ textAlign: "center" }}>
+            <div style={labelStyle}>REVERB<br/>{fx[instrument].reverb.toFixed(2)}</div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={fx[instrument].reverb}
+              onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))}
+              style={{ width: "100%", marginTop: "8px", marginBottom: "8px" }}
+            />
+            <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>Reset</button>
+          </div>
+        </div>
+      </div>
+      {/* Блок транспорта (над сеткой) */}
+      <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" }}>
         <button onClick={handleTogglePlay} className={`play-pause-btn ${isPlaying ? "playing" : "stopped"}`}>
           {isPlaying ? (
             <svg viewBox="0 0 24 24" width="28" height="28">
@@ -1767,659 +2282,166 @@ onClick={() => handleStartCreating("guitar")}
             <rect x="6" y="6" width="12" height="12" rx="1" fill="#ff4d4d" />
           </svg>
         </button>
-        
         <button onClick={handleRecord} className={`record-btn ${isRecording ? 'recording' : ''}`}>
           <div className="record-dot"></div>
           {isRecording ? 'REC' : 'RECORD'}
         </button>
-        <button 
-  onClick={() => setShowResetConfirm(true)} 
-  className="reset-btn"
->
-  RESET
-</button>
+        <button onClick={() => setShowResetConfirm(true)} className="reset-btn" style={{ marginLeft: "auto" }}>RESET</button>
       </div>
-      <div style={{ display: "flex", gap: "20px", alignItems: "stretch", marginBottom: 25, width: "fit-content" }}>
-
- 
-{/* Анимированный контейнер с блоками TEMPO и MASTER */}
-<div style={{
-  overflow: "hidden",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  maxHeight: isTempoMasterVisible ? "300px" : "0px",
-  opacity: isTempoMasterVisible ? 1 : 0,
-  marginBottom: isTempoMasterVisible ? "20px" : "0px"
-}}>
-  <div style={{ display: "flex", gap: "20px", alignItems: "stretch", flexWrap: "wrap" }}>
-    
-    {/* Блок TEMPO — без неона, стильная рамка */}
-<div style={{
-  background: "#0a0e1a",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid #2a3a6e",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px",
-  textAlign: "center"
-}}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>TEMPO</div>
-  <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "4px" }}>
-    {bpm}
-  </div>
-  <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "12px" }}>BPM</div>
-  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", marginTop: "10px" }}>
-  {/* Кнопка SET LOOP / SET END / RESET LOOP */}
-  <button
-    onClick={() => {
-      const currentX = playheadXRef.current;
-      if (loopStart === 0 && loopEnd === 0) {
-        setLoopStart(currentX);
-        setLoopEnd(0);
-        setPreviewLoopEnd(currentX);
-      } else if (loopStart !== 0 && loopEnd === 0) {
-        if (previewLoopEnd > loopStart) {
-          setLoopEnd(previewLoopEnd);
-        } else {
-          setLoopStart(previewLoopEnd);
-          setLoopEnd(loopStart);
-        }
-        setPreviewLoopEnd(0);
-      } else {
-        setLoopStart(0);
-        setLoopEnd(0);
-        setPreviewLoopEnd(0);
-        setLoopActive(false);
-      }
-    }}
-    style={{
-      background: "#0a0e1a",
-      border: `2px solid ${
-        loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")
-      }`,
-      borderRadius: "6px",
-      padding: "3px 6px",
-      flex: 1,
-      color: loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D"),
-      fontSize: "9px",
-      fontWeight: "bold",
-      letterSpacing: "0.5px",
-      cursor: "pointer",
-      textShadow: `0 0 3px ${
-        loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")
-      }`,
-      boxShadow: `0 0 6px rgba(${
-        loopStart === 0 ? "77, 255, 136" : (loopEnd === 0 ? "255, 165, 0" : "255, 77, 77")
-      }, 0.5), inset 0 0 2px rgba(${
-        loopStart === 0 ? "77, 255, 136" : (loopEnd === 0 ? "255, 165, 0" : "255, 77, 77")
-      }, 0.2)`,
-      transition: "all 0.2s ease",
-      backdropFilter: "blur(2px)"
-    }}
-    onMouseEnter={(e) => {
-      let color, rgba;
-      if (loopStart === 0) { color = "#4DFF88"; rgba = "77, 255, 136"; }
-      else if (loopEnd === 0) { color = "#FFA500"; rgba = "255, 165, 0"; }
-      else { color = "#FF4D4D"; rgba = "255, 77, 77"; }
-      e.currentTarget.style.background = `rgba(${rgba}, 0.2)`;
-      e.currentTarget.style.boxShadow = `0 0 12px ${color}`;
-      e.currentTarget.style.transform = "scale(1.02)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = "#0a0e1a";
-      let color, rgba;
-      if (loopStart === 0) { color = "#4DFF88"; rgba = "77, 255, 136"; }
-      else if (loopEnd === 0) { color = "#FFA500"; rgba = "255, 165, 0"; }
-      else { color = "#FF4D4D"; rgba = "255, 77, 77"; }
-      e.currentTarget.style.boxShadow = `0 0 6px rgba(${rgba}, 0.5)`;
-      e.currentTarget.style.transform = "scale(1)";
-    }}
-  >
-    {loopStart === 0 ? "SET LOOP" : (loopEnd === 0 ? "SET END" : "RESET LOOP")}
-  </button>
-
-  {/* Кнопка LOOP ON / OFF — теперь с модальным окном вместо alert */}
-  <button
-    onClick={() => {
-      if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) {
-        setLoopActive(!loopActive);
-      } else {
-        setInfoModal({
-          visible: true,
-          message: "First set the loop area (press SET LOOP twice at desired positions)"
-        });
-      }
-    }}
-    style={{
-      background: loopActive ? "#4DFF88" : "#0a0e1a",
-      border: `2px solid ${loopActive ? "#4DFF88" : "#FF4D4D"}`,
-      borderRadius: "6px",
-      padding: "3px 6px",
-      flex: 1,
-      color: loopActive ? "#0a0e1a" : "#FF4D4D",
-      fontSize: "9px",
-      fontWeight: "bold",
-      letterSpacing: "0.5px",
-      cursor: "pointer",
-      textShadow: loopActive ? "none" : "0 0 3px #FF4D4D",
-      boxShadow: loopActive
-        ? "0 0 10px #4DFF88, inset 0 0 2px rgba(0,0,0,0.2)"
-        : "0 0 6px rgba(255, 77, 77, 0.5), inset 0 0 2px rgba(255, 77, 77, 0.2)",
-      transition: "all 0.2s ease",
-      backdropFilter: "blur(2px)"
-    }}
-    onMouseEnter={(e) => {
-      if (!loopActive) {
-        e.currentTarget.style.background = "rgba(255, 77, 77, 0.2)";
-        e.currentTarget.style.boxShadow = "0 0 12px #FF4D4D";
-      } else {
-        e.currentTarget.style.boxShadow = "0 0 14px #4DFF88";
-      }
-      e.currentTarget.style.transform = "scale(1.02)";
-    }}
-    onMouseLeave={(e) => {
-      if (!loopActive) {
-        e.currentTarget.style.background = "#0a0e1a";
-        e.currentTarget.style.boxShadow = "0 0 6px rgba(255, 77, 77, 0.5)";
-      } else {
-        e.currentTarget.style.background = "#4DFF88";
-        e.currentTarget.style.boxShadow = "0 0 10px #4DFF88";
-      }
-      e.currentTarget.style.transform = "scale(1)";
-    }}
-  >
-    LOOP {loopActive ? "ON" : "OFF"}
-  </button>
-</div>
-  <input
-    type="range"
-    min="60"
-    max="200"
-    value={bpm}
-    onChange={(e) => setBpm(Number(e.target.value))}
-    style={{ width: "100%", cursor: "pointer", marginTop: "25px" }}
-  />
-</div>
-{/* НОВЫЙ БЛОК UI SOUNDS */}
-<div style={{
-  background: "#0a0e1a",
-  padding: "12px",
-  borderRadius: "12px",
-  border: "1px solid #2a3a6e",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px",
-  textAlign: "center"
-}}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>ATTACH EFFECT</div>
-  <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-    {[
-      { name: 'click', icon: '🔊', title: 'Щелчок', play: () => uiSounds.playClick() },
-      { name: 'pop', icon: '🎯', title: 'Цок', play: () => uiSounds.playPop() },
-      { name: 'pixel', icon: '🕹️', title: 'Пиксельный', play: () => uiSounds.playPixel() },
-      { name: 'boom', icon: '💥', title: 'Бум', play: () => uiSounds.playBoom() },
-      { name: 'chirp', icon: '🐤', title: 'Чирп', play: () => uiSounds.playChirp() }
-    ].map(effect => (
-      <button
-        key={effect.name}
-        onClick={(e) => {
-          const btn = e.currentTarget;
-          btn.classList.add('btn-flash');
-          setTimeout(() => btn.classList.remove('btn-flash'), 120);
-          // Применяем эффект к выделенным блокам
-          applyEffectToSelectedBlocks(effect.name);
-          // Проигрываем демо-звук (всегда, чтобы можно было услышать)
-          effect.play();
-        }}
-        style={{
-          background: "#1e2a50",
-          border: "none",
-          borderRadius: "20px",
-          padding: "6px 8px",
-          color: "#4DFF88",
-          cursor: "pointer",
-          fontSize: "12px",
-          transition: "all 0.1s ease"
-        }}
-        title={effect.title}
-      >
-        {effect.icon}
-      </button>
-    ))}
-    <button
-  onClick={(e) => {
-    const btn = e.currentTarget;
-    btn.classList.add('btn-flash-red');   // ← красная вспышка
-    setTimeout(() => btn.classList.remove('btn-flash-red'), 120);
-    applyEffectToSelectedBlocks(null);
-  }}
-  style={{
-    background: "#2A3350",
-    border: "none",
-    borderRadius: "20px",
-    padding: "6px 8px",
-    color: "#FFB84D",
-    cursor: "pointer",
-    fontSize: "12px",
-    transition: "all 0.1s ease"
-  }}
-  title="Сбросить эффект с выделенных блоков"
->
-  ❌
-</button>
-  </div>
-  <div style={{ fontSize: "9px", color: "#AAB3C2", marginBottom: "8px" }}>Select block(s) → choose effect</div>
-
-  {/* Кнопка удаления ВСЕХ эффектов (стиль как у RESET) */}
-  <button
-  onClick={(e) => {
-    const btn = e.currentTarget;
-    btn.classList.add('btn-flash-red');   // ← красная вспышка
-    setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
-    removeAllEffects();
-  }}
-  style={{
-    backgroundColor: "#0f172a",
-    border: "1px solid #ff4d4d",
-    borderRadius: "6px",
-    padding: "6px 8px",
-    width: "100%",
-    color: "#ff4d4d",
-    cursor: "pointer",
-    fontSize: "10px",
-    fontWeight: "bold",
-    marginTop: "6px",
-    transition: "all 0.3s ease",
-    textTransform: "uppercase"
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.backgroundColor = "#1e293b";
-    e.currentTarget.style.boxShadow = "0 0 8px rgba(255, 77, 77, 0.5)";
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.backgroundColor = "#0f172a";
-    e.currentTarget.style.boxShadow = "none";
-  }}
->
-  REMOVE ALL EFFECTS
-</button>
-</div>
-
-{/* Блок MASTER — без неона, стильная рамка */}
-<div style={{
-  background: "#0a0e1a",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid #2a3a6e",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px",
-  textAlign: "center"
-}}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "8px" }}>MASTER</div>
-  <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "8px" }}>
-    {Math.floor(masterVolume * 100)}%
-  </div>
-  {/* VU-метр */}
-  <div style={{ display: "flex", gap: "4px", alignItems: "center", justifyContent: "center", height: "30px", marginBottom: "12px" }}>
-    {[...Array(20)].map((_, idx) => {
-      const intensity = idx / 20;
-      const isActive = masterVolume > intensity;
-      let color = "#4DFF88";
-      if (intensity > 0.7) color = "#FFB84D";
-      if (intensity > 0.9) color = "#FF4D4D";
-      return (
-        <div
-          key={idx}
-          style={{
-            width: "6px",
-            height: `${10 + intensity * 20}px`,
-            backgroundColor: isActive ? color : "rgba(77,136,255,0.2)",
-            borderRadius: "2px",
-            transition: "height 0.05s linear"
-          }}
-        />
-      );
-    })}
-  </div>
-  <div style={{ fontSize: "18px", fontWeight: "bold", color: "#4DFF88", marginTop: "6px" }}>
-    {currentPosition.seconds.toFixed(1)}s
-  </div>
-  <div style={{ fontSize: "10px", color: "#4D88FF" }}>
-    ({currentPosition.bar}.{currentPosition.beat})
-  </div>
-</div>
-  </div>
-</div>
-
-</div>
-      
-
-<div className="instrument-selector">
-  {["guitar", "synth", "bass", "chip"].map((t) => (
-    <button
-      key={t}
-      onClick={() => setInstrument(t)}
-      className={`inst-btn ${instrument === t ? "active" : ""} ${t}-btn`}
-    >
-      <span className="inst-icon">
-        {t === "guitar" ? "🎸" : t === "synth" ? "🎹" : t === "bass" ? "🔊" : "🕹️"}
-      </span>
-      <span className="inst-text">{t.toUpperCase()}</span>
-      {instrument === t && <div className="active-glow"></div>}
-    </button>
-  ))}
-
-  {/* Блок двух кнопок: INFO и FX — прижаты друг к другу */}
-<div style={{ display: "flex", gap: "2px", marginLeft: "auto" }}>
-  <button
-    onClick={() => setIsTempoMasterVisible(!isTempoMasterVisible)}
-    className={`inst-btn fx-toggle-btn ${isTempoMasterVisible ? "fx-active" : ""}`}
-    style={{ borderRadius: "20px 0 0 20px" }}
-  >
-    <span className="inst-icon">{isTempoMasterVisible ? "🔽" : "🔼"}</span>
-    <span className="inst-text" style={{ fontSize: "9px" }}>INFO</span>
-    {isTempoMasterVisible && <div className="active-glow"></div>}
-  </button>
-  <button
-    onClick={() => setShowFX(!showFX)}
-    className={`inst-btn fx-toggle-btn ${showFX ? "fx-active" : ""}`}
-    style={{ borderRadius: "0 20px 20px 0" }}
-  >
-    <span className="inst-icon">⚙️</span>
-    <span className="inst-text" style={{ fontSize: "9px" }}>FX</span>
-    {showFX && <div className="active-glow"></div>}
-  </button>
-</div>
-</div>
-
-<div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0 }}>
-  <div style={{
-    background: "#0a0e1a",
-    border: "1px solid #2a3a6e",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-    padding: "20px",
-    display: "flex",
-    gap: "25px",
-    width: "fit-content",
-    flexWrap: "wrap"
-  }}>
-    {/* VOLUME */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>VOLUME<br/>{volumes[instrument].toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={volumes[instrument]}
-        onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 0.5 }))}>Reset</button>
-    </div>
-    {/*FX VOLUME*/}
-    <div style={mixerColumnStyle}>
-  <span style={labelStyle}>FX VOLUME<br/>{fxVolume.toFixed(2)}</span>
-  <input
-    type="range"
-    min="0"
-    max="1"
-    step="0.01"
-    value={fxVolume}
-    onChange={(e) => setFxVolume(parseFloat(e.target.value))}
-    style={verticalSliderStyle}
-  />
-  <button style={resetBtnStyle} onClick={() => setFxVolume(0.5)}>Reset</button>
-</div>
-
-    {/* CUTOFF */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>CUTOFF<br/>{filters[instrument].cutoff}</span>
-      <input
-        type="range"
-        min="200"
-        max="10000"
-        value={filters[instrument].cutoff}
-        onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>Reset</button>
-    </div>
-
-    {/* Q (RES) */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>Q (RES)<br/>{filters[instrument].q}</span>
-      <input
-        type="range"
-        min="0.1"
-        max="20"
-        step="0.1"
-        value={filters[instrument].q}
-        onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>Reset</button>
-    </div>
-
-    {/* CHORUS */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>CHORUS<br/>{fx[instrument].chorus.toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={fx[instrument].chorus}
-        onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>Reset</button>
-    </div>
-
-    {/* REVERB */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>REVERB<br/>{fx[instrument].reverb.toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={fx[instrument].reverb}
-        onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>Reset</button>
-    </div>
-  </div>
-</div>
-
+  
+      {/* Сетка (scroll-container) */}
       <div 
         ref={scrollRef}
-        onMouseMove={(e) => {
-          if (!isDraggingRef.current) return;
-        
-          autoScrollIfNeeded(e.clientX); // 🔥 КЛЮЧ
-        }}
-        onTouchMove={(e) => {
-          if (!isDraggingRef.current) return;
-        
-          const touchX = e.touches[0].clientX;
-          autoScrollIfNeeded(touchX);
-        }}
+        onMouseMove={(e) => { if (!isDraggingRef.current) return; autoScrollIfNeeded(e.clientX); }}
+        onTouchMove={(e) => { if (!isDraggingRef.current) return; const touchX = e.touches[0].clientX; autoScrollIfNeeded(touchX); }}
         className="scroll-container"
         onContextMenu={(e) => e.preventDefault()}
         style={{
           width: "100%",
-          overflowX: "auto", // Оставляем
-          overflowY: "auto", // БЫЛО "hidden" - именно оно обрезало ползунок! Измените на auto
-          paddingBottom: "10px", // ДОБАВЬТЕ отступ снизу, чтобы ползунку было где отрисоваться
+          overflowX: "auto",
+          overflowY: "auto",
+          paddingBottom: "10px",
           position: "relative",
           background: "#050814",
           borderRadius: 10,
           border: "1px solid #161B33",
-          WebkitOverflowScrolling: "touch", 
+          WebkitOverflowScrolling: "touch",
           touchAction: "pan-x"
         }}
-        >
-          <div style={{ 
-            width: `${Math.max(2000, Math.max(0, ...Object.values(tracks).flat().map(b => b.x + b.length)) + 1000)}px`, 
-            display: "inline-block",
-            minWidth: '100%', 
-            position: "relative", 
-            minHeight: 480, 
-            backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
-            backgroundSize: `${STEP_WIDTH}px 60px` 
-          }}>
-             {loopStart !== 0 && (
-  (loopEnd !== 0 && loopEnd > loopStart) || (previewLoopEnd > loopStart)
-) && (
-  <div style={{
-    position: "absolute",
-    top: 0,
-    left: loopStart,
-    width: (loopEnd !== 0 ? loopEnd : previewLoopEnd) - loopStart,
-    height: "100%",
-    backgroundColor: "rgba(77, 255, 136, 0.15)",
-    borderLeft: "2px solid #4DFF88",
-    borderRight: "2px solid #4DFF88",
-    pointerEvents: "none",
-    zIndex: 5,
-    transition: "width 0.05s linear"
-  }} />
-)}
+      >
+        <div style={{ 
+          width: `${Math.max(2000, Math.max(0, ...Object.values(tracks).flat().map(b => b.x + b.length)) + 1000)}px`, 
+          display: "inline-block",
+          minWidth: '100%', 
+          position: "relative", 
+          minHeight: 480, 
+          backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
+          backgroundSize: `${STEP_WIDTH}px 60px` 
+        }}>
+          {loopStart !== 0 && (loopEnd !== 0 && loopEnd > loopStart || previewLoopEnd > loopStart) && (
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: loopStart,
+              width: (loopEnd !== 0 ? loopEnd : previewLoopEnd) - loopStart,
+              height: "100%",
+              backgroundColor: "rgba(77, 255, 136, 0.15)",
+              borderLeft: "2px solid #4DFF88",
+              borderRight: "2px solid #4DFF88",
+              pointerEvents: "none",
+              zIndex: 5,
+              transition: "width 0.05s linear"
+            }} />
+          )}
           {strings.map((s, i) => (
             <div key={i} 
-            onMouseDown={(e) => {
-              if (e.button !== 0) return; // только левая кнопка
-              if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
-              isDraggingRef.current = true;
-              const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
-              const existingOnString = tracks[instrument].filter(b => b.string === i);
-              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
-              if (!overlapping) {
-                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
-              }
-            }}
-            onTouchStart={(e) => {
-              if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
-              const touchX = e.touches[0].clientX;
-              const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
-              const existingOnString = tracks[instrument].filter(b => b.string === i);
-              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
-              if (!overlapping) {
-                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
-              }
-            }}
-            style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}
-          >
-            <span style={{ width: 30, fontWeight: "bold" }}>{s}</span>
-              
+              onMouseDown={(e) => {
+                if (e.button !== 0) return;
+                if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
+                isDraggingRef.current = true;
+                const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
+                const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
+                const existingOnString = tracks[instrument].filter(b => b.string === i);
+                const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
+                if (!overlapping) {
+                  setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
+                }
+              }}
+              onTouchStart={(e) => {
+                if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
+                const touchX = e.touches[0].clientX;
+                const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
+                const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
+                const existingOnString = tracks[instrument].filter(b => b.string === i);
+                const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
+                if (!overlapping) {
+                  setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
+                }
+              }}
+              style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}
+            >
+              <span style={{ width: 30, fontWeight: "bold" }}>{s}</span>
               {Object.keys(tracks).map(instName => 
                 tracks[instName]
                   .filter(b => b.string === i)
                   .map(b => {
-                    const isActive = instName === instrument; 
-                    
+                    const isActive = instName === instrument;
                     return (
                       <div 
-  key={b.id} 
-  className={`block ${
-    isPlaying && 
-    activeStep >= Math.floor(b.x / STEP_WIDTH) && 
-    activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) 
-      ? 'playing' : ''
-  }`}
-  data-id={b.id}
-  onMouseEnter={() => setHoveredBlockId(b.id)}
-  onMouseLeave={() => setHoveredBlockId(null)}
-  onMouseDown={(e) => {
-    handleSelectBlock(e, b, instName);
-    
-    if (instName === instrument) {
-      // Если тянем выделенный блок — включаем режим группы
-      if (selectedBlockIds.has(b.id)) {
-        handleGroupDragStart(e, b);
-      }
-      
-      // В любом случае запускаем стандартный драг, чтобы ничего не «стояло»
-      isDraggingRef.current = true;
-      startDrag(b, e);
-    }
-  }}
-  onDoubleClick={() => {
-    if (instName !== instrument) return;
-    setTracks(prev => ({
-      ...prev,
-      [instrument]: prev[instrument].map(it => 
-        it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it
-      )
-    }));
-  }}
-  onTouchStart={(e) => {
-    handleSelectBlock(e, b, instName);
-    if (instName === instrument) handleTouchStart(e, b, false);
-  }}
-  onTouchMove={(e) => {
-    if (instName === instrument) handleTouchMove(e);
-  }}
-  onTouchEnd={handleTouchEnd}
-  onContextMenu={(e) => { 
-    e.preventDefault(); 
-    if (instName !== instrument) return;
-    setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)}));
-    setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
-  }} 
-  style={{
-    position: "absolute",
-    left: b.x,
-    width: b.length,
-    height: 45,
-    backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.2)",
-    boxShadow: instName === instrument 
-      ? `0 4px 0 rgba(0,0,0,0.5), 0 0 8px ${getColor(b.fret)}` 
-      : "none",
-    opacity: instName === instrument ? (b.velocity || 1) : 0.5,
-    border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
-    outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
-    outlineOffset: "2px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "white",
-    fontWeight: "bold",
-    cursor: instName === instrument ? "grab" : "default",
-    zIndex: instName === instrument ? 10 : 5,
-    borderRadius: 8,
-    pointerEvents: "auto",
-    touchAction: "none",
-    transition: "all 0.05s linear"
-  }}>
-  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-  <span>{b.fret}</span>
-  {b.effect === 'click' && <span style={{ fontSize: "10px" }}>🔊</span>}
-  {b.effect === 'pop' && <span style={{ fontSize: "10px" }}>🎯</span>}
-  {b.effect === 'pixel' && <span style={{ fontSize: "10px" }}>🕹️</span>}
-  {b.effect === 'boom' && <span style={{ fontSize: "10px" }}>💥</span>}
-  {b.effect === 'chirp' && <span style={{ fontSize: "10px" }}>🐤</span>}
-</div>
-  {instName === instrument && (
-    <div 
-      onMouseDown={(e) => startResize(b, e)}
-      onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
-      style={{
-        position: "absolute",
-        right: 0,
-        top: 0,
-        width: 15,
-        height: "100%",
-        cursor: "ew-resize",
-        background: "rgba(0,0,0,0.1)",
-        borderRadius: "0 6px 6px 0",
-      }} 
-    />
-  )}
-</div>
+                        key={b.id} 
+                        className={`block ${isPlaying && activeStep >= Math.floor(b.x / STEP_WIDTH) && activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) ? 'playing' : ''}`}
+                        data-id={b.id}
+                        onMouseEnter={() => setHoveredBlockId(b.id)}
+                        onMouseLeave={() => setHoveredBlockId(null)}
+                        onMouseDown={(e) => {
+                          handleSelectBlock(e, b, instName);
+                          if (instName === instrument) {
+                            if (selectedBlockIds.has(b.id)) handleGroupDragStart(e, b);
+                            isDraggingRef.current = true;
+                            startDrag(b, e);
+                          }
+                        }}
+                        onDoubleClick={() => {
+                          if (instName !== instrument) return;
+                          setTracks(prev => ({
+                            ...prev,
+                            [instrument]: prev[instrument].map(it => it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it)
+                          }));
+                        }}
+                        onTouchStart={(e) => {
+                          handleSelectBlock(e, b, instName);
+                          if (instName === instrument) handleTouchStart(e, b, false);
+                        }}
+                        onTouchMove={(e) => {
+                          if (instName === instrument) handleTouchMove(e);
+                        }}
+                        onTouchEnd={handleTouchEnd}
+                        onContextMenu={(e) => { 
+                          e.preventDefault(); 
+                          if (instName !== instrument) return;
+                          setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)}));
+                          setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
+                        }} 
+                        style={{
+                          position: "absolute",
+                          left: b.x,
+                          width: b.length,
+                          height: 45,
+                          backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.2)",
+                          boxShadow: instName === instrument ? `0 4px 0 rgba(0,0,0,0.5), 0 0 8px ${getColor(b.fret)}` : "none",
+                          opacity: instName === instrument ? (b.velocity || 1) : 0.5,
+                          border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
+                          outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
+                          outlineOffset: "2px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                          fontWeight: "bold",
+                          cursor: instName === instrument ? "grab" : "default",
+                          zIndex: instName === instrument ? 10 : 5,
+                          borderRadius: 8,
+                          pointerEvents: "auto",
+                          touchAction: "none",
+                          transition: "all 0.05s linear"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <span>{b.fret}</span>
+                          {b.effect === 'click' && <span style={{ fontSize: "10px" }}>🔊</span>}
+                          {b.effect === 'pop' && <span style={{ fontSize: "10px" }}>🎯</span>}
+                          {b.effect === 'pixel' && <span style={{ fontSize: "10px" }}>🕹️</span>}
+                          {b.effect === 'boom' && <span style={{ fontSize: "10px" }}>💥</span>}
+                          {b.effect === 'chirp' && <span style={{ fontSize: "10px" }}>🐤</span>}
+                        </div>
+                        {instName === instrument && (
+                          <div 
+                            onMouseDown={(e) => startResize(b, e)}
+                            onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
+                            style={{ position: "absolute", right: 0, top: 0, width: 15, height: "100%", cursor: "ew-resize", background: "rgba(0,0,0,0.1)", borderRadius: "0 6px 6px 0" }} 
+                          />
+                        )}
+                      </div>
                     );
                   })
               )}
@@ -2430,63 +2452,41 @@ onClick={() => handleStartCreating("guitar")}
             className="playhead-grabber" 
             onMouseDown={startPlayheadDrag} 
             onTouchStart={startPlayheadDrag} 
-            style={{ 
-              position: "absolute", 
-              top: 0, 
-              width: 25, 
-              marginLeft: -11, 
-              height: "100%", 
-              cursor: "ew-resize", 
-              zIndex: 30, 
-              display: "flex", 
-              justifyContent: "center" 
-            }} 
+            style={{ position: "absolute", top: 0, width: 25, marginLeft: -11, height: "100%", cursor: "ew-resize", zIndex: 30, display: "flex", justifyContent: "center" }} 
           >
             <div style={{ width: 3, height: "100%", background: "#FF4D4D", pointerEvents: "none" }} />
           </div>
-
         </div>
       </div>
-      <button 
-        className="controls-help-btn"
-        onClick={() => setShowHelp(true)}
-      >
-        Controls Help
-      </button>
-
+  
+            
+  
+      <button className="controls-help-btn" onClick={() => setShowHelp(true)}>Controls Help</button>
+  
       {showHelp && (
-  <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
-    <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h2>Controls Guide</h2>
-        <div className="header-line"></div>
-      </div>
-      
-      <div className="modal-content">
-        <div className="help-section">
-        <p><strong>🖱️ Mouse Controls</strong></p>
-          <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
-          <div className="control-item"><span>Alt + Scroll</span> — Change note volume</div>
-          <div className="control-item"><span>Right Click</span> — Delete block</div>
+        <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header"><h2>Controls Guide</h2><div className="header-line"></div></div>
+            <div className="modal-content">
+              <div className="help-section"><p><strong>🖱️ Mouse Controls</strong></p>
+                <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
+                <div className="control-item"><span>Alt + Scroll</span> — Change note volume</div>
+                <div className="control-item"><span>Right Click</span> — Delete block</div>
+              </div>
+              <div className="help-section"><p><strong>⌨️ Keyboard Shortcuts</strong></p>
+                <div className="control-item"><span>Space</span> — Play / Pause</div>
+                <div className="control-item"><span>S</span> — Stop</div>
+                <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
+                <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
+                <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>
+                <div className="control-item"><span>Del / Backspace</span> — Delete selected blocks</div>
+              </div>
+            </div>
+            <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Let's Rock!</button>
+          </div>
         </div>
-
-        <div className="help-section">
-  <p><strong>⌨️ Keyboard Shortcuts</strong></p>
-  <div className="control-item"><span>Space</span> — Play / Pause</div>
-  <div className="control-item"><span>S</span> — Stop</div>
-  <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
-  <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
-  <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>
-  <div className="control-item"><span>Del / Backspace</span> — Delete selected blocks</div>
-</div>
-      </div>
-
-      <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Let's Rock!</button>
-    </div>
-  </div>
-)}
-
-      {/* ВСТАВЛЯЙ ВЫРЕЗАННЫЙ БЛОК СЮДА */}
+      )}
+  
       {showResetConfirm && (
         <div className="custom-modal-overlay warning-overlay" onClick={() => setShowResetConfirm(false)}>
           <div className="custom-modal warning-modal" onClick={(e) => e.stopPropagation()}>
@@ -2500,18 +2500,19 @@ onClick={() => handleStartCreating("guitar")}
           </div>
         </div>
       )}
-      {infoModal.visible && (
-  <div className="custom-modal-overlay" onClick={() => setInfoModal({ visible: false, message: '' })}>
-    <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="neon-icon">ℹ️</div>
-      <h2 style={{ color: '#4D88FF', textShadow: '0 0 8px #4D88FF' }}>INFORMATION</h2>
-      <p>{infoModal.message}</p>
-      <div className="modal-buttons">
-        <button className="cancel-modal-btn" onClick={() => setInfoModal({ visible: false, message: '' })}>OK</button>
-      </div>
-    </div>
-  </div>
-)}
+  
+  {infoModal.visible && (
+        <div className="custom-modal-overlay" onClick={() => setInfoModal({ visible: false, message: '' })}>
+          <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="neon-icon">ℹ️</div>
+            <h2 style={{ color: '#4D88FF', textShadow: '0 0 8px #4D88FF' }}>INFORMATION</h2>
+            <p>{infoModal.message}</p>
+            <div className="modal-buttons">
+              <button className="cancel-modal-btn" onClick={() => setInfoModal({ visible: false, message: '' })}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

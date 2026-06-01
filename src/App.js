@@ -991,33 +991,30 @@ Object.values(synthsRef.current).forEach(item => {
   const startEngine = () => {
     const lastStartTimeMap = new Map();
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
+  
     const loop = () => {
       const now = Tone.now();
       const stepTime = 60 / bpm / 4;
       let elapsed = now - startTimeRef.current;
       const allBlocks = Object.values(tracks).flat();
   
-      // Глобальная логика окончания всего трека (только если есть блоки и луп выключен)
+      // Глобальная логика окончания всего трека
       if (allBlocks.length > 0) {
         const lastBlockEndPX = Math.max(...allBlocks.map(b => b.x + b.length));
         const globalLoopEndTime = (lastBlockEndPX / STEP_WIDTH) * stepTime;
-        
-        // Отображение времени: такт / доля / секунды (всегда)
-        const elapsedSeconds = elapsed;
+  
         const secondsPerBeat = 60 / bpm;
-        const beats = elapsedSeconds / secondsPerBeat;
-        const currentBar = Math.floor(beats / 4) + 1;
-        const currentBeat = (Math.floor(beats) % 4) + 1;
+        const beats = elapsed / secondsPerBeat;
         setCurrentPosition({
-          bar: currentBar,
-          beat: currentBeat,
-          seconds: elapsedSeconds
+          bar: Math.floor(beats / 4) + 1,
+          beat: (Math.floor(beats) % 4) + 1,
+          seconds: elapsed
         });
   
-        // Сброс трека только если луп НЕ активен
         if (!loopActive && elapsed >= globalLoopEndTime) {
           startTimeRef.current = now;
-          pauseOffsetRef.current = 0;
+          // pauseOffsetRef - убедитесь, что он объявлен в компоненте
+          if (typeof pauseOffsetRef !== 'undefined') pauseOffsetRef.current = 0;
           elapsed = 0;
           triggeredRef.current.clear();
         }
@@ -1037,32 +1034,36 @@ Object.values(synthsRef.current).forEach(item => {
   
       // Обработка нот
       Object.entries(tracks).forEach(([type, blocks]) => {
-        if (!filtersRef.current[type]) return;
+        // Проверка существования синтезатора и фильтра
+        const synth = synthsRef.current[type];
+        if (!synth || (filtersRef && filtersRef.current && !filtersRef.current[type])) return;
+  
         blocks.forEach((b) => {
           const startStep = Math.floor(b.x / STEP_WIDTH);
           const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
           const startTime = startStep * stepTime;
           const duration = durationSteps * stepTime;
           const key = `${type}_${b.id}_${startStep}`;
+  
           if (elapsed >= startTime && elapsed <= startTime + duration && !triggeredRef.current.has(key)) {
-            const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
-            const synth = synthsRef.current[type];
             const velocity = Math.min(1, Math.max(0, b.velocity ?? 1));
   
+            // 1. ЛОГИКА ДЛЯ БАРАБАНОВ (пулы)
             if (type === "drum") {
               const pools = synth; // { membranePool, noisePool }
               if (!pools || !pools.membranePool) return;
+  
               const durationSec = duration;
               const velocityAdjusted = Math.min(1, velocity * 1.2);
               const index = Math.abs(b.id) % pools.membranePool.length;
               const membraneSynth = pools.membranePool[index];
               const noiseSynth = pools.noisePool[index];
               const drumIdx = (b.fret % 20) + (b.string % 3) * 20;
-            
-              // Определяем, какой синтезатор будет использован
+  
               let targetSynth = null;
               let isMembrane = true;
               const typeIdx = drumIdx % 20;
+  
               if (typeIdx >= 0 && typeIdx <= 7) {
                 targetSynth = membraneSynth;
                 isMembrane = true;
@@ -1070,70 +1071,75 @@ Object.values(synthsRef.current).forEach(item => {
                 targetSynth = noiseSynth;
                 isMembrane = false;
               }
+  
               if (!targetSynth) return;
-            
-              // Корректируем время старта
-              let startTime = now + 0.01;
+  
+              let startTimeVal = now + 0.01;
               const lastTime = lastStartTimeMap.get(targetSynth);
-              if (lastTime !== undefined && startTime <= lastTime) {
-                startTime = lastTime + 0.001;
+              if (lastTime !== undefined && startTimeVal <= lastTime) {
+                startTimeVal = lastTime + 0.001;
               }
-              lastStartTimeMap.set(targetSynth, startTime);
-            
-              // Сброс параметров по умолчанию
+              lastStartTimeMap.set(targetSynth, startTimeVal);
+  
+              // Параметры
               if (!isMembrane) {
                 noiseSynth.noise.type = "white";
                 noiseSynth.envelope.decay = 0.2;
               } else {
                 membraneSynth.pitchDecay = 0.05;
               }
-            
+  
               switch (typeIdx) {
-                case 0: membraneSynth.triggerAttackRelease("C2", durationSec, startTime, velocityAdjusted); break;
-                case 1: membraneSynth.triggerAttackRelease("D2", durationSec, startTime, velocityAdjusted); break;
-                case 2: membraneSynth.triggerAttackRelease("E2", durationSec, startTime, velocityAdjusted); break;
-                case 3: membraneSynth.triggerAttackRelease("F2", durationSec, startTime, velocityAdjusted); break;
-                case 4: membraneSynth.triggerAttackRelease("G2", durationSec, startTime, velocityAdjusted); break;
-                case 5: membraneSynth.triggerAttackRelease("A2", durationSec, startTime, velocityAdjusted); break;
-                case 6: membraneSynth.triggerAttackRelease("B2", durationSec, startTime, velocityAdjusted); break;
-                case 7: membraneSynth.triggerAttackRelease("C3", durationSec, startTime, velocityAdjusted); break;
-                case 8: noiseSynth.envelope.decay = 0.12; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 9: noiseSynth.envelope.decay = 0.18; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 10: noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 11: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.15; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 12: noiseSynth.envelope.decay = 0.05; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 13: noiseSynth.envelope.decay = 0.04; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 14: noiseSynth.envelope.decay = 0.06; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                case 15: noiseSynth.envelope.decay = 0.08; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.9); break;
-                case 16: noiseSynth.envelope.decay = 0.10; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.85); break;
-                case 17: noiseSynth.noise.type = "brown"; noiseSynth.envelope.decay = 0.30; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.7); break;
-                case 18: noiseSynth.noise.type = "white"; noiseSynth.envelope.decay = 0.02; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.6); break;
-                case 19: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.8); break;
-                default: membraneSynth.triggerAttackRelease("C2", durationSec, startTime, velocityAdjusted);
+                case 0: membraneSynth.triggerAttackRelease("C2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 1: membraneSynth.triggerAttackRelease("D2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 2: membraneSynth.triggerAttackRelease("E2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 3: membraneSynth.triggerAttackRelease("F2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 4: membraneSynth.triggerAttackRelease("G2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 5: membraneSynth.triggerAttackRelease("A2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 6: membraneSynth.triggerAttackRelease("B2", durationSec, startTimeVal, velocityAdjusted); break;
+                case 7: membraneSynth.triggerAttackRelease("C3", durationSec, startTimeVal, velocityAdjusted); break;
+                case 8: noiseSynth.envelope.decay = 0.12; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 9: noiseSynth.envelope.decay = 0.18; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 10: noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 11: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.15; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 12: noiseSynth.envelope.decay = 0.05; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 13: noiseSynth.envelope.decay = 0.04; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 14: noiseSynth.envelope.decay = 0.06; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted); break;
+                case 15: noiseSynth.envelope.decay = 0.08; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted * 0.9); break;
+                case 16: noiseSynth.envelope.decay = 0.10; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted * 0.85); break;
+                case 17: noiseSynth.noise.type = "brown"; noiseSynth.envelope.decay = 0.30; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted * 0.7); break;
+                case 18: noiseSynth.noise.type = "white"; noiseSynth.envelope.decay = 0.02; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted * 0.6); break;
+                case 19: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTimeVal, velocityAdjusted * 0.8); break;
+                default: membraneSynth.triggerAttackRelease("C2", durationSec, startTimeVal, velocityAdjusted);
               }
-            } else if (type === "bass") {
+            }
+            // 2. ЛОГИКА ДЛЯ БАСА
+            else if (type === "bass") {
+              const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
               synth.triggerAttack(freq, now + 0.01, velocity);
               synth.triggerRelease(now + 0.01 + duration);
-            } else {
+            }
+            // 3. ЛОГИКА ДЛЯ ОСТАЛЬНЫХ (гитара, синтезатор, чип)
+            else {
+              const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
               synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
             }
   
             triggeredRef.current.add(key);
-            if (b.effect && uiSoundsEnabled) {
+            if (b.effect && typeof uiSounds !== 'undefined' && uiSoundsEnabled) {
               uiSounds.playEffect(b.effect, velocity);
             }
           }
         });
       });
   
+      // Обновление UI
       const x = (elapsed / stepTime) * STEP_WIDTH;
       playheadXRef.current = x;
-  
       const currentStep = Math.floor(x / STEP_WIDTH);
       if (activeStep !== currentStep) setActiveStep(currentStep);
   
       if (playheadRef.current) playheadRef.current.style.transform = `translateX(${x}px)`;
-  
       if (scrollRef.current) {
         const target = Math.max(0, x - FOLLOW_OFFSET);
         scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
@@ -1144,13 +1150,6 @@ Object.values(synthsRef.current).forEach(item => {
         let normalized = (level + 60) / 60;
         normalized = Math.min(1, Math.max(0, normalized));
         setMasterVolume(normalized);
-      }
-      if (meterRef.current) {
-        const level = meterRef.current.getValue();
-        let normalized = (level + 60) / 60;
-        normalized = Math.min(1, Math.max(0, normalized));
-        setMasterVolume(normalized);
-        // Мгновенная амплитуда для волны (от 5 до 35)
         setWaveAmp(5 + normalized * 30);
       }
   
@@ -1349,26 +1348,33 @@ const copySelectedBlocks = () => {
 
 const pasteBlocks = () => {
   if (copiedBlocksRef.current.length === 0) return;
+
   const minX = Math.min(...copiedBlocksRef.current.map(i => i.block.x));
   const maxEndX = Math.max(...copiedBlocksRef.current.map(i => i.block.x + i.block.length));
-  const offset = (maxEndX - minX) || STEP_WIDTH; // исправлено: || вместо |
-  const nextClipboard = copiedBlocksRef.current.map(item => ({
+  const offset = (maxEndX - minX) || STEP_WIDTH;
+
+  const nextClipboard = copiedBlocksRef.current.map((item, index) => ({
     instrument: item.instrument,
     block: {
       ...item.block,
-      id: Date.now() + Math.random(),
+      // Генерируем уникальный целый ID:
+      // Текущее время + индекс в списке + случайное число до 10000
+      id: Date.now() + index + Math.floor(Math.random() * 10000),
       x: item.block.x + offset
     }
   }));
+
   setTracks(prev => {
     const updated = { ...prev };
     nextClipboard.forEach(({ instrument: inst, block: newBlock }) => {
+      // Проверяем, что массив инструментов существует, прежде чем пушить
       updated[inst] = [...(updated[inst] || []), newBlock];
     });
     return updated;
   });
+
   copiedBlocksRef.current = nextClipboard;
-  console.log("Вставлено последовательно");
+  console.log("Вставлено последовательно, новые IDs созданы");
 };
 
 const deleteSelectedBlocks = () => {

@@ -468,12 +468,64 @@ div[style*="background-color"], .step-cell {
   transform: scale(1.05);
   box-shadow: 0 0 30px rgba(122, 77, 255, 0.6);
 }
+/* ==================== НЕОНОВЫЙ ЛОГОТИП В ОСНОВНОМ ПРИЛОЖЕНИИ ==================== */
 .logo {
   font-size: 64px;
   font-weight: bold;
   letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(255,255,255,0.15);
+  background: linear-gradient(
+    90deg,
+    #ff0080,
+    #ff8c00,
+    #ffff00,
+    #00ff80,
+    #00bfff,
+    #8a2be2,
+    #ff0080
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
+          drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  animation: neonFlowSmooth 6s ease-in-out infinite;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.3s ease;
 }
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+/* Анимация плавного переливания */
+@keyframes neonFlowSmooth {
+  0% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
+            drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  }
+  25% {
+    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
+            drop-shadow(0 0 25px rgba(0, 255, 128, 0.3));
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6))
+            drop-shadow(0 0 35px rgba(128, 0, 255, 0.4));
+  }
+  75% {
+    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
+            drop-shadow(0 0 25px rgba(0, 255, 128, 0.3));
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
+            drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  }
+}
+/* Неоновый логотип на лендинге (такой же, как в основном приложении) */
 .neon-struna {
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(50px, 15vw, 120px);
@@ -482,17 +534,29 @@ div[style*="background-color"], .step-cell {
   letter-spacing: 0.15em;
   display: block;
   margin: 0 auto 30px auto;
-  background: linear-gradient(90deg, #00ffff, #0066ff, #9d00ff, #00ffff);
-  background-size: 200% auto;
+  background: linear-gradient(
+    90deg,
+    #ff0080,
+    #ff8c00,
+    #ffff00,
+    #00ff80,
+    #00bfff,
+    #8a2be2,
+    #ff0080
+  );
+  background-size: 300% auto;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.7));
-  animation: neon-flow 3s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
+          drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  animation: neonFlowSmooth 6s ease-in-out infinite;
+  cursor: pointer;
+  transition: transform 0.3s ease;
 }
-@keyframes neon-flow {
-  0%, 100% { background-position: 0% center; }
-  50% { background-position: 100% center; }
+
+.neon-struna:hover {
+  transform: scale(1.02);
 }
 .back-to-home-btn {
   background: rgba(77, 136, 255, 0.05) !important;
@@ -861,7 +925,75 @@ div[style*="background-color"], .step-cell {
   opacity: 0.9;
   filter: drop-shadow(0 0 8px currentColor);
 }
+/* Кнопка SUB MODE в блоке MASTER */
+.sub-toggle {
+  background: rgba(77, 136, 255, 0.1);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+.sub-toggle:hover {
+  transform: scale(1.02);
+  background: rgba(189, 0, 255, 0.2);
+}
+.sub-toggle.active {
+  background: rgba(189, 0, 255, 0.2);
+  border-color: #bd00ff !important;
+  box-shadow: 0 0 12px #bd00ff;
+  animation: subPulse 1.5s infinite;
+}
+@keyframes subPulse {
+  0% { box-shadow: 0 0 2px #bd00ff; }
+  50% { box-shadow: 0 0 15px #ff44ff; }
+  100% { box-shadow: 0 0 2px #bd00ff; }
+}
 
+/* Неоновая анимация для KARGANI STUDIO на лендинге */
+.neon-kargani {
+  background: linear-gradient(
+    90deg,
+    #ff0080,
+    #ff8c00,
+    #ffff00,
+    #00ff80,
+    #00bfff,
+    #8a2be2,
+    #ff0080
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
+          drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
+  animation: neonFlowSmooth 8s ease-in-out infinite;
+  font-weight: bold;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.neon-kargani:hover {
+  transform: scale(1.02);
+}
+
+/* Убедитесь, что анимация @keyframes neonFlowSmooth уже есть в CSS.
+   Если нет – добавьте её ниже: */
+@keyframes neonFlowSmooth {
+  0% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
+            drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
+            drop-shadow(0 0 20px rgba(0, 255, 128, 0.3));
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
+            drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
+  }
+}
 /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
 @media (max-width: 768px) {
   .app { padding: 10px !important; }

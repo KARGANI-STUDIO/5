@@ -435,38 +435,144 @@ div[style*="background-color"], .step-cell {
 
 /* ==================== ЛЕНДИНГ ==================== */
 .landing {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100vh; /* вместо height: 100vh, чтобы не резало */
   text-align: center;
+  overflow: hidden;
+  background: #0a0b14;
 }
-.landing-content {
+
+.landing::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80vmin;
+  height: 80vmin;
+  background: radial-gradient(circle, 
+    rgba(255, 0, 128, 0.4) 0%,
+    rgba(138, 43, 226, 0.3) 40%,
+    rgba(0, 255, 255, 0.1) 70%,
+    transparent 100%
+  );
+  border-radius: 50%;
+  filter: blur(40px);
+  z-index: 0;
+  pointer-events: none;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.landing .landing-content {
+  position: relative;
   z-index: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
+  justify-content: center;
 }
+
+@keyframes breathe {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.5;
+  }
+}
+/* Стили для UNBOUND SOUND */
 .tagline {
   color: #4D88FF;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
+  font-size: 1.2rem;
   margin-bottom: 30px;
+  text-shadow: 0 0 5px #4D88FF, 0 0 10px rgba(77, 136, 255, 0.5);
+  animation: neonFlicker 2s infinite alternate;
 }
+
+@keyframes neonFlicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    text-shadow: 0 0 4px #4D88FF, 0 0 8px rgba(77, 136, 255, 0.4), 0 0 14px #4D88FF;
+    opacity: 1;
+  }
+  20%, 24%, 55% {
+    text-shadow: 0 0 2px #4D88FF, 0 0 4px rgba(77, 136, 255, 0.2);
+    opacity: 0.7;
+  }
+}
+.flicker-char {
+  display: inline-block;
+  animation: burnout 2.5s infinite steps(1);
+}
+
+@keyframes burnout {
+  0%, 100% { opacity: 1; }
+  95% { opacity: 1; }
+  96% { opacity: 0; }
+  97% { opacity: 0; }
+  98% { opacity: 0.2; }
+  99% { opacity: 1; }
+}
+/* Кнопка START CREATING — неоновая, с пульсацией */
 .start-btn {
   padding: 15px 40px;
-  font-size: 16px;
-  background: linear-gradient(90deg, #4D88FF, #7A4DFF);
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2);
+  background-size: 300% auto;
   border: none;
-  border-radius: 10px;
+  border-radius: 60px;
   color: white;
   cursor: pointer;
-  transition: 0.3s;
-  box-shadow: 0 0 20px rgba(77, 136, 255, 0.4);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(255, 0, 128, 0.5), 0 0 30px rgba(0, 255, 255, 0.3);
+  animation: btnPulse 2s ease-in-out infinite, gradientShift 4s linear infinite;
+  position: relative;
+  z-index: 2;
 }
+
 .start-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 30px rgba(122, 77, 255, 0.6);
+  box-shadow: 0 0 25px rgba(255, 0, 128, 0.8), 0 0 50px rgba(0, 255, 255, 0.5);
+  animation: none; /* при наведении пульсация останавливается, чтобы не мешать */
+}
+
+/* Пульсация кнопки (дыхание) */
+@keyframes btnPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(255, 0, 128, 0.7), 0 0 45px rgba(0, 255, 255, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2);
+  }
+}
+
+/* Сдвиг градиента для плавного переливания цветов */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
 }
 /* ==================== НЕОНОВЫЙ ЛОГОТИП В ОСНОВНОМ ПРИЛОЖЕНИИ ==================== */
 .logo {
@@ -994,6 +1100,8 @@ div[style*="background-color"], .step-cell {
             drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
   }
 }
+
+
 /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
 @media (max-width: 768px) {
   .app { padding: 10px !important; }

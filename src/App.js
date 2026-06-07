@@ -1698,14 +1698,39 @@ const removeAllEffects = () => {
   if (mode === "landing") {
     return (
       <div className="app landing">
+        <div className="landing-content" style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          width: "100%",
+          padding: "20px",
+          boxSizing: "border-box"
+        }}>
+          <div className="logo-wrapper">
+            <h1 className="neon-struna" style={{ marginBottom: "5px" }}>STRUNA</h1>
+          </div>
     
-        <div className="landing-content">
-    
-        <div className="logo-wrapper">
-  <h1 className="neon-struna">STRUNA</h1>
-</div>
-    
-          <p className="tagline" style={{ marginTop: "-50px" }}>UNBOUND SOUND</p>
+          <p className="tagline" style={{ marginTop: "-20px", marginBottom: "30px" }}>
+          {Array.from("UNBOUND SOUND").map((char, index) => {
+            if (char === ' ') {
+              return <span key={index} style={{ display: 'inline-block', width: '0.5em' }}>&nbsp;</span>;
+            }
+            return (
+              <span
+                key={index}
+                className="flicker-char"
+                style={{
+                  animationDelay: `${index * 0.08}s`,
+                  display: 'inline-block'
+                }}
+              >
+                {char}
+              </span>
+            );
+          })}
+        </p>
     
           <button
     // Просто одна строка вместо пяти!
@@ -1843,30 +1868,26 @@ onClick={() => handleStartCreating("guitar")}
 
 </div>
 <div style={{
-  position: "absolute",
-  bottom: "20px",
-  left: "50%",
-  transform: "translateX(-50%)",
   textAlign: "center",
   width: "100%",
-  pointerEvents: "none",
-  zIndex: 10,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "6px"
+  gap: "6px",
+  marginTop: "40px",
+  position: "relative",
+  zIndex: 2
 }}>
- <p style={{
-  color: "rgba(255, 255, 255, 0.3)",
-  fontSize: "10px",
-  letterSpacing: "4px",
-  textTransform: "uppercase",
-  margin: 0,
-  fontFamily: "sans-serif"
-}}>
-  Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
-</p>
-  
+  <p style={{
+    color: "rgba(255, 255, 255, 0.3)",
+    fontSize: "10px",
+    letterSpacing: "4px",
+    textTransform: "uppercase",
+    margin: 0,
+    fontFamily: "sans-serif"
+  }}>
+    Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
+  </p>
   <span style={{
     fontSize: "9px",
     color: "#4D88FF",

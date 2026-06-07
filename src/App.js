@@ -1702,207 +1702,206 @@ const removeAllEffects = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "flex-start",
           minHeight: "100vh",
           width: "100%",
           padding: "20px",
+          paddingTop: "12vh",
           boxSizing: "border-box"
         }}>
           <div className="logo-wrapper">
             <h1 className="neon-struna" style={{ marginBottom: "5px" }}>STRUNA</h1>
           </div>
-    
-          <p className="tagline" style={{ marginTop: "-20px", marginBottom: "30px" }}>
-          {Array.from("UNBOUND SOUND").map((char, index) => {
-            if (char === ' ') {
-              return <span key={index} style={{ display: 'inline-block', width: '0.5em' }}>&nbsp;</span>;
-            }
-            return (
-              <span
-                key={index}
-                className="flicker-char"
-                style={{
-                  animationDelay: `${index * 0.08}s`,
-                  display: 'inline-block'
-                }}
-              >
-                {char}
-              </span>
-            );
-          })}
-        </p>
-    
+  
+          <p className="tagline" style={{ marginTop: "0", marginBottom: "25px", whiteSpace: "nowrap" }}>
+            {Array.from("UNBOUND SOUND").map((char, index) => {
+              if (char === ' ') {
+                return <span key={index} style={{ display: 'inline-block', width: '0.5em' }}>&nbsp;</span>;
+              }
+              return (
+                <span
+                  key={index}
+                  className="flicker-char"
+                  style={{
+                    animationDelay: `${index * 0.08}s`,
+                    display: 'inline-block'
+                  }}
+                >
+                  {char}
+                </span>
+              );
+            })}
+          </p>
+  
           <button
-    // Просто одна строка вместо пяти!
-onClick={() => handleStartCreating("guitar")}
-    className="start-btn"
->
-    START CREATING
-</button>
-{mode === "landing" && (
-  <div style={{
-    position: 'fixed',
-    top: '25px',
-    right: '25px',
-    zIndex: 9999,
-    cursor: 'pointer',
-    background: 'rgba(255, 255, 255, 0.07)',
-    padding: '12px',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-  }} 
-  onClick={() => login()}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-    e.currentTarget.style.transform = 'scale(1.05)';
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
-    e.currentTarget.style.transform = 'scale(1)';
-  }}
-  >
-    <svg width="20" height="20" viewBox="0 0 48 48">
-  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
-  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-</svg>
-  </div>
-)}
-    
-    <div className="preview">
-
-{/* GUITAR */}
-<div
-  className="preview-track guitar"
-  onClick={(e) => { e.stopPropagation(); playDemo("guitar"); }}
-  onDoubleClick={() => handleStartCreating("guitar")}
->
-  <div className="bg-wave">
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-    </svg>
-  </div>
-  <span>GUITAR</span>
-  <div className="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
-</div>
-
-{/* SYNTH */}
-<div
-  className="preview-track synth"
-  onClick={(e) => { e.stopPropagation(); playDemo("synth"); }}
-  onDoubleClick={() => handleStartCreating("synth")}
->
-  <div className="bg-wave">
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-    </svg>
-  </div>
-  <span>SYNTH</span>
-  <div className="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
-</div>
-
-{/* DRUM */}
-<div
-  className="preview-track drum"
-  onClick={(e) => { e.stopPropagation(); playDemo("drum"); }}
-  onDoubleClick={() => handleStartCreating("drum")}
->
-  <div className="bg-wave">
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-    </svg>
-  </div>
-  <span>DRUM</span>
-  <div className="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
-</div>
-
-{/* BASS */}
-<div
-  className="preview-track bass"
-  onClick={(e) => { e.stopPropagation(); playDemo("bass"); }}
-  onDoubleClick={() => handleStartCreating("bass")}
->
-  <div className="bg-wave">
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-    <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-    </svg>
-  </div>
-  <span>BASS</span>
-  <div className="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
-</div>
-
-{/* CHIP */}
-<div
-  className="preview-track chip"
-  onClick={(e) => { e.stopPropagation(); playDemo("chip"); }}
-  onDoubleClick={() => handleStartCreating("chip")}
->
-<div className="bg-wave">
-  <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-  </svg>
-</div>
-  <span>CHIP</span>
-  <div className="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-  </div>
-</div>
-
-</div>
-<div style={{
-  textAlign: "center",
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "6px",
-  marginTop: "40px",
-  position: "relative",
-  zIndex: 2
-}}>
-  <p style={{
-    color: "rgba(255, 255, 255, 0.3)",
-    fontSize: "10px",
-    letterSpacing: "4px",
-    textTransform: "uppercase",
-    margin: 0,
-    fontFamily: "sans-serif"
-  }}>
-    Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
-  </p>
-  <span style={{
-    fontSize: "9px",
-    color: "#4D88FF",
-    opacity: 0.6,
-    letterSpacing: "1px",
-    textTransform: "uppercase",
-    padding: "2px 8px",
-    border: "1px solid rgba(77, 136, 255, 0.2)",
-    borderRadius: "4px"
-  }}>
-    Desktop Version Only
-  </span>
-</div>
+            onClick={() => handleStartCreating("guitar")}
+            className="start-btn"
+            style={{ marginTop: "15px" }}
+          >
+            START CREATING
+          </button>
+  
+          {mode === "landing" && (
+            <div style={{
+              position: 'fixed',
+              top: '25px',
+              right: '25px',
+              zIndex: 9999,
+              cursor: 'pointer',
+              background: 'rgba(255, 255, 255, 0.07)',
+              padding: '12px',
+              borderRadius: '50%',
+              width: '50px',
+              height: '50px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+            }} 
+            onClick={() => login()}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}>
+              <svg width="20" height="20" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </svg>
+            </div>
+          )}
+  
+          <div className="preview">
+            {/* GUITAR */}
+            <div
+              className="preview-track guitar"
+              onClick={(e) => { e.stopPropagation(); playDemo("guitar"); }}
+              onDoubleClick={() => handleStartCreating("guitar")}
+            >
+              <div className="bg-wave">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+                </svg>
+              </div>
+              <span>GUITAR</span>
+              <div className="wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+  
+            {/* SYNTH */}
+            <div
+              className="preview-track synth"
+              onClick={(e) => { e.stopPropagation(); playDemo("synth"); }}
+              onDoubleClick={() => handleStartCreating("synth")}
+            >
+              <div className="bg-wave">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+                </svg>
+              </div>
+              <span>SYNTH</span>
+              <div className="wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+  
+            {/* DRUM */}
+            <div
+              className="preview-track drum"
+              onClick={(e) => { e.stopPropagation(); playDemo("drum"); }}
+              onDoubleClick={() => handleStartCreating("drum")}
+            >
+              <div className="bg-wave">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+                </svg>
+              </div>
+              <span>DRUM</span>
+              <div className="wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+  
+            {/* BASS */}
+            <div
+              className="preview-track bass"
+              onClick={(e) => { e.stopPropagation(); playDemo("bass"); }}
+              onDoubleClick={() => handleStartCreating("bass")}
+            >
+              <div className="bg-wave">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+                </svg>
+              </div>
+              <span>BASS</span>
+              <div className="wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+  
+            {/* CHIP */}
+            <div
+              className="preview-track chip"
+              onClick={(e) => { e.stopPropagation(); playDemo("chip"); }}
+              onDoubleClick={() => handleStartCreating("chip")}
+            >
+              <div className="bg-wave">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
+                </svg>
+              </div>
+              <span>CHIP</span>
+              <div className="wave">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+  
+          <div style={{
+            textAlign: "center",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "auto",
+            position: "relative",
+            zIndex: 2
+          }}>
+            <p style={{
+              color: "rgba(255, 255, 255, 0.3)",
+              fontSize: "10px",
+              letterSpacing: "4px",
+              textTransform: "uppercase",
+              margin: 0,
+              fontFamily: "sans-serif"
+            }}>
+              Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
+            </p>
+            <span style={{
+              fontSize: "9px",
+              color: "#4D88FF",
+              opacity: 0.6,
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              padding: "2px 8px",
+              border: "1px solid rgba(77, 136, 255, 0.2)",
+              borderRadius: "4px"
+            }}>
+              Desktop Version Only
+            </span>
+          </div>
         </div>
-    
       </div>
     );
   }

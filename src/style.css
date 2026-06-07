@@ -1100,7 +1100,21 @@ div[style*="background-color"], .step-cell {
             drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
   }
 }
+/* Убираем скролл на лендинге */
+.landing {
+  overflow-y: hidden;
+  height: 100vh;
+}
 
+.landing-content {
+  height: 100vh;
+  overflow-y: auto; /* если контент вдруг не поместится — появится скролл, но обычно не нужно */
+  scrollbar-width: none; /* Firefox: скрываем полосу */
+}
+
+.landing-content::-webkit-scrollbar {
+  display: none; /* Chrome/Safari: скрываем полосу */
+}
 
 /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
 @media (max-width: 768px) {

@@ -1115,6 +1115,128 @@ div[style*="background-color"], .step-cell {
 .landing-content::-webkit-scrollbar {
   display: none; /* Chrome/Safari: скрываем полосу */
 }
+/* Базовая форма для кнопок действий в блоке ATTACH EFFECT */
+.unified-action-btn {
+  border-radius: 30px;           /* полукруглая форма, можно заменить на 6px для квадратной */
+  padding: 6px 16px;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  min-width: 140px;
+}
+
+/* Специфичные стили для REMOVE ALL EFFECTS (красная тема) */
+.btn-remove-effects {
+  background-color: #0f172a;
+  border: 1px solid #ff4d4d;
+  color: #ff4d4d;
+}
+.btn-remove-effects:hover {
+  background-color: #1e293b;
+  box-shadow: 0 0 8px #ff4d4d;
+}
+
+/* Специфичные стили для SUB (фиолетовая/синяя тема) */
+.btn-sub {
+  background: rgba(77, 136, 255, 0.1);
+  border: 2px solid #4D88FF;
+  color: #4D88FF;
+}
+.btn-sub.active {
+  border-color: #bd00ff;
+  color: #bd00ff;
+  background: rgba(189, 0, 255, 0.2);
+  box-shadow: 0 0 8px #bd00ff;
+}
+.btn-sub:hover {
+  background: rgba(77, 136, 255, 0.2);
+  transform: translateY(-1px);
+}
+.btn-flash {
+  background: #4DFF88 !important;
+  color: #0a0e1a !important;
+  box-shadow: 0 0 12px #4DFF88 !important;
+  transform: scale(0.95);
+  transition: all 0.05s linear !important;
+}
+.btn-flash-red {
+  background: #FF4D4D !important;
+  color: #0a0e1a !important;
+  box-shadow: 0 0 12px #FF4D4D !important;
+  transform: scale(0.95);
+  transition: all 0.05s linear !important;
+}
+/* Обычное состояние — тусклая, без свечения */
+.ai-btn {
+  transition: all 0.2s ease;
+}
+
+/* При наведении — яркая, с неоном */
+.ai-btn:hover {
+  background: linear-gradient(135deg, #2a3a6e, #1e2a50) !important;
+  border: 1px solid #ff44ff !important;
+  color: #ff44ff !important;
+  box-shadow: 0 0 12px #ff44ff, 0 0 20px rgba(255, 68, 255, 0.5) !important;
+  transform: translateY(-2px);
+}
+
+/* При нажатии — анимация сжатия */
+.ai-btn:active {
+  transform: scale(0.95);
+  transition: transform 0.05s;
+}
+
+.record-square-btn.recording-active {
+  animation: pulse-record 1s infinite;
+}
+
+@keyframes pulse-record {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+/* Кнопки флагов (два кружка) */
+.lang-flag {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lang-flag:hover {
+  transform: scale(1.08);
+  background: rgba(77, 136, 255, 0.15);
+}
+
+.lang-flag.active {
+  background: rgba(77, 136, 255, 0.25);
+  border-color: #4D88FF;
+  box-shadow: 0 0 12px #4D88FF, 0 0 24px rgba(77, 136, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.lang-flag:active {
+  transform: scale(0.92);
+}
 
 /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
 @media (max-width: 768px) {

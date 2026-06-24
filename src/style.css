@@ -11,11 +11,60 @@ html, body {
 * {
   box-sizing: border-box;
 }
+
+/* ==================== CSS-ПЕРЕМЕННЫЕ (ДЛЯ ТЕМ) ==================== */
+:root {
+  /* Тёмная тема (по умолчанию) */
+  --bg-page: #0B1020;
+  --bg-card: #0a0e1a;
+  --bg-card-rgb: 10, 14, 26;
+  --bg-scroll: #050814;
+  --bg-input: #2a3a6e;
+  --text-primary: #ffffff;
+  --text-accent: #4D88FF;
+  --text-bright: #4DFF88;
+  --text-secondary: #AAB3C2;
+  --border-color: #2a3a6e;
+  --shadow-color: 0, 0, 0, 0.3;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --btn-bg: #1e2a50;
+  --btn-hover: #2a3a6e;
+  --modal-bg: #0d0d12;
+  --modal-border: #00f3ff;
+  --warning-bg: #0d0d0d;
+  --warning-border: #ff3333;
+  --scroll-thumb: #1e2a50;
+}
+
+.app.light-theme {
+  /* Светлая тема */
+  --bg-page: #f0f2f8;
+  --bg-card: #ffffff;
+  --bg-card-rgb: 255, 255, 255;
+  --bg-scroll: #eef2f7;
+  --bg-input: #d0d0e0;
+  --text-primary: #1a1a2e;
+  --text-accent: #0066ff;
+  --text-bright: #27ae60;
+  --text-secondary: #555566;
+  --border-color: #c0c0d0;
+  --shadow-color: 0, 0, 0, 0.1;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --btn-bg: #ffffff;
+  --btn-hover: #e8e8f0;
+  --modal-bg: #ffffff;
+  --modal-border: #0066ff;
+  --warning-bg: #ffffff;
+  --warning-border: #cc3333;
+  --scroll-thumb: #99aaff;
+}
+
+/* ==================== ОБЩИЕ СТИЛИ ПРИЛОЖЕНИЯ ==================== */
 .app {
-  background: #0B1020;
+  background: radial-gradient(ellipse at 50% 0%, rgba(20, 25, 45, 0.9) 0%, #0a0b14 70%, #050814 100%) !important;
   min-height: 100vh;
   padding: 20px;
-  color: white;
+  color: var(--text-primary);
   font-family: sans-serif;
   user-select: none;
   position: relative;
@@ -24,35 +73,134 @@ html, body {
 .app::before {
   content: "";
   position: absolute;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(122, 77, 255, 0.25), transparent 70%);
   top: 20%;
   left: 50%;
   transform: translateX(-50%);
+  background: radial-gradient(circle at 30% 40%, rgba(180, 60, 255, 0.5) 0%, rgba(255, 0, 128, 0.35) 30%, rgba(0, 200, 255, 0.25) 60%, transparent 80%) !important;
+  width: 800px !important;
+  height: 800px !important;
+  filter: blur(100px) !important;
+  animation: floatDarkMain 10s ease-in-out infinite alternate !important;
+  opacity: 0.9 !important;
+  z-index: 0;
+  pointer-events: none;
+}
+.app::after {
+  content: "";
+  position: fixed;
+  bottom: 5%;
+  right: 5%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at 60% 70%, rgba(255, 200, 0, 0.2) 0%, rgba(255, 100, 200, 0.15) 40%, rgba(0, 200, 255, 0.1) 70%, transparent 90%);
+  border-radius: 50%;
   filter: blur(80px);
   z-index: 0;
   pointer-events: none;
+  animation: floatDarkSecond 16s ease-in-out infinite alternate;
+  opacity: 0.6;
+}
+
+@keyframes floatDarkMain {
+  0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0.8; }
+  50% { transform: translateX(-50%) translateY(-5%) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(3%) scale(0.95); opacity: 0.9; }
+}
+@keyframes floatDarkSecond {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  100% { transform: translate(-10%, 8%) scale(1.3); opacity: 0.8; }
+}
+
+/* ==================== СВЕТЛАЯ ТЕМА — УСИЛЕННЫЙ ФОН С ШАРАМИ ==================== */
+.app.light-theme {
+  background: radial-gradient(ellipse at 50% 0%, #e8ecf4 0%, #d5dbe8 50%, #c0c8d8 100%) !important;
+  color: #1a1a2e !important;
+}
+.app.light-theme::before {
+  background: radial-gradient(circle at 40% 30%, rgba(0, 122, 255, 0.45) 0%, rgba(175, 82, 222, 0.35) 35%, rgba(255, 45, 85, 0.25) 65%, transparent 85%) !important;
+  filter: blur(90px) !important;
+  animation: floatLightMain 14s ease-in-out infinite alternate !important;
+  opacity: 0.9 !important;
+}
+.app.light-theme::after {
+  background: radial-gradient(circle at 60% 70%, rgba(255, 200, 0, 0.35) 0%, rgba(255, 100, 200, 0.25) 40%, rgba(0, 200, 255, 0.15) 70%, transparent 90%) !important;
+  filter: blur(80px) !important;
+  animation: floatLightSecond 18s ease-in-out infinite alternate !important;
+  opacity: 0.8 !important;
+}
+
+@keyframes floatLightMain {
+  0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0.7; }
+  50% { transform: translateX(-50%) translateY(-5%) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(4%) scale(0.95); opacity: 0.8; }
+}
+@keyframes floatLightSecond {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-10%, 8%) scale(1.3); opacity: 0.9; }
 }
 
 /* ==================== СКРОЛЛБАР ==================== */
 ::-webkit-scrollbar {
   height: 10px;
   width: 10px;
-  background: #050814;
+  background: var(--bg-scroll);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e2a50;
+  background: var(--scroll-thumb);
   border-radius: 10px;
-  border: 1px solid #4d88ff;
+  border: 1px solid var(--text-accent);
   box-shadow: inset 0 0 5px rgba(77, 136, 255, 0.2);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4d88ff;
-  box-shadow: 0 0 10px #4d88ff;
+  background: var(--text-accent);
+  box-shadow: 0 0 10px var(--text-accent);
 }
 ::-webkit-scrollbar-corner {
-  background: #050814;
+  background: var(--bg-scroll);
+}
+.scroll-x::-webkit-scrollbar { height: 8px; display: block !important; }
+.scroll-x::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; }
+.scroll-x { overflow-x: auto; overflow-y: hidden; position: relative; z-index: 1; }
+.sequencer-scroll { scroll-behavior: smooth; }
+
+/* ==================== ВЕРХНИЕ КНОПКИ (GOOGLE, ТЕМА, ЯЗЫК) ==================== */
+.top-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 20px;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.top-btn:hover {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.top-btn:active { transform: scale(0.95); }
+
+.app.light-theme .top-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  color: #1a1a2e;
+}
+.app.light-theme .top-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 /* ==================== КНОПКИ ТРАНСПОРТА ==================== */
@@ -60,8 +208,8 @@ html, body {
   width: 80px;
   height: 45px;
   border-radius: 8px;
-  background: #0a0e1a !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--btn-bg) !important;
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,8 +217,8 @@ html, body {
   transition: all 0.2s ease;
   padding: 0;
 }
-.play-pause-btn.stopped { border-color: #4dff88; box-shadow: 0 0 15px rgba(77, 255, 136, 0.4); }
-.play-pause-btn.playing { border-color: #4d88ff; box-shadow: 0 0 15px rgba(77, 136, 255, 0.5); }
+.play-pause-btn.stopped { border-color: var(--text-bright); box-shadow: 0 0 15px rgba(77, 255, 136, 0.4); }
+.play-pause-btn.playing { border-color: var(--text-accent); box-shadow: 0 0 15px rgba(77, 136, 255, 0.5); }
 .play-pause-btn:hover {
   background-color: rgba(77, 255, 136, 0.1) !important;
   box-shadow: 0 0 20px rgba(77, 255, 136, 0.4), inset 0 0 10px rgba(77, 255, 136, 0.1);
@@ -85,7 +233,7 @@ html, body {
 .stop-btn {
   width: 55px;
   height: 50px;
-  background-color: #0f172a !important;
+  background-color: var(--btn-bg) !important;
   border: 1px solid #ff4d4d !important;
   border-radius: 10px;
   cursor: pointer;
@@ -98,7 +246,7 @@ html, body {
 .stop-btn svg rect { filter: drop-shadow(0 0 5px #ff4d4d); }
 .stop-btn svg { fill: #ff4d4d; filter: drop-shadow(0 0 5px #ff4d4d); transition: transform 0.2s ease; }
 .stop-btn:hover {
-  background-color: #1e293b !important;
+  background-color: var(--btn-hover) !important;
   box-shadow: 0 0 20px rgba(255, 77, 77, 0.4), inset 0 0 10px rgba(255, 77, 77, 0.1);
   transform: translateY(-2px);
   filter: brightness(1.2);
@@ -107,7 +255,7 @@ html, body {
 .stop-btn:active svg { transform: scale(0.8); }
 
 .record-btn {
-  background-color: #0f172a !important;
+  background-color: var(--btn-bg) !important;
   border: 1px solid #ff4d4d !important;
   color: #ff4d4d !important;
   border-radius: 8px;
@@ -120,20 +268,70 @@ html, body {
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
-.record-btn:hover { background-color: #1e293b !important; filter: brightness(1.2); transform: translateY(-1px); }
+.record-btn:hover { background-color: var(--btn-hover) !important; filter: brightness(1.2); transform: translateY(-1px); }
 .record-btn.recording { background-color: rgba(255, 77, 77, 0.1) !important; animation: pulse-red 1.5s infinite ease-in-out; }
+
+.record-square-btn {
+  width: 55px;
+  height: 50px;
+  background: var(--btn-bg) !important;
+  border: 1px solid #ff4d4d !important;
+  color: #ff4d4d !important;
+  border-radius: 10px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+.record-square-btn:hover {
+  background: var(--btn-hover) !important;
+  transform: translateY(-1px);
+}
 .record-dot {
   width: 10px;
   height: 10px;
   background-color: #ff4d4d;
   border-radius: 50%;
   display: inline-block;
+  transition: background-color 0.2s ease;
+}
+.record-square-btn .record-dot { width: 8px; height: 8px; }
+
+.record-square-btn.recording-active {
+  background: #ff4d4d !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px #ff4d4d !important;
+  animation: pulse-record 1s infinite !important;
+}
+.record-square-btn.recording-active .record-dot { background-color: #ffffff !important; }
+
+@keyframes pulse-record {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
 }
 
+.app.light-theme .record-square-btn {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: #cc3333 !important;
+  color: #cc3333 !important;
+}
+.app.light-theme .record-square-btn:hover { background: #ffffff !important; }
+.app.light-theme .record-square-btn.recording-active {
+  background: #cc3333 !important;
+  color: #ffffff !important;
+}
+.app.light-theme .record-square-btn.recording-active .record-dot { background-color: #ffffff !important; }
+
 .save-btn, .load-btn {
-  background-color: #1e2a50 !important;
+  background-color: var(--btn-bg) !important;
   border: 1px solid rgba(77, 136, 255, 0.4) !important;
-  color: white !important;
+  color: var(--text-primary) !important;
   padding: 8px 16px !important;
   border-radius: 6px !important;
   cursor: pointer;
@@ -145,10 +343,10 @@ html, body {
   gap: 8px;
 }
 .save-btn:hover { border-color: #8a2be2 !important; box-shadow: 0 0 15px rgba(138, 43, 226, 0.6) !important; filter: brightness(1.2); transform: translateY(-1px); }
-.load-btn:hover { border-color: #4dff88 !important; box-shadow: 0 0 15px rgba(77, 255, 136, 0.5) !important; filter: brightness(1.2); transform: translateY(-1px); }
+.load-btn:hover { border-color: var(--text-bright) !important; box-shadow: 0 0 15px rgba(77, 255, 136, 0.5) !important; filter: brightness(1.2); transform: translateY(-1px); }
 
 .reset-btn {
-  background-color: #0f172a !important;
+  background-color: var(--btn-bg) !important;
   border: 1px solid #ff4d4d !important;
   color: #ff4d4d !important;
   padding: 8px 16px !important;
@@ -169,30 +367,58 @@ html, body {
 }
 .reset-btn:active { transform: scale(0.95); }
 
-/* ==================== BPM ==================== */
-.bpm-display {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0px;
-  line-height: 1.1;
-  min-width: 90px;
-  padding: 2px 5px;
+/* ==================== СТЕКЛЯННЫЕ КАРТОЧКИ И КОНТЕЙНЕРЫ ==================== */
+.app .instrument-selector,
+.app .scroll-container,
+.app div[style*="background: #0a0e1a"],
+.app div[style*="background:#0a0e1a"],
+.app div[style*="background-color: #0a0e1a"],
+.app div[style*="background: #0B1020"],
+.app div[style*="background: #0f172a"],
+.app div[style*="background: rgba(0,0,0,0.3)"] {
+  background: rgba(20, 25, 45, 0.5) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 20px !important;
 }
-.bpm-label {
-  font-size: 11px;
-  color: #4dff88;
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
-  font-weight: bold;
-  text-shadow: 0 0 5px #4dff88, 0 0 10px #4dff88, 0 0 20px rgba(77, 255, 136, 0.7);
+
+.app .scroll-container {
+  background: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(32px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
-.bpm-value {
-  font-size: 20px;
-  color: #4D88FF;
-  font-family: 'Courier New', monospace;
-  font-weight: 900;
-  text-shadow: 0 0 5px #4D88FF, 0 0 12px #4D88FF, 0 0 25px rgba(77, 136, 255, 0.8);
+.app .scroll-container > div { background: transparent !important; }
+.app .scroll-container div[style*="backgroundImage"] {
+  background-image: linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+                    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px) !important;
+}
+
+.app.light-theme .instrument-selector,
+.app.light-theme .scroll-container,
+.app.light-theme div[style*="background: #0a0e1a"],
+.app.light-theme div[style*="background:#0a0e1a"],
+.app.light-theme div[style*="background-color: #0a0e1a"],
+.app.light-theme div[style*="background: #0B1020"],
+.app.light-theme div[style*="background: #0f172a"],
+.app.light-theme div[style*="background: rgba(0,0,0,0.3)"] {
+  background: rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 20px !important;
+}
+
+.app.light-theme .scroll-container {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(32px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+.app.light-theme .scroll-container div[style*="backgroundImage"] {
+  background-image: linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px),
+                    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px) !important;
 }
 
 /* ==================== ИНСТРУМЕНТЫ ==================== */
@@ -201,26 +427,38 @@ html, body {
   gap: 15px;
   margin-bottom: 20px;
   padding: 10px;
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 .inst-btn {
   position: relative;
-  background: #1e2a50 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: rgba(255, 255, 255, 0.5) !important;
   padding: 12px 24px !important;
-  border-radius: 8px !important;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
   min-width: 100px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
-.inst-btn:hover { transform: translateY(-3px); color: white !important; border-color: rgba(255, 255, 255, 0.3) !important; }
+.inst-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+  color: var(--text-primary) !important;
+}
+.inst-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 25px currentColor !important;
+}
+
 .inst-icon { font-size: 20px; transition: transform 0.3s ease; }
 .inst-btn:hover .inst-icon { transform: scale(1.2) rotate(5deg); }
 .inst-text { font-size: 10px; font-weight: bold; letter-spacing: 2px; }
@@ -235,20 +473,46 @@ html, body {
 }
 
 /* Цвета инструментов */
-.guitar-btn.active, .guitar-btn:hover { border-color: #ffaa00 !important; color: #ffaa00 !important; box-shadow: 0 0 20px rgba(255, 170, 0, 0.4); }
-.guitar-btn.active .inst-icon { filter: drop-shadow(0 0 8px #ffaa00); }
-.synth-btn.active, .synth-btn:hover { border-color: #00d2ff !important; color: #00d2ff !important; box-shadow: 0 0 20px rgba(0, 210, 255, 0.4); }
-.synth-btn.active .inst-icon { filter: drop-shadow(0 0 8px #00d2ff); }
-.bass-btn.active, .bass-btn:hover { border-color: #bd00ff !important; color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.4); }
-.bass-btn.active .inst-icon { filter: drop-shadow(0 0 8px #bd00ff); }
-.chip-btn.active, .chip-btn:hover { border-color: #2ecc71 !important; color: #2ecc71 !important; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
-.chip-btn.active .inst-icon { filter: drop-shadow(0 0 8px #2ecc71); }
-.drum-btn.active, .drum-btn:hover { border-color: #FF3333 !important; color: #FF3333 !important; box-shadow: 0 0 20px rgba(255, 51, 51, 0.6); }
-.drum-btn.active .inst-icon { filter: drop-shadow(0 0 8px #FF3333); }
+button.inst-btn.guitar-btn { color: #ffaa00 !important; border-color: rgba(255, 170, 0, 0.3) !important; }
+button.inst-btn.synth-btn { color: #00d2ff !important; border-color: rgba(0, 210, 255, 0.3) !important; }
+button.inst-btn.drum-btn { color: #FF3333 !important; border-color: rgba(255, 51, 51, 0.3) !important; }
+button.inst-btn.bass-btn { color: #bd00ff !important; border-color: rgba(189, 0, 255, 0.3) !important; }
+button.inst-btn.chip-btn { color: #2ecc71 !important; border-color: rgba(46, 204, 113, 0.3) !important; }
+
+button.inst-btn.guitar-btn.active, button.inst-btn.guitar-btn:hover { border-color: #ffaa00 !important; box-shadow: 0 0 20px rgba(255, 170, 0, 0.6) !important; }
+button.inst-btn.guitar-btn.active .inst-icon { filter: drop-shadow(0 0 8px #ffaa00); }
+
+button.inst-btn.synth-btn.active, button.inst-btn.synth-btn:hover { border-color: #00d2ff !important; box-shadow: 0 0 20px rgba(0, 210, 255, 0.6) !important; }
+button.inst-btn.synth-btn.active .inst-icon { filter: drop-shadow(0 0 8px #00d2ff); }
+
+button.inst-btn.drum-btn.active, button.inst-btn.drum-btn:hover { border-color: #FF3333 !important; box-shadow: 0 0 20px rgba(255, 51, 51, 0.6) !important; }
+button.inst-btn.drum-btn.active .inst-icon { filter: drop-shadow(0 0 8px #FF3333); }
+
+button.inst-btn.bass-btn.active, button.inst-btn.bass-btn:hover { border-color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.6) !important; }
+button.inst-btn.bass-btn.active .inst-icon { filter: drop-shadow(0 0 8px #bd00ff); }
+
+button.inst-btn.chip-btn.active, button.inst-btn.chip-btn:hover { border-color: #2ecc71 !important; box-shadow: 0 0 20px rgba(46, 204, 113, 0.6) !important; }
+button.inst-btn.chip-btn.active .inst-icon { filter: drop-shadow(0 0 8px #2ecc71); }
 
 .fx-toggle-btn { margin-left: auto; border-style: dashed !important; }
-.fx-toggle-btn.fx-active, .fx-toggle-btn:hover { border-color: #ff4dfc !important; color: #ff4dfc !important; box-shadow: 0 0 15px rgba(255, 77, 252, 0.4); }
+.fx-toggle-btn.fx-active, .fx-toggle-btn:hover { border-color: #ff4dfc !important; color: #ff4dfc !important; box-shadow: 0 0 15px rgba(255, 77, 252, 0.4) !important; }
 .fx-toggle-btn.fx-active .inst-icon { filter: drop-shadow(0 0 8px #ff4dfc); }
+
+.app.light-theme .inst-btn {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06) !important;
+}
+.app.light-theme .inst-btn:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+.app.light-theme .inst-btn.active { background: rgba(255, 255, 255, 0.6) !important; }
+
+/* ==================== BPM ==================== */
+.bpm-display { display: flex; flex-direction: column; align-items: flex-start; gap: 0px; line-height: 1.1; min-width: 90px; padding: 2px 5px; }
+.bpm-label { font-size: 11px; color: var(--text-bright); text-transform: uppercase; letter-spacing: 2.5px; font-weight: bold; text-shadow: 0 0 5px var(--text-bright), 0 0 10px var(--text-bright), 0 0 20px rgba(77, 255, 136, 0.7); }
+.bpm-value { font-size: 20px; color: var(--text-accent); font-family: 'Courier New', monospace; font-weight: 900; text-shadow: 0 0 5px var(--text-accent), 0 0 12px var(--text-accent), 0 0 25px rgba(77, 136, 255, 0.8); }
 
 /* ==================== СЕТКА И БЛОКИ ==================== */
 .block {
@@ -270,127 +534,61 @@ html, body {
   50% { filter: brightness(1.8); box-shadow: 0 0 25px currentColor, 0 4px 0 rgba(0,0,0,0.5); transform: scale(1.03); }
   100% { filter: brightness(1.2); box-shadow: 0 0 5px currentColor, 0 4px 0 rgba(0,0,0,0.5); transform: scale(1); }
 }
-div[style*="background-color"], .step-cell {
-  color: #000000 !important;
-  font-weight: 900 !important;
-  text-shadow: none !important;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-}
+div[style*="background-color"], .step-cell { color: #000000 !important; font-weight: 900 !important; text-shadow: none !important; display: flex !important; align-items: center; justify-content: center; }
+.tracks { display: inline-flex; gap: 16px; min-width: max-content; }
+.tracks > * { width: 20px; flex-shrink: 0; }
 
 /* ==================== ЛУПЕР ==================== */
-.loop-btn {
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
+.loop-btn { transition: all 0.2s ease; position: relative; overflow: hidden; }
 .loop-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.loop-btn.active {
-  animation: neonPulse 1.2s infinite;
-  box-shadow: 0 0 12px #4DFF88, inset 0 0 6px #4DFF88;
-}
+.loop-btn.active { animation: neonPulse 1.2s infinite; box-shadow: 0 0 12px var(--text-bright), inset 0 0 6px var(--text-bright); }
 @keyframes neonPulse {
-  0% { box-shadow: 0 0 4px #4DFF88, inset 0 0 2px #4DFF88; }
-  50% { box-shadow: 0 0 18px #4DFF88, inset 0 0 10px #4DFF88; }
-  100% { box-shadow: 0 0 4px #4DFF88, inset 0 0 2px #4DFF88; }
+  0% { box-shadow: 0 0 4px var(--text-bright), inset 0 0 2px var(--text-bright); }
+  50% { box-shadow: 0 0 18px var(--text-bright), inset 0 0 10px var(--text-bright); }
+  100% { box-shadow: 0 0 4px var(--text-bright), inset 0 0 2px var(--text-bright); }
 }
 
-/* ==================== ПРЕВЬЮ И АНИМАЦИЯ ВОЛН (НЕОНОВЫЙ ЭКВАЛАЙЗЕР) ==================== */
-.preview {
-  margin-top: 40px;
-  width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+/* ==================== ПРЕВЬЮ И АНИМАЦИЯ ВОЛН ==================== */
+.preview { margin-top: 40px; width: 380px; display: flex; flex-direction: column; gap: 12px;}
 
-/* Кнопка инструмента */
 .preview-track {
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: rgba(10, 14, 26, 0.6);
-  backdrop-filter: blur(8px);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 2px;
   text-align: center;
-  transition: all 0.25s ease;
   cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-/* Индивидуальные цвета (тени и текст) */
-.preview-track.guitar { color: #FFB84D; box-shadow: 0 0 12px rgba(255, 184, 77, 0.2); }
-.preview-track.synth  { color: #4DC3FF; box-shadow: 0 0 12px rgba(77, 195, 255, 0.2); }
-.preview-track.drum   { color: #FF4D4D; box-shadow: 0 0 12px rgba(255, 77, 77, 0.2); }
-.preview-track.bass   { color: #BD00FF; box-shadow: 0 0 12px rgba(189, 0, 255, 0.2); }
-.preview-track.chip   { color: #4DFF88; box-shadow: 0 0 12px rgba(77, 255, 136, 0.2); }
-
-/* Контейнер для визуализатора */
-.preview-track .wave {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  margin-top: 12px;
-}
-
-/* Полоска эквалайзера */
-.preview-track .wave span {
-  width: 5px;
-  background: currentColor;
-  border-radius: 3px;
-  box-shadow: 0 0 6px currentColor;
-  animation: spectrumBounce 1.2s infinite ease-in-out;
-}
-
-/* Индивидуальные анимации для каждой полоски (разная высота и ритм) */
-.preview-track .wave span:nth-child(1) { animation-name: bounce1; animation-duration: 0.65s; }
-.preview-track .wave span:nth-child(2) { animation-name: bounce2; animation-duration: 0.5s; animation-delay: 0.1s; }
-.preview-track .wave span:nth-child(3) { animation-name: bounce3; animation-duration: 0.8s; animation-delay: 0.05s; }
-.preview-track .wave span:nth-child(4) { animation-name: bounce4; animation-duration: 0.55s; animation-delay: 0.2s; }
-.preview-track .wave span:nth-child(5) { animation-name: bounce5; animation-duration: 0.7s; animation-delay: 0s; }
-
-/* Ключевые кадры — создают иллюзию прыгающего эквалайзера */
-@keyframes bounce1 {
-  0%, 100% { height: 5px; opacity: 0.5; }
-  30% { height: 24px; opacity: 1; }
-  70% { height: 10px; opacity: 0.8; }
-}
-@keyframes bounce2 {
-  0%, 100% { height: 4px; opacity: 0.5; }
-  40% { height: 20px; opacity: 1; }
-  80% { height: 14px; opacity: 0.7; }
-}
-@keyframes bounce3 {
-  0%, 100% { height: 6px; opacity: 0.6; }
-  25% { height: 28px; opacity: 1; }
-  60% { height: 12px; opacity: 0.9; }
-}
-@keyframes bounce4 {
-  0%, 100% { height: 4px; opacity: 0.4; }
-  35% { height: 22px; opacity: 1; }
-  75% { height: 8px; opacity: 0.7; }
-}
-@keyframes bounce5 {
-  0%, 100% { height: 5px; opacity: 0.5; }
-  45% { height: 26px; opacity: 1; }
-  85% { height: 15px; opacity: 0.8; }
-}
-
-/* Ускорение и усиление при наведении */
-.preview-track:hover .wave span {
-  animation-duration: 0.35s !important;
-  filter: drop-shadow(0 0 6px currentColor);
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 12px 20px !important;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 .preview-track:hover {
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
   filter: brightness(1.1);
-  border-color: currentColor;
 }
-/* АНИМАЦИЯ ВОЛН (неоновая, под цвет инструмента) */
+.app.light-theme .preview-track {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .preview-track:hover { background: rgba(255, 255, 255, 0.4) !important; border-color: currentColor !important; }
+
+.preview-track.guitar { color: #FFB84D; }
+.preview-track.synth  { color: #4DC3FF; }
+.preview-track.drum   { color: #FF4D4D; }
+.preview-track.bass   { color: #BD00FF; }
+.preview-track.chip   { color: #4DFF88; }
+.preview-track.demo-active { filter: brightness(1.4) drop-shadow(0 0 12px currentColor); transform: scale(1.02); transition: all 0.1s ease; }
+
 .preview-track .wave {
   display: flex;
   align-items: flex-end;
@@ -406,32 +604,43 @@ div[style*="background-color"], .step-cell {
   animation: waveBreathing 1s infinite ease-in-out;
   transition: all 0.2s;
 }
-/* Задержки для каждой полоски */
 .preview-track .wave span:nth-child(1) { animation-delay: 0s; }
 .preview-track .wave span:nth-child(2) { animation-delay: 0.12s; }
 .preview-track .wave span:nth-child(3) { animation-delay: 0.24s; }
 .preview-track .wave span:nth-child(4) { animation-delay: 0.36s; }
 .preview-track .wave span:nth-child(5) { animation-delay: 0.48s; }
+
 @keyframes waveBreathing {
   0%, 100% { height: 5px; opacity: 0.6; }
   50% { height: 16px; opacity: 1; }
 }
-/* Ускорение и свечение при наведении */
+
 .preview-track:hover .wave span {
   animation-duration: 0.4s;
   filter: drop-shadow(0 0 3px currentColor);
 }
-/* Бегущая волна при наведении (эффект последовательности) */
 .preview-track:hover .wave span:nth-child(1) { animation-delay: 0s; }
 .preview-track:hover .wave span:nth-child(2) { animation-delay: 0.05s; }
 .preview-track:hover .wave span:nth-child(3) { animation-delay: 0.10s; }
 .preview-track:hover .wave span:nth-child(4) { animation-delay: 0.15s; }
 .preview-track:hover .wave span:nth-child(5) { animation-delay: 0.20s; }
-.preview-track.demo-active {
-  filter: brightness(1.4) drop-shadow(0 0 12px currentColor);
-  transform: scale(1.02);
-  transition: all 0.1s ease;
+
+.bg-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; pointer-events: none; z-index: 0; }
+.bg-wave svg { width: 100%; height: 100%; display: block; }
+.bg-wave path { fill: none; stroke: currentColor; stroke-width: 1.8; filter: drop-shadow(0 0 5px currentColor); animation: autoTransformWave 6s ease-in-out infinite; }
+.preview-track.guitar .bg-wave path { animation-delay: 0s; }
+.preview-track.synth  .bg-wave path { animation-delay: 0.8s; }
+.preview-track.drum   .bg-wave path { animation-delay: 1.6s; }
+.preview-track.bass   .bg-wave path { animation-delay: 2.4s; }
+.preview-track.chip   .bg-wave path { animation-delay: 3.2s; }
+@keyframes autoTransformWave {
+  0% { d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20"); opacity: 0.5; }
+  25% { d: path("M0,20 Q5,26 10,32 Q15,20 20,8 Q25,20 30,32 Q35,20 40,8 Q45,20 50,32 Q55,20 60,8 Q65,20 70,32 Q75,20 80,8 Q85,20 90,32 Q95,20 100,8 Q105,20 110,32 Q115,20 120,8 Q125,20 130,32 Q135,20 140,8 Q145,20 150,32 Q155,20 160,8 Q165,20 170,32 Q175,20 180,8 Q185,20 190,32 Q195,26 200,20"); opacity: 0.8; }
+  50% { d: path("M0,20 Q5,32 10,32 Q15,32 20,20 Q25,8 30,8 Q35,8 40,20 Q45,32 50,32 Q55,32 60,20 Q65,8 70,8 Q75,8 80,20 Q85,32 90,32 Q95,32 100,20 Q105,8 110,8 Q115,8 120,20 Q125,32 130,32 Q135,32 140,20 Q145,8 150,8 Q155,8 160,20 Q165,32 170,32 Q175,32 180,20 Q185,8 190,8 Q195,8 200,20"); opacity: 0.8; }
+  75% { d: path("M0,20 Q5,5 10,5 Q15,5 20,20 Q25,35 30,35 Q35,35 40,20 Q45,5 50,5 Q55,5 60,20 Q65,35 70,35 Q75,35 80,20 Q85,5 90,5 Q95,5 100,20 Q105,35 110,35 Q115,35 120,20 Q125,5 130,5 Q135,5 140,20 Q145,35 150,35 Q155,35 160,20 Q165,5 170,5 Q175,5 180,20 Q185,35 190,35 Q195,35 200,20"); opacity: 0.5; }
+  100% { d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20"); opacity: 0.5; }
 }
+.preview-track:hover .bg-wave path { animation-duration: 1.5s; opacity: 0.9; filter: drop-shadow(0 0 6px currentColor); }
 
 /* ==================== ЛЕНДИНГ ==================== */
 .landing {
@@ -439,91 +648,91 @@ div[style*="background-color"], .step-cell {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh; /* вместо height: 100vh, чтобы не резало */
+  height: 100vh !important;
+  width: 100vw !important;
   text-align: center;
-  overflow: hidden;
+  overflow: hidden !important;
   background: #0a0b14;
 }
-
 .landing::before {
   content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80vmin;
-  height: 80vmin;
-  background: radial-gradient(circle, 
-    rgba(255, 0, 128, 0.4) 0%,
-    rgba(138, 43, 226, 0.3) 40%,
-    rgba(0, 255, 255, 0.1) 70%,
-    transparent 100%
-  );
+  width: 90vmin;
+  height: 90vmin;
+  background: radial-gradient(circle, rgba(255, 0, 80, 0.7) 0%, rgba(200, 0, 150, 0.5) 30%, rgba(100, 0, 200, 0.4) 60%, rgba(0, 150, 255, 0.2) 80%, transparent 100%);
   border-radius: 50%;
-  filter: blur(40px);
+  filter: blur(50px);
   z-index: 0;
   pointer-events: none;
-  animation: breathe 4s ease-in-out infinite;
+  animation: pulseCenter 6s ease-in-out infinite alternate;
+}
+.landing::after {
+  content: "";
+  position: absolute;
+  bottom: 10%;
+  right: 5%;
+  width: 50vmin;
+  height: 50vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(255, 100, 0, 0.1) 40%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatLanding 14s ease-in-out infinite alternate;
+}
+.app.light-theme.landing::after {
+  left: 5%;
+  width: 40vmin;
+  height: 40vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, rgba(255, 100, 0, 0.15) 40%, transparent 70%) !important;
+  animation: floatLandingLight 20s ease-in-out infinite alternate !important;
+}
+.app.landing::after {
+  left: 5%;
+  width: 40vmin;
+  height: 40vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(255, 100, 0, 0.1) 40%, transparent 70%);
+  animation: floatLandingDark 18s ease-in-out infinite alternate;
 }
 
-.landing .landing-content {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+@keyframes pulseCenter {
+  0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; filter: blur(50px); }
+  50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; filter: blur(40px); }
+  100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.9; filter: blur(55px); }
+}
+@keyframes floatLanding {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-10%, 5%) scale(1.4); opacity: 0.9; }
+}
+@keyframes floatLandingLight {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  100% { transform: translate(-8%, 10%) scale(1.5); opacity: 0.8; }
+}
+@keyframes floatLandingDark {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  100% { transform: translate(-8%, 10%) scale(1.5); opacity: 0.7; }
 }
 
-@keyframes breathe {
-  0% {
-    transform: translate(-50%, -50%) scale(0.9);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(0.9);
-    opacity: 0.5;
-  }
-}
-/* Стили для UNBOUND SOUND */
+.landing .landing-content { position: relative; z-index: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
 .tagline {
-  color: #4D88FF;
+  color: var(--text-accent);
   letter-spacing: 6px;
   font-size: 1.2rem;
   margin-bottom: 30px;
-  text-shadow: 0 0 5px #4D88FF, 0 0 10px rgba(77, 136, 255, 0.5);
+  text-shadow: 0 0 5px var(--text-accent), 0 0 10px rgba(77, 136, 255, 0.5);
   animation: neonFlicker 2s infinite alternate;
 }
-
 @keyframes neonFlicker {
-  0%, 18%, 22%, 25%, 53%, 57%, 100% {
-    text-shadow: 0 0 4px #4D88FF, 0 0 8px rgba(77, 136, 255, 0.4), 0 0 14px #4D88FF;
-    opacity: 1;
-  }
-  20%, 24%, 55% {
-    text-shadow: 0 0 2px #4D88FF, 0 0 4px rgba(77, 136, 255, 0.2);
-    opacity: 0.7;
-  }
+  0%, 18%, 22%, 25%, 53%, 57%, 100% { text-shadow: 0 0 4px var(--text-accent), 0 0 8px rgba(77, 136, 255, 0.4), 0 0 14px var(--text-accent); opacity: 1; }
+  20%, 24%, 55% { text-shadow: 0 0 2px var(--text-accent), 0 0 4px rgba(77, 136, 255, 0.2); opacity: 0.7; }
 }
-.flicker-char {
-  display: inline-block;
-  animation: burnout 2.5s infinite steps(1);
-}
+.flicker-char { display: inline-block; animation: burnout 2.5s infinite steps(1); }
+@keyframes burnout { 0%, 100%, 95%, 99% { opacity: 1; } 96%, 97% { opacity: 0; } 98% { opacity: 0.2; } }
 
-@keyframes burnout {
-  0%, 100% { opacity: 1; }
-  95% { opacity: 1; }
-  96% { opacity: 0; }
-  97% { opacity: 0; }
-  98% { opacity: 0.2; }
-  99% { opacity: 1; }
-}
-/* Кнопка START CREATING — неоновая, с пульсацией */
 .start-btn {
   padding: 15px 40px;
   font-size: 18px;
@@ -542,96 +751,36 @@ div[style*="background-color"], .step-cell {
   position: relative;
   z-index: 2;
 }
-
-.start-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 25px rgba(255, 0, 128, 0.8), 0 0 50px rgba(0, 255, 255, 0.5);
-  animation: none; /* при наведении пульсация останавливается, чтобы не мешать */
-}
-
-/* Пульсация кнопки (дыхание) */
+.start-btn:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 128, 0.8), 0 0 50px rgba(0, 255, 255, 0.5); animation: none; }
 @keyframes btnPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2);
-  }
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 25px rgba(255, 0, 128, 0.7), 0 0 45px rgba(0, 255, 255, 0.5);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2);
-  }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2); }
+  50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(255, 0, 128, 0.7), 0 0 45px rgba(0, 255, 255, 0.5); }
 }
+@keyframes gradientShift { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
 
-/* Сдвиг градиента для плавного переливания цветов */
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
-}
-/* ==================== НЕОНОВЫЙ ЛОГОТИП В ОСНОВНОМ ПРИЛОЖЕНИИ ==================== */
+/* ==================== НЕОНОВЫЙ ЛОГОТИП ==================== */
 .logo {
   font-size: 64px;
   font-weight: bold;
   letter-spacing: 2px;
-  background: linear-gradient(
-    90deg,
-    #ff0080,
-    #ff8c00,
-    #ffff00,
-    #00ff80,
-    #00bfff,
-    #8a2be2,
-    #ff0080
-  );
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
   background-size: 300% auto;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
-          drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4)) drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
   animation: neonFlowSmooth 6s ease-in-out infinite;
   display: inline-block;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
-
-.logo:hover {
-  transform: scale(1.02);
-}
-
-/* Анимация плавного переливания */
+.logo:hover { transform: scale(1.02); }
 @keyframes neonFlowSmooth {
-  0% {
-    background-position: 0% 50%;
-    filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
-            drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
-  }
-  25% {
-    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
-            drop-shadow(0 0 25px rgba(0, 255, 128, 0.3));
-  }
-  50% {
-    background-position: 100% 50%;
-    filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6))
-            drop-shadow(0 0 35px rgba(128, 0, 255, 0.4));
-  }
-  75% {
-    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
-            drop-shadow(0 0 25px rgba(0, 255, 128, 0.3));
-  }
-  100% {
-    background-position: 0% 50%;
-    filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
-            drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
-  }
+  0%, 100% { background-position: 0% 50%; filter: drop-shadow(0 0 8px rgba(255,0,128,0.4)) drop-shadow(0 0 15px rgba(0,255,255,0.2)); }
+  25%, 75% { filter: drop-shadow(0 0 15px rgba(255,128,0,0.5)) drop-shadow(0 0 25px rgba(0,255,128,0.3)); }
+  50% { background-position: 100% 50%; filter: drop-shadow(0 0 20px rgba(0,255,255,0.6)) drop-shadow(0 0 35px rgba(128,0,255,0.4)); }
 }
-/* Неоновый логотип на лендинге (такой же, как в основном приложении) */
+
 .neon-struna {
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(50px, 15vw, 120px);
@@ -640,34 +789,37 @@ div[style*="background-color"], .step-cell {
   letter-spacing: 0.15em;
   display: block;
   margin: 0 auto 30px auto;
-  background: linear-gradient(
-    90deg,
-    #ff0080,
-    #ff8c00,
-    #ffff00,
-    #00ff80,
-    #00bfff,
-    #8a2be2,
-    #ff0080
-  );
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
   background-size: 300% auto;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4))
-          drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  filter: drop-shadow(0 0 8px rgba(255,0,128,0.4)) drop-shadow(0 0 15px rgba(0,255,255,0.2));
   animation: neonFlowSmooth 6s ease-in-out infinite;
   cursor: pointer;
   transition: transform 0.3s ease;
 }
+.neon-struna:hover { transform: scale(1.02); }
 
-.neon-struna:hover {
-  transform: scale(1.02);
+.neon-kargani {
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4)) drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
+  animation: neonFlowSmooth 8s ease-in-out infinite;
+  font-weight: bold;
+  display: inline-block;
+  transition: transform 0.3s ease;
 }
+.neon-kargani:hover { transform: scale(1.02); }
+
+/* ==================== НАВИГАЦИОННЫЕ И ДОП КНОПКИ ==================== */
 .back-to-home-btn {
   background: rgba(77, 136, 255, 0.05) !important;
   border: 1px solid rgba(77, 136, 255, 0.3) !important;
-  color: #4D88FF !important;
+  color: var(--text-accent) !important;
   padding: 5px 12px !important;
   border-radius: 4px !important;
   font-size: 11px !important;
@@ -681,15 +833,9 @@ div[style*="background-color"], .step-cell {
   gap: 8px;
   opacity: 0.15;
 }
-.back-to-home-btn:hover {
-  background: rgba(77, 136, 255, 0.15) !important;
-  border-color: #4D88FF !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 15px rgba(77, 136, 255, 0.4);
-  opacity: 1 !important;
-  transform: translateY(-1px);
-}
+.back-to-home-btn:hover { background: rgba(77, 136, 255, 0.15) !important; border-color: var(--text-accent) !important; color: #ffffff !important; box-shadow: 0 0 15px rgba(77, 136, 255, 0.4); opacity: 1 !important; transform: translateY(-1px); }
 .back-to-home-btn:active { transform: scale(0.95); box-shadow: 0 0 5px rgba(77, 136, 255, 0.2); }
+
 .controls-help-btn {
   position: relative !important;
   display: block !important;
@@ -697,8 +843,8 @@ div[style*="background-color"], .step-cell {
   z-index: 9999 !important;
   background: rgba(0, 0, 0, 0.6) !important;
   backdrop-filter: blur(10px) !important;
-  border: 1px solid #00f3ff !important;
-  color: #00f3ff !important;
+  border: 1px solid var(--modal-border) !important;
+  color: var(--modal-border) !important;
   padding: 10px 25px !important;
   border-radius: 30px !important;
   font-size: 12px !important;
@@ -708,546 +854,158 @@ div[style*="background-color"], .step-cell {
   box-shadow: 0 0 15px rgba(0, 243, 255, 0.3) !important;
   transition: all 0.3s ease !important;
 }
-.controls-help-btn:hover {
-  background: rgba(0, 243, 255, 0.2) !important;
-  box-shadow: 0 0 25px rgba(0, 243, 255, 0.6) !important;
-  transform: scale(1.05) !important;
+.controls-help-btn:hover { background: rgba(0, 243, 255, 0.2) !important; box-shadow: 0 0 25px rgba(0, 243, 255, 0.6) !important; transform: scale(1.05) !important; }
+
+.app.light-theme .controls-help-btn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: #0066ff !important;
+  color: #0066ff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
+.app.light-theme .controls-help-btn:hover { background: #ffffff !important; border-color: #0066ff !important; color: #0066ff !important; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15) !important; }
+.app.light-theme .controls-help-btn[style*="borderColor: #4DFF88"] { border-color: #27ae60 !important; color: #27ae60 !important; }
+.app.light-theme .controls-help-btn[style*="borderColor: #4DFF88"]:hover { border-color: #27ae60 !important; color: #27ae60 !important; background: #ffffff !important; box-shadow: 0 4px 12px rgba(39, 174, 96, 0.15) !important; }
+
+/* ==================== КНОПКИ ЭФФЕКТОВ ==================== */
+.effect-btn { background: var(--btn-bg) !important; color: var(--text-accent) !important; }
+.effect-btn:hover { background: var(--btn-hover) !important; }
+.effect-btn-remove { background: var(--btn-bg) !important; color: #FFB84D !important; }
+.effect-btn-remove:hover { background: var(--btn-hover) !important; }
 
 /* ==================== МОДАЛЬНЫЕ ОКНА ==================== */
 .custom-modal-overlay {
   position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0, 0, 0, 0.8) !important;
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-  z-index: 100000 !important;
-  backdrop-filter: blur(10px);
+  display: flex !important; justify-content: center; align-items: center;
+  z-index: 100000 !important; backdrop-filter: blur(10px);
 }
 .custom-modal {
-  background: #0d0d12 !important;
-  border: 1px solid #00f3ff !important;
+  background: var(--modal-bg) !important;
+  border: 1px solid var(--modal-border) !important;
   box-shadow: 0 0 50px rgba(0, 243, 255, 0.25) !important;
-  padding: 40px !important;
-  border-radius: 25px !important;
-  width: 450px !important;
+  padding: 40px !important; border-radius: 25px !important; width: 450px !important;
   text-align: center;
   animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .custom-modal h2 {
-  color: #00f3ff !important;
-  font-family: 'Orbitron', sans-serif !important;
-  text-transform: uppercase;
-  letter-spacing: 4px;
-  margin-bottom: 30px;
-  font-size: 22px;
+  color: var(--modal-border) !important; font-family: 'Orbitron', sans-serif !important;
+  text-transform: uppercase; letter-spacing: 4px; margin-bottom: 30px; font-size: 22px;
   text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
 }
 .modal-content { text-align: left !important; margin-bottom: 35px !important; }
-.control-item {
-  margin-bottom: 18px !important;
-  color: #e0e0e0 !important;
-  font-size: 15px !important;
-  line-height: 1.4;
-  border-left: 3px solid rgba(0, 243, 255, 0.3);
-  padding-left: 15px;
-}
-.control-item span {
-  color: #00f3ff !important;
-  font-weight: bold !important;
-  text-transform: uppercase;
-  font-size: 13px;
-}
-.close-modal-btn {
-  background: transparent !important;
-  border: 1px solid #00f3ff !important;
-  color: #00f3ff !important;
-  padding: 12px 45px !important;
-  border-radius: 50px !important;
-  cursor: pointer !important;
-  font-family: 'Orbitron', sans-serif !important;
-  font-size: 13px !important;
-  transition: all 0.3s ease !important;
-  text-transform: uppercase;
-}
-.close-modal-btn:hover { background: #00f3ff !important; color: #000 !important; box-shadow: 0 0 25px #00f3ff !important; }
-@keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.control-item { margin-bottom: 18px !important; color: var(--text-primary) !important; font-size: 15px !important; line-height: 1.4; border-left: 3px solid var(--modal-border) !important; padding-left: 15px; }
+.control-item span { color: var(--modal-border) !important; font-weight: bold !important; text-transform: uppercase; font-size: 13px; }
+.close-modal-btn { background: transparent !important; border: 1px solid var(--modal-border) !important; color: var(--modal-border) !important; padding: 12px 45px !important; border-radius: 50px !important; cursor: pointer !important; font-family: 'Orbitron', sans-serif !important; font-size: 13px !important; transition: all 0.3s ease !important; text-transform: uppercase; }
+.close-modal-btn:hover { background: var(--modal-border) !important; color: #000 !important; box-shadow: 0 0 25px var(--modal-border) !important; }
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-.warning-overlay {
-  position: fixed !important;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.85) !important;
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-  z-index: 100000 !important;
-  backdrop-filter: blur(12px) !important;
-}
-.warning-modal {
-  background: #0d0d0d !important;
-  border: 1px solid #ff3333 !important;
-  box-shadow: 0 0 50px rgba(255, 51, 51, 0.3) !important;
-  padding: 40px !important;
-  border-radius: 25px !important;
-  width: 420px !important;
-  text-align: center !important;
-}
-.warning-icon { font-size: 44px; color: #ff3333; margin-bottom: 15px; text-shadow: 0 0 20px rgba(255, 51, 51, 0.6); }
-.warning-modal h2 {
-  color: #ff3333 !important;
-  font-family: 'Orbitron', sans-serif !important;
-  text-transform: uppercase;
-  letter-spacing: 4px;
-  margin-bottom: 20px;
-  font-size: 24px;
-  text-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
-}
-.warning-modal p { color: #cccccc !important; font-size: 15px; margin-bottom: 30px; }
+.warning-overlay { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85) !important; display: flex !important; justify-content: center; align-items: center; z-index: 100000 !important; backdrop-filter: blur(12px) !important; }
+.warning-modal { background: var(--warning-bg) !important; border: 1px solid var(--warning-border) !important; box-shadow: 0 0 50px rgba(255, 51, 51, 0.3) !important; padding: 40px !important; border-radius: 25px !important; width: 420px !important; text-align: center !important; }
+.warning-icon { font-size: 44px; color: var(--warning-border); margin-bottom: 15px; text-shadow: 0 0 20px rgba(255, 51, 51, 0.6); }
+.warning-modal h2 { color: var(--warning-border) !important; font-family: 'Orbitron', sans-serif !important; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 15px rgba(255, 51, 51, 0.4); }
+.warning-modal p { color: var(--text-primary) !important; font-size: 15px; margin-bottom: 30px; }
 .modal-buttons { display: flex; justify-content: center; gap: 15px; }
-.cancel-modal-btn {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: #999 !important;
-  padding: 12px 25px !important;
-  border-radius: 50px !important;
-  cursor: pointer;
-  font-size: 11px;
-  transition: all 0.3s;
-}
+.cancel-modal-btn { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; color: #999 !important; padding: 12px 25px !important; border-radius: 50px !important; cursor: pointer; font-size: 11px; transition: all 0.3s; }
 .cancel-modal-btn:hover { background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; border-color: #fff !important; }
-.confirm-reset-btn {
-  background: #ff3333 !important;
-  border: 1px solid #ff3333 !important;
-  color: #000 !important;
-  padding: 12px 30px !important;
-  border-radius: 50px !important;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: bold;
-  transition: all 0.3s;
-}
-.confirm-reset-btn:hover { box-shadow: 0 0 30px #ff3333 !important; transform: scale(1.05); }
-.info-modal { border-color: #4D88FF !important; box-shadow: 0 0 40px rgba(77, 136, 255, 0.4) !important; }
-.info-modal h2 { color: #4D88FF !important; text-shadow: 0 0 10px #4D88FF; }
-.neon-icon {
-  font-size: 48px;
-  color: #4D88FF;
-  text-shadow: 0 0 8px #4D88FF, 0 0 16px #4D88FF;
-  display: inline-block;
-  margin-bottom: 10px;
-}
+.confirm-reset-btn { background: var(--warning-border) !important; border: 1px solid var(--warning-border) !important; color: #000 !important; padding: 12px 30px !important; border-radius: 50px !important; cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.3s; }
+.confirm-reset-btn:hover { box-shadow: 0 0 30px var(--warning-border) !important; transform: scale(1.05); }
+
+.info-modal { border-color: var(--text-accent) !important; box-shadow: 0 0 40px rgba(77, 136, 255, 0.4) !important; }
+.info-modal h2 { color: var(--text-accent) !important; text-shadow: 0 0 10px var(--text-accent); }
+.neon-icon { font-size: 48px; color: var(--text-accent); text-shadow: 0 0 8px var(--text-accent), 0 0 16px var(--text-accent); display: inline-block; margin-bottom: 10px; }
+
+/* ==================== МОДАЛЬНЫЕ ОКНА В СВЕТЛОЙ ТЕМЕ ==================== */
+.app.light-theme .custom-modal-overlay { background: rgba(220, 225, 240, 0.75) !important; backdrop-filter: blur(16px) !important; -webkit-backdrop-filter: blur(16px) !important; }
+.app.light-theme .custom-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #0066ff !important; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1) !important; }
+.app.light-theme .custom-modal h2 { color: #0066ff !important; }
+.app.light-theme .custom-modal .control-item { color: #1a1a2e !important; }
+.app.light-theme .custom-modal .control-item span { color: #0066ff !important; }
+.app.light-theme .custom-modal .close-modal-btn { color: #0066ff !important; border-color: #0066ff !important; }
+.app.light-theme .custom-modal .close-modal-btn:hover { background: #0066ff !important; color: #ffffff !important; }
+.app.light-theme .custom-modal .neon-icon { color: #27ae60 !important; text-shadow: 0 0 8px #27ae60, 0 0 16px #27ae60 !important; }
+.app.light-theme .custom-modal h2[style*="color: '#4DFF88'"] { color: #27ae60 !important; }
+
+.app.light-theme .info-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #0066ff !important; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1) !important; }
+.app.light-theme .info-modal h2 { color: #0066ff !important; text-shadow: 0 0 8px #0066ff !important; }
+.app.light-theme .info-modal p { color: #1a1a2e !important; }
+.app.light-theme .info-modal .cancel-modal-btn { color: #0066ff !important; border-color: #0066ff !important; }
+.app.light-theme .info-modal .cancel-modal-btn:hover { background: #0066ff !important; color: #ffffff !important; }
+.app.light-theme .info-modal .neon-icon { color: #0066ff !important; text-shadow: 0 0 8px #0066ff, 0 0 16px #0066ff !important; }
+
+.app.light-theme .warning-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #cc3333 !important; }
+.app.light-theme .warning-modal h2 { color: #cc3333 !important; }
+.app.light-theme .warning-modal p { color: #1a1a2e !important; }
+.app.light-theme .warning-modal .cancel-modal-btn { color: #555566 !important; border-color: #c0c0d0 !important; }
+.app.light-theme .warning-modal .cancel-modal-btn:hover { background: #e8e8f0 !important; }
+.app.light-theme .warning-modal .confirm-reset-btn { background: #cc3333 !important; border-color: #cc3333 !important; color: #ffffff !important; }
+.app.light-theme .warning-modal .confirm-reset-btn:hover { background: #b32b2b !important; }
 
 /* ==================== ВСПОМОГАТЕЛЬНЫЕ ЭФФЕКТЫ ==================== */
-.btn-flash {
-  background: #4DFF88 !important;
-  color: #0a0e1a !important;
-  box-shadow: 0 0 12px #4DFF88 !important;
-  transform: scale(0.95);
-  transition: all 0.05s linear !important;
-}
-.btn-flash-red {
-  background: #FF4D4D !important;
-  color: #0a0e1a !important;
-  box-shadow: 0 0 12px #FF4D4D !important;
-  transform: scale(0.95);
-  transition: all 0.05s linear !important;
-}
-.scroll-x::-webkit-scrollbar { height: 8px; display: block !important; }
-.scroll-x::-webkit-scrollbar-thumb { background: #555; border-radius: 10px; }
-.scroll-x { overflow-x: auto; overflow-y: hidden; position: relative; z-index: 1; }
-.tracks { display: inline-flex; gap: 16px; min-width: max-content; }
-.tracks > * { width: 20px; flex-shrink: 0; }
-.sequencer-scroll { scroll-behavior: smooth; }
-/* ==================== ФОНОВАЯ СИНУСОИДА ==================== */
-.preview-track {
-  position: relative;
-  overflow: hidden;
-}
-.bg-wave {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 40px;
-  pointer-events: none;
-  z-index: 0;
-}
-.bg-wave svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-/* ==================== АВТОМАТИЧЕСКАЯ КИБЕРПАНК-ВОЛНА ==================== */
-.bg-wave path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  filter: drop-shadow(0 0 5px currentColor);
-  /* Общая плавная анимация на 6 секунд */
-  animation: autoTransformWave 6s ease-in-out infinite; 
-}
+.btn-flash { background: var(--text-bright) !important; color: #0a0e1a !important; box-shadow: 0 0 12px var(--text-bright) !important; transform: scale(0.95); transition: all 0.05s linear !important; }
+.btn-flash-red { background: #FF4D4D !important; color: #0a0e1a !important; box-shadow: 0 0 12px #FF4D4D !important; transform: scale(0.95); transition: all 0.05s linear !important; }
 
-/* Индивидуальные задержки для инструментов (чтобы волны двигались асинхронно) */
-.preview-track.guitar .bg-wave path { animation-delay: 0s; }
-.preview-track.synth  .bg-wave path { animation-delay: 0.8s; }
-.preview-track.drum   .bg-wave path { animation-delay: 1.6s; }
-.preview-track.bass   .bg-wave path { animation-delay: 2.4s; }
-.preview-track.chip   .bg-wave path { animation-delay: 3.2s; }
+/* ==================== КНОПКИ РЕЖИМОВ ==================== */
+.sub-toggle { background: rgba(77, 136, 255, 0.1); backdrop-filter: blur(4px); transition: all 0.2s ease; }
+.sub-toggle:hover { transform: scale(1.02); background: rgba(189, 0, 255, 0.2); }
+.sub-toggle.active { background: rgba(189, 0, 255, 0.2); border-color: #bd00ff !important; box-shadow: 0 0 12px #bd00ff; animation: subPulse 1.5s infinite; }
+@keyframes subPulse { 0%, 100% { box-shadow: 0 0 2px #bd00ff; } 50% { box-shadow: 0 0 15px #ff44ff; } }
 
-/* Общая закольцованная кривая с одинаковой структурой команд Q */
-@keyframes autoTransformWave {
-  /* 0% — Острая волна (пила) в максимальной амплитуде */
-  0% {
-    d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20");
-    opacity: 0.5;
-  }
-  
-  /* 25% — Острая волна (пила) колеблется и уходит в противоположную фазу */
-  25% {
-    d: path("M0,20 Q5,26 10,32 Q15,20 20,8 Q25,20 30,32 Q35,20 40,8 Q45,20 50,32 Q55,20 60,8 Q65,20 70,32 Q75,20 80,8 Q85,20 90,32 Q95,20 100,8 Q105,20 110,32 Q115,20 120,8 Q125,20 130,32 Q135,20 140,8 Q145,20 150,32 Q155,20 160,8 Q165,20 170,32 Q175,20 180,8 Q185,20 190,32 Q195,26 200,20");
-    opacity: 0.8;
-  }
+.ai-btn { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; position: relative; overflow: hidden; }
+.ai-btn:hover { background: rgba(189, 0, 255, 0.25) !important; border-color: rgba(189, 0, 255, 0.8) !important; color: #bd00ff !important; transform: scale(1.06) !important; box-shadow: 0 0 25px rgba(189, 0, 255, 0.4) !important; }
+.ai-btn:active { transform: scale(0.94) !important; background: rgba(189, 0, 255, 0.4) !important; box-shadow: 0 0 10px rgba(189, 0, 255, 0.6) !important; }
 
-  /* 50% — ПЛАВНЫЙ ПЕРЕХОД: волна становится идеально круглой и гладкой (синусоида) */
-  50% {
-    d: path("M0,20 Q5,32 10,32 Q15,32 20,20 Q25,8 30,8 Q35,8 40,20 Q45,32 50,32 Q55,32 60,20 Q65,8 70,8 Q75,8 80,20 Q85,32 90,32 Q95,32 100,20 Q105,8 110,8 Q115,8 120,20 Q125,32 130,32 Q135,32 140,20 Q145,8 150,8 Q155,8 160,20 Q165,32 170,32 Q175,32 180,20 Q185,8 190,8 Q195,8 200,20");
-    opacity: 0.8;
-  }
-
-  /* 75% — Гладкая волна колеблется в полную амплитуду */
-  75% {
-    d: path("M0,20 Q5,5 10,5 Q15,5 20,20 Q25,35 30,35 Q35,35 40,20 Q45,5 50,5 Q55,5 60,20 Q65,35 70,35 Q75,35 80,20 Q85,5 90,5 Q95,5 100,20 Q105,35 110,35 Q115,35 120,20 Q125,5 130,5 Q135,5 140,20 Q145,35 150,35 Q155,35 160,20 Q165,5 170,5 Q175,5 180,20 Q185,35 190,35 Q195,35 200,20");
-    opacity: 0.5;
-  }
-
-  /* 100% — ПЛАВНЫЙ ПЕРЕХОД обратно в исходную острую форму */
-  100% {
-    d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20");
-    opacity: 0.5;
-  }
+.app.light-theme .ai-btn { background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(189, 0, 255, 0.2) !important; color: rgba(189, 0, 255, 0.6) !important; }
+.app.light-theme .ai-btn:hover { background: rgba(189, 0, 255, 0.15) !important; border-color: #bd00ff !important; color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.3) !important; }
+.app.light-theme .ai-btn:active { background: rgba(189, 0, 255, 0.3) !important; }
+/* Если на странице есть блок превью (и он не скрыт), полностью отключаем скролл у окна */
+html:has(.landing), 
+body:has(.landing) {
+  overflow: hidden !important;
+  height: 100vh !important;
+  width: 100vw !important;
 }
-/* Ускорение при наведении */
-.preview-track:hover .bg-wave path {
-  animation-duration: 1.5s;
-  opacity: 0.9;
-  filter: drop-shadow(0 0 6px currentColor);
-}
-/* ==================== ФОНОВАЯ КИБЕРПАНК-СИНУСОИДА (2 ВАРИАНТА) ==================== */
-.preview-track {
-  position: relative;
-  overflow: hidden;
-}
-
-.bg-wave {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 40px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.bg-wave svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Общие базовые стили для путей */
-.bg-wave path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  filter: drop-shadow(0 0 4px currentColor);
-}
-
-/* ВАРИАНТ 1: Острая пила (по умолчанию) */
-.bg-wave.wave-sharp path {
-  animation: sharpWave 3s ease-in-out infinite alternate;
-}
-
-/* ВАРИАНТ 2: Идеально гладкая струна */
-.bg-wave.wave-smooth path {
-  stroke-width: 2; /* сделаем гладкую струну чуть жирнее для мягкости */
-  animation: smoothWave 3s ease-in-out infinite alternate;
-}
-
-/* Индивидуальные задержки для инструментов (чтобы они не двигались синхронно) */
-.preview-track.guitar .bg-wave path { animation-delay: 0s; }
-.preview-track.synth  .bg-wave path { animation-delay: 0.5s; }
-.preview-track.drum   .bg-wave path { animation-delay: 1s; }
-.preview-track.bass   .bg-wave path { animation-delay: 1.5s; }
-.preview-track.chip   .bg-wave path { animation-delay: 2s; }
-
-
-/* --- ТЕПЕРЬ ДВЕ АНИМАЦИИ --- */
-
-/* Анимация 1: Острые пики (как было раньше) */
-@keyframes sharpWave {
-  0% {
-    d: path("M0,20 L10,5 L20,35 L30,5 L40,35 L50,5 L60,35 L70,5 L80,35 L90,5 L100,35 L110,5 L120,35 L130,5 L140,35 L150,5 L160,35 L170,5 L180,35 L190,5 L200,20");
-    opacity: 0.4;
-  }
-  50% {
-    d: path("M0,20 L10,32 L20,8 L30,32 L40,8 L50,32 L60,8 L70,32 L80,8 L90,32 L100,8 L110,32 L120,8 L130,32 L140,8 L150,32 L160,8 L170,32 L180,8 L190,32 L200,20");
-    opacity: 0.8;
-  }
-  100% {
-    d: path("M0,20 L10,5 L20,35 L30,5 L40,35 L50,5 L60,35 L70,5 L80,35 L90,5 L100,35 L110,5 L120,35 L130,5 L140,35 L150,5 L160,35 L170,5 L180,35 L190,5 L200,20");
-    opacity: 0.4;
-  }
-}
-
-/* Анимация 2: Полностью сглаженная волна */
-@keyframes smoothWave {
-  0% {
-    d: path("M0,20 Q5,5 10,20 T20,20 T30,20 T40,20 T50,20 T60,20 T70,20 T80,20 T90,20 T100,20 T110,20 T120,20 T130,20 T140,20 T150,20 T160,20 T170,20 T180,20 T190,20 T200,20");
-    opacity: 0.4;
-  }
-  50% {
-    d: path("M0,20 Q5,32 10,20 T20,20 T30,20 T40,20 T50,20 T60,20 T70,20 T80,20 T90,20 T100,20 T110,20 T120,20 T130,20 T140,20 T150,20 T160,20 T170,20 T180,20 T190,20 T200,20");
-    opacity: 0.8;
-  }
-  100% {
-    d: path("M0,20 Q5,5 10,20 T20,20 T30,20 T40,20 T50,20 T60,20 T70,20 T80,20 T90,20 T100,20 T110,20 T120,20 T130,20 T140,20 T150,20 T160,20 T170,20 T180,20 T190,20 T200,20");
-    opacity: 0.4;
-  }
-}
-
-/* Ускорение при наведении */
-.preview-track:hover .bg-wave path {
-  animation-duration: 1.2s;
-  opacity: 0.9;
-  filter: drop-shadow(0 0 8px currentColor);
-}
-/* Кнопка SUB MODE в блоке MASTER */
-.sub-toggle {
-  background: rgba(77, 136, 255, 0.1);
-  backdrop-filter: blur(4px);
-  transition: all 0.2s ease;
-}
-.sub-toggle:hover {
-  transform: scale(1.02);
-  background: rgba(189, 0, 255, 0.2);
-}
-.sub-toggle.active {
-  background: rgba(189, 0, 255, 0.2);
-  border-color: #bd00ff !important;
-  box-shadow: 0 0 12px #bd00ff;
-  animation: subPulse 1.5s infinite;
-}
-@keyframes subPulse {
-  0% { box-shadow: 0 0 2px #bd00ff; }
-  50% { box-shadow: 0 0 15px #ff44ff; }
-  100% { box-shadow: 0 0 2px #bd00ff; }
-}
-
-/* Неоновая анимация для KARGANI STUDIO на лендинге */
-.neon-kargani {
-  background: linear-gradient(
-    90deg,
-    #ff0080,
-    #ff8c00,
-    #ffff00,
-    #00ff80,
-    #00bfff,
-    #8a2be2,
-    #ff0080
-  );
-  background-size: 300% auto;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
-          drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
-  animation: neonFlowSmooth 8s ease-in-out infinite;
-  font-weight: bold;
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-.neon-kargani:hover {
+.block:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 12px currentColor;
   transform: scale(1.02);
 }
-
-/* Убедитесь, что анимация @keyframes neonFlowSmooth уже есть в CSS.
-   Если нет – добавьте её ниже: */
-@keyframes neonFlowSmooth {
-  0% {
-    background-position: 0% 50%;
-    filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
-            drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
-  }
-  50% {
-    background-position: 100% 50%;
-    filter: drop-shadow(0 0 15px rgba(255, 128, 0, 0.5))
-            drop-shadow(0 0 20px rgba(0, 255, 128, 0.3));
-  }
-  100% {
-    background-position: 0% 50%;
-    filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4))
-            drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
-  }
-}
-/* Убираем скролл на лендинге */
-.landing {
-  overflow-y: hidden;
-  height: 100vh;
+/* ===== Аппаратное ускорение и изоляция для контейнера сетки ===== */
+.scroll-container {
+  contain: layout style paint;
+  will-change: scroll-position, transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-.landing-content {
-  height: 100vh;
-  overflow-y: auto; /* если контент вдруг не поместится — появится скролл, но обычно не нужно */
-  scrollbar-width: none; /* Firefox: скрываем полосу */
+/* Содержимое контейнера */
+.scroll-container > div {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
-.landing-content::-webkit-scrollbar {
-  display: none; /* Chrome/Safari: скрываем полосу */
-}
-/* Базовая форма для кнопок действий в блоке ATTACH EFFECT */
-.unified-action-btn {
-  border-radius: 30px;           /* полукруглая форма, можно заменить на 6px для квадратной */
-  padding: 6px 16px;
-  font-size: 10px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border: none;
-  background: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: auto;
-  min-width: 140px;
+/* Сами блоки (ноты) */
+.block {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: none !important; /* перекрывает все inline-стили */
 }
 
-/* Специфичные стили для REMOVE ALL EFFECTS (красная тема) */
-.btn-remove-effects {
-  background-color: #0f172a;
-  border: 1px solid #ff4d4d;
-  color: #ff4d4d;
+/* По желанию: лёгкий hover-эффект без transition: all */
+.block:hover {
+  transform: scale(1.02);
+  filter: brightness(1.2);
 }
-.btn-remove-effects:hover {
-  background-color: #1e293b;
-  box-shadow: 0 0 8px #ff4d4d;
+/* Аппаратное ускорение для плейхеда */
+.playhead-grabber {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
-
-/* Специфичные стили для SUB (фиолетовая/синяя тема) */
-.btn-sub {
-  background: rgba(77, 136, 255, 0.1);
-  border: 2px solid #4D88FF;
-  color: #4D88FF;
-}
-.btn-sub.active {
-  border-color: #bd00ff;
-  color: #bd00ff;
-  background: rgba(189, 0, 255, 0.2);
-  box-shadow: 0 0 8px #bd00ff;
-}
-.btn-sub:hover {
-  background: rgba(77, 136, 255, 0.2);
-  transform: translateY(-1px);
-}
-.btn-flash {
-  background: #4DFF88 !important;
-  color: #0a0e1a !important;
-  box-shadow: 0 0 12px #4DFF88 !important;
-  transform: scale(0.95);
-  transition: all 0.05s linear !important;
-}
-.btn-flash-red {
-  background: #FF4D4D !important;
-  color: #0a0e1a !important;
-  box-shadow: 0 0 12px #FF4D4D !important;
-  transform: scale(0.95);
-  transition: all 0.05s linear !important;
-}
-/* Обычное состояние — тусклая, без свечения */
-.ai-btn {
-  transition: all 0.2s ease;
-}
-
-/* При наведении — яркая, с неоном */
-.ai-btn:hover {
-  background: linear-gradient(135deg, #2a3a6e, #1e2a50) !important;
-  border: 1px solid #ff44ff !important;
-  color: #ff44ff !important;
-  box-shadow: 0 0 12px #ff44ff, 0 0 20px rgba(255, 68, 255, 0.5) !important;
-  transform: translateY(-2px);
-}
-
-/* При нажатии — анимация сжатия */
-.ai-btn:active {
-  transform: scale(0.95);
-  transition: transform 0.05s;
-}
-
-.record-square-btn.recording-active {
-  animation: pulse-record 1s infinite;
-}
-
-@keyframes pulse-record {
-  0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
-}
-/* Кнопки флагов (два кружка) */
-.lang-flag {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.lang-flag:hover {
-  transform: scale(1.08);
-  background: rgba(77, 136, 255, 0.15);
-}
-
-.lang-flag.active {
-  background: rgba(77, 136, 255, 0.25);
-  border-color: #4D88FF;
-  box-shadow: 0 0 12px #4D88FF, 0 0 24px rgba(77, 136, 255, 0.3);
-  transform: scale(1.05);
-}
-
-.lang-flag:active {
-  transform: scale(0.92);
-}
-
-/* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ ==================== */
-@media (max-width: 768px) {
-  .app { padding: 10px !important; }
-  .instrument-selector { flex-wrap: wrap; justify-content: center; }
-  .inst-btn { min-width: 70px; padding: 6px 10px !important; }
-  .inst-text { font-size: 8px; }
-  .mixer-columns, .fx-panel { flex-wrap: wrap; justify-content: center; }
-  .bpm-display, .master-block { width: 140px !important; }
-  .scroll-container { touch-action: pan-x pinch-zoom; }
-  .block { min-height: 40px; }
-  .playhead-grabber { width: 40px !important; margin-left: -20px !important; }
-  .controls-help-btn { font-size: 10px; padding: 6px 12px !important; }
+.playhead-grabber > div {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }

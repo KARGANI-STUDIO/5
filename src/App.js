@@ -14,12 +14,13 @@ function App() {
   const [mode, setMode] = useState("landing");
   const strings = ["E1", "A1", "E", "A", "D", "G", "B", "e"];
   const [tracks, setTracks] = useState({ guitar: [], synth: [], drum: [], bass: [], chip: [] });
+  const MAX_FRET = 60;
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [infoModal, setInfoModal] = useState({ visible: false, message: '' });;
   const [bpm, setBpm] = useState(120);
-  const [hoveredBlockId, setHoveredBlockId] = useState(null);
+  
   const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
   const [isTempoMasterVisible, setIsTempoMasterVisible] = useState(true);
   const defaultFilters = {
@@ -43,6 +44,14 @@ function App() {
     bass: 1.0,
     chip: 1.0
   };
+  // ===== ПОЗИЦИИ ИНСТРУМЕНТОВ В 3D-ПРОСТРАНСТВЕ =====
+ const defaultPositions = {
+  guitar: { x: -4, y: 0, z: -4 },
+  synth:  { x:  4, y: 0, z: -4 },
+  drum:   { x:  0, y: 0, z: -2 },
+  bass:   { x:  0, y: 0, z: -5 },
+  chip:   { x:  0, y: 3, z: -5 }
+ }; 
 
   const [filters, setFilters] = useState(defaultFilters);
   const [fx, setFx] = useState(defaultFx);
@@ -103,6 +112,9 @@ const translations = {
     removeAllEffects: "REMOVE ALL EFFECTS",
     subOn: "SUB ON",
     subOff: "SUB OFF",
+    // 3D SOUND
+    "3dOn": "ON",
+    "3dOff": "OFF",
     // Блок MASTER VOL
     masterVol: "MASTER VOL",
     master: "MASTER",
@@ -147,17 +159,15 @@ const translations = {
       },
       letsRock: "LET'S ROCK!"
     },
-    // Кнопка "Что нового" и список новинок
+    // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-    changelogTitle: "✨ What's New (v1.5.2)",
+    changelogTitle: "✨ What's New (v1.5.3-Beta)",
     changelogText: [
-      "• AI pattern generator (20-second loops)",
-      "• Russian language support",
-      "• Master volume control",
-      "• Improved drum sound engine",
-      "• Updated INFO and FX blocks interface",
-      "• Added 'R' hotkey – Start/Stop recording",
-      "• Fixed bug where copied blocks on 'DRUM' did not play"
+      "• Added light theme",
+      "• Glass design with blur effect",
+      "• 3D sound support with spatial positioning of instruments",
+      "• Performance optimization: smoother scrolling, faster block interaction, reduced CPU load",
+      "• Bug fixes: loop functionality, scroll improvements"
     ]
   },
   ru: {
@@ -184,6 +194,9 @@ const translations = {
     removeAllEffects: "УДАЛИТЬ ВСЕ ЭФФЕКТЫ",
     subOn: "САБ ВКЛ",
     subOff: "САБ ВЫКЛ",
+    // 3D SOUND
+    "3dOn": "ВКЛ",
+    "3dOff": "ВЫКЛ",
     // Блок MASTER VOL
     masterVol: "ОБЩАЯ ГРОМКОСТЬ",
     master: "ОБЩИЙ",
@@ -228,17 +241,15 @@ const translations = {
       },
       letsRock: "ПОЕХАЛИ!"
     },
-    // Кнопка "Что нового" и список новинок
+    // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-    changelogTitle: "✨ Что нового (v1.5.2)",
+    changelogTitle: "✨ Что нового (v1.5.3-Beta)",
     changelogText: [
-      "• Генератор AI-паттернов (20-секундные лупы)",
-      "• Поддержка русского языка",
-      "• Регулятор общей громкости",
-      "• Улучшенный движок звука для барабанов",
-      "• Обновлен интерфейс блоков INFO и FX",
-      "• Добавлена горячая клавиша 'R' - Start / Stop запись трека",
-      "• Исправлена ошибка при которой не воспроизводились скопированные блоки на инструменте 'DRUM'"
+      "• Добавлена светлая тема",
+      "• Стеклянный дизайн с эффектом размытия",
+      "• Поддержка 3D-звука с пространственным позиционированием инструментов",
+      "• Оптимизация производительности: плавный скролл, быстрая реакция блоков, снижена нагрузка на CPU",
+      "• Исправление ошибок: работа лупа, улучшения скроллинга"
     ]
   }
 };
@@ -271,6 +282,80 @@ const [subMode, setSubMode] = useState(() => {
 });
   const [previewLoopEnd, setPreviewLoopEnd] = useState(0);
   const [masterGainValue, setMasterGainValue] = useState(1.0);
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("struna_theme");
+    return saved === "light" ? "light" : "dark";
+  });
+  
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("struna_theme", newTheme);
+    // Применяем стили напрямую
+    applyThemeStyles(newTheme);
+  };
+  
+  const applyThemeStyles = (newTheme) => {
+    const isLight = newTheme === "light";
+    
+    // Устанавливаем класс на .app
+    const appDiv = document.querySelector('.app');
+    if (appDiv) {
+      if (isLight) appDiv.classList.add('light-theme');
+      else appDiv.classList.remove('light-theme');
+    }
+  
+    // 1. Меняем фон всех контейнеров с инлайн-стилями
+    const bgDark = isLight ? '#ffffff' : '#0a0e1a';
+    const borderColor = isLight ? '#d0d0e0' : '#2a3a6e';
+    const shadow = isLight ? '0 4px 12px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.3)';
+  
+    document.querySelectorAll('div[style*="background: #0a0e1a"], div[style*="background:#0a0e1a"], div[style*="background-color: #0a0e1a"]').forEach(el => {
+      el.style.background = bgDark;
+      el.style.borderColor = borderColor;
+      el.style.boxShadow = shadow;
+    });
+  
+    // 2. Меняем цвет текста
+    const textColor = isLight ? '#0066ff' : '#4D88FF';
+    document.querySelectorAll('div[style*="color: #4D88FF"]').forEach(el => {
+      el.style.color = textColor;
+    });
+  
+    const brightColor = isLight ? '#27ae60' : '#4DFF88';
+    document.querySelectorAll('div[style*="color: #4DFF88"]').forEach(el => {
+      el.style.color = brightColor;
+    });
+  
+    // 3. Кнопки инструментов
+    const btnBg = isLight ? '#ffffff' : '#1e2a50';
+    const btnColor = isLight ? '#1a1a2e' : 'rgba(255, 255, 255, 0.5)';
+    document.querySelectorAll('.inst-btn').forEach(el => {
+      el.style.background = btnBg;
+      el.style.color = btnColor;
+      el.style.borderColor = isLight ? '#ccc' : 'rgba(255,255,255,0.1)';
+    });
+    // Активные кнопки
+    document.querySelectorAll('.inst-btn.active').forEach(el => {
+      el.style.color = isLight ? '#0066ff' : '#ffaa00'; // или другой цвет
+      el.style.borderColor = isLight ? '#0066ff' : 'currentColor';
+    });
+  
+    // 4. Сетка
+    const scrollBg = isLight ? '#ffffff' : '#050814';
+    const scrollContainer = document.querySelector('.scroll-container');
+    if (scrollContainer) scrollContainer.style.background = scrollBg;
+  
+    // 5. Модальные окна (если открыты)
+    document.querySelectorAll('.custom-modal').forEach(el => {
+      el.style.background = isLight ? 'rgba(255,255,255,0.85)' : '#0d0d12';
+    });
+  };
+  const [show3D, setShow3D] = useState(false);
+  const [positions3D, setPositions3D] = useState(defaultPositions);
+  const [is3DEnabled, setIs3DEnabled] = useState(true);
+
+  const pannerRefs = useRef({}); // для хранения ссылок на Panner3D
   const loopStartRef = useRef(0);
   const loopEndRef = useRef(0);
   window.__currentFxVolume = fxVolume;
@@ -281,6 +366,7 @@ const [subMode, setSubMode] = useState(() => {
   const scrollRef = useRef(null);
   const isDraggingRef = useRef(false);
   const scrollSpeedRef = useRef(0);
+  const isPlayheadDraggingRef = useRef(false);
   const rafRef = useRef(null);
   const playheadRef = useRef(null);
   const synthsRef = useRef({});
@@ -296,6 +382,8 @@ const [subMode, setSubMode] = useState(() => {
   const recorderRef = useRef(null);
   const lastStartTimeMapRef = useRef(new Map());
   const demoRef = useRef(null); // ссылка на текущий демо-синтезатор
+  const dragFrameRef = useRef(null);
+  const pendingTracksRef = useRef(null);
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -529,89 +617,76 @@ const uiSounds = {
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
   const OPEN_STRINGS = [41.20, 55.00, 82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
-  const autoScrollIfNeeded = (clientX) => {
+  
+// Вставьте после объявления scrollRef, scrollSpeedRef, rafRef, но до autoScrollIfNeeded
+const startScrollLoop = () => {
+  if (rafRef.current) return; // уже запущен
+
+  const loop = () => {
     const el = scrollRef.current;
-    if (!el) return;
-  
-    const rect = el.getBoundingClientRect();
-    const edge = 80;
-  
-    const distRight = rect.right - clientX;
-const distLeft = clientX - rect.left;
+    if (!el) {
+      rafRef.current = null;
+      return;
+    }
 
-const maxSpeed = 12;
-const deadZone = 20;
+    // Если скорость очень маленькая, останавливаемся
+    if (Math.abs(scrollSpeedRef.current) < 0.05) {
+      scrollSpeedRef.current = 0;
+      rafRef.current = null;
+      return;
+    }
 
-let speed = 0;
+    // Применяем скорость
+    el.scrollLeft += scrollSpeedRef.current;
 
-let direction = 0;
-let raw = 0;
+    // Продолжаем цикл
+    rafRef.current = requestAnimationFrame(loop);
+  };
 
-if (distRight < edge - deadZone) {
-  direction = 1;
-  raw = (edge - deadZone - distRight) / (edge - deadZone);
+  rafRef.current = requestAnimationFrame(loop);
+};
 
-} else if (distLeft < edge - deadZone) {
-  direction = -1;
-  raw = (edge - deadZone - distLeft) / (edge - deadZone);
-}
+const autoScrollIfNeeded = (clientX) => {
+  const el = scrollRef.current;
+  if (!el) return;
 
-// ограничиваем 0..1
-const rawClamped = Math.max(0, Math.min(1, raw));
+  const rect = el.getBoundingClientRect();
+  const edge = 80;
+  const distRight = rect.right - clientX;
+  const distLeft = clientX - rect.left;
+  const maxSpeed = 12;
+  const deadZone = 20;
 
-// кривая (мягкость)
-const power = rawClamped * rawClamped * rawClamped * (rawClamped * (6 * rawClamped - 15) + 10);
-// минимальная скорость
-const minSpeed = 0.5;
-const dynamicMinSpeed = minSpeed * (0.5 + rawClamped * 0.5);
+  let direction = 0;
+  let raw = 0;
 
-// базовая скорость
-const baseSpeed = power * maxSpeed;
+  if (distRight < edge - deadZone) {
+    direction = 1;
+    raw = (edge - deadZone - distRight) / (edge - deadZone);
+  } else if (distLeft < edge - deadZone) {
+    direction = -1;
+    raw = (edge - deadZone - distLeft) / (edge - deadZone);
+  }
 
-// если начали двигаться — не даём быть слишком медленным
-const boostedSpeed =
-  rawClamped > 0.02
-    ? Math.max(baseSpeed, dynamicMinSpeed)
-    : 0;
+  const rawClamped = Math.max(0, Math.min(1, raw));
+  const power = rawClamped * rawClamped * rawClamped * (rawClamped * (6 * rawClamped - 15) + 10);
+  const minSpeed = 0.5;
+  const dynamicMinSpeed = minSpeed * (0.5 + rawClamped * 0.5);
+  const baseSpeed = power * maxSpeed;
+  const boostedSpeed = rawClamped > 0.02 ? Math.max(baseSpeed, dynamicMinSpeed) : 0;
+  const targetSpeed = direction * Math.max(-maxSpeed, Math.min(maxSpeed, boostedSpeed));
 
-// финальная скорость
-speed = direction * boostedSpeed;
-const targetSpeed = Math.max(
-  -maxSpeed,
-  Math.min(maxSpeed, speed)
-);
+  const easing = 0.15;
+  scrollSpeedRef.current += (targetSpeed - scrollSpeedRef.current) * easing;
 
-// если цель почти 0 → сразу стоп
-const easing = 0.15;
-const stopThreshold = 0.1;
+  if (Math.abs(scrollSpeedRef.current) < 0.05 && Math.abs(targetSpeed) < 0.05) {
+    scrollSpeedRef.current = 0;
+  }
 
-// всегда плавно идём к цели (даже если targetSpeed = 0)
-scrollSpeedRef.current += (targetSpeed - scrollSpeedRef.current) * easing;
-
-// останавливаемся только когда и цель, и скорость почти 0
-if (
-  Math.abs(scrollSpeedRef.current) < stopThreshold &&
-  Math.abs(targetSpeed) < stopThreshold
-) {
-  scrollSpeedRef.current = 0;
-}
-    
-    if (!rafRef.current) {
-      const loop = () => {
-        if (!scrollRef.current) {
-          rafRef.current = null;
-          return;
-        }
-    
-        scrollRef.current.scrollLeft += scrollSpeedRef.current;
-    
-        rafRef.current = requestAnimationFrame(loop);
-      };
-    
-      rafRef.current = requestAnimationFrame(loop);
-    } // ← закрыли if
-    
-    };
+  if (Math.abs(scrollSpeedRef.current) > 0.01) {
+    startScrollLoop();
+  }
+};
     const handleGroupDragStart = (e, block) => {
       setIsGroupDragging(true);
       const initialPositions = new Map();
@@ -645,21 +720,34 @@ if (
       const deltaX = e.clientX - dragStartInfo.startX;
       const deltaY = e.clientY - dragStartInfo.startY;
     
-      setTracks(prev => ({
-        ...prev,
-        [instrument]: prev[instrument].map(b => {
-          if (dragStartInfo.initialBlocks.has(b.id)) {
-            const initial = dragStartInfo.initialBlocks.get(b.id);
-            let newX = initial.x + deltaX;
-            newX = Math.round(newX / STEP_WIDTH) * STEP_WIDTH;
-            newX = Math.max(0, newX);
-            let newString = initial.string + Math.round(deltaY / 60);
-            newString = Math.max(0, Math.min(strings.length - 1, newString));
-            return { ...b, x: newX, string: newString };
+      const currentInst = instrument;
+      const newTracks = { ...tracks };
+      newTracks[currentInst] = newTracks[currentInst].map(b => {
+        if (dragStartInfo.initialBlocks.has(b.id)) {
+          const initial = dragStartInfo.initialBlocks.get(b.id);
+          let newX = initial.x + deltaX;
+          newX = Math.round(newX / STEP_WIDTH) * STEP_WIDTH;
+          newX = Math.max(0, newX);
+          let newString = initial.string + Math.round(deltaY / 60);
+          newString = Math.max(0, Math.min(strings.length - 1, newString));
+          return { ...b, x: newX, string: newString };
+        }
+        return b;
+      });
+    
+      pendingTracksRef.current = newTracks;
+    
+      if (!dragFrameRef.current) {
+        dragFrameRef.current = requestAnimationFrame(() => {
+          if (pendingTracksRef.current) {
+            setTracks(pendingTracksRef.current);
+            pendingTracksRef.current = null;
           }
-          return b;
-        })
-      }));
+          dragFrameRef.current = null;
+        });
+      }
+    
+      autoScrollIfNeeded(e.clientX);
     };
   useEffect(() => {
     const handleMove = (e) => {
@@ -672,6 +760,16 @@ if (
       isDraggingRef.current = false;
       scrollSpeedRef.current = 0;
       setIsGroupDragging(false);
+    
+      // ДОБАВЬТЕ ЭТОТ БЛОК
+      if (dragFrameRef.current) {
+        cancelAnimationFrame(dragFrameRef.current);
+        dragFrameRef.current = null;
+      }
+      if (pendingTracksRef.current) {
+        setTracks(pendingTracksRef.current);
+        pendingTracksRef.current = null;
+      }
     
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -687,60 +785,103 @@ if (
       window.removeEventListener("mouseup", handleUp);
     };
   },[isGroupDragging, dragStartInfo, instrument, tracks, selectedBlockIds]);
+  
   useEffect(() => {
     const grid = scrollRef.current;
     if (!grid) return;
 
-    const handleWheel = (e) => {
-      // 1. Если мы над кубиком (нотой)
-      if (hoveredBlockId) {
-        e.preventDefault();
+    let targetScroll = grid.scrollLeft;
+    let lastAssignedScroll = grid.scrollLeft; // Фикс для ползунка
+    let animationFrameId = null;
+    let isScrolling = false;
 
-        setTracks(prev => {
-          // ИСПРАВЛЕННАЯ ПРОВЕРКА: используем .has(), так как это Set
-          const isSelected = selectedBlockIds.has(hoveredBlockId);
-          if (!isSelected) return prev;
-
-          return {
-            ...prev,
-            [instrument]: prev[instrument].map((it) => {
-              if (it.id === hoveredBlockId) {
-                // А) ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
-                if (e.altKey) {
-                  const volDelta = e.deltaY > 0 ? -0.1 : 0.1;
-                  const currentVel = it.velocity ?? 1;
-                  const newVelocity = Math.max(0.1, Math.min(1.5, currentVel + volDelta));
-                  return { ...it, velocity: newVelocity };
-                } 
-                // Б) ИНАЧЕ — МЕНЯЕМ ЛАД (ТОН / FRET)
-                else {
-                  const fretDelta = e.deltaY > 0 ? -1 : 1;
-                  const newFret = Math.max(0, (it.fret || 0) + fretDelta);
-                  return { ...it, fret: newFret };
-                }
-              }
-              return it;
-            })
-          };
-        });
+    // Функция плавной интерполяции (Lerp)
+    const smoothScroll = () => {
+      // Если пользователь потянул нижний ползунок вручную, отключаем анимацию колесика
+      if (Math.abs(grid.scrollLeft - lastAssignedScroll) > 1.5) {
+        isScrolling = false;
         return;
       }
 
-      // 2. Если мы просто крутим колесо над пустой сеткой — скроллим
-      if (!hoveredBlockId) {
-        e.preventDefault();
-        grid.scrollTo({
-          left: grid.scrollLeft + (e.deltaY * 2),
-          behavior: 'smooth'
-        });
+      const distance = targetScroll - grid.scrollLeft;
+
+      if (Math.abs(distance) < 0.5) {
+        grid.scrollLeft = targetScroll;
+        lastAssignedScroll = grid.scrollLeft;
+        isScrolling = false;
+        return;
       }
+
+      grid.scrollLeft += distance * 0.15;
+      lastAssignedScroll = grid.scrollLeft; 
+      animationFrameId = requestAnimationFrame(smoothScroll);
+    };
+
+    const handleWheel = (e) => {
+      const targetBlock = e.target.closest('.block');
+      
+      // Если курсор находится над блоком ноты
+      if (targetBlock) {
+        const blockId = Number(targetBlock.dataset.id);
+        
+        // РЕДАКТИРОВАНИЕ: Меняем параметры только если этот блок сейчас ВЫДЕЛЕН
+        if (selectedBlockIds.has(blockId)) {
+          e.preventDefault(); // Блокируем скролл сетки, так как редактируем ноту
+          
+          setTracks(prev => {
+            return {
+              ...prev,
+              [instrument]: prev[instrument].map((it) => {
+                if (it.id === blockId) {
+                  if (e.altKey) {
+                    // Alt + Колесо = Изменение громкости (velocity)
+                    const volDelta = e.deltaY > 0 ? -0.1 : 0.1;
+                    const currentVel = it.velocity ?? 1;
+                    const newVelocity = Math.max(0.1, Math.min(1.5, currentVel + volDelta));
+                    return { ...it, velocity: newVelocity };
+                  } else {
+                    // Просто колесо (БЕЗ Shift) = Изменение лада / струны
+                    const fretDelta = e.deltaY > 0 ? -1 : 1;
+                    const newFret = Math.max(0, Math.min(MAX_FRET, (it.fret || 0) + fretDelta));
+                    return { ...it, fret: newFret };
+                  }
+                }
+                return it;
+              })
+            };
+          });
+          return; // Выходим из обработчика, скролл не срабатывает
+        }
+      }
+
+      // ГОРЗОНТАЛЬНЫЙ СКРОЛЛ КОЛЕСИКОМ
+      // Срабатывает на пустом месте сетки ИЛИ если курсор над НЕвыделенным блоком
+      e.preventDefault();
+
+      if (!isScrolling) {
+        targetScroll = grid.scrollLeft;
+        lastAssignedScroll = grid.scrollLeft;
+        isScrolling = true;
+        animationFrameId = requestAnimationFrame(smoothScroll);
+      }
+
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) delta *= 33;
+      else if (e.deltaMode === 2) delta *= 100;
+
+      targetScroll += delta * 1.2;
+
+      const maxScroll = grid.scrollWidth - grid.clientWidth;
+      targetScroll = Math.max(0, Math.min(maxScroll, targetScroll));
     };
 
     grid.addEventListener("wheel", handleWheel, { passive: false });
-    return () => grid.removeEventListener("wheel", handleWheel);
-
-    // ВАЖНО: массив зависимостей должен совпадать с переменными выше
-  }, [instrument, hoveredBlockId, selectedBlockIds]);
+    
+    return () => {
+      grid.removeEventListener("wheel", handleWheel);
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [instrument, selectedBlockIds]);
   const getColor = (fret) => {
     const colors = ["#FF4D4D", "#FF7A4D", "#FFB84D", "#FFD84D", "#E6FF4D", "#A8FF4D", "#4DFF88", "#4DFFD2", "#4DC3FF", "#4D88FF", "#7A4DFF", "#C84DFF", "#FF4DA6"];
     return colors[fret % colors.length];
@@ -806,16 +947,26 @@ window.__fxMasterGain = fxMasterGain;
   // Сохраняем для управления из других мест (временное решение)
   window.__sidechain = { kickLoop, bassSidechainComp };
 
-  // 5. Создаём инструменты
   ["guitar", "synth", "drum", "bass", "chip"].forEach((type) => {
     let volume = volumes[type];
-    let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : (type === 'drum' ? 0 : 0)));
+    // Убираем panValue, он не нужен
     let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : (type === 'chip' ? 10000 : 8000)));
   
     const gain = new Tone.Gain(volume).connect(master);
-    const panner = new Tone.Panner(panValue).connect(gain);
     const filter = new Tone.Filter(cutoffFreq, "lowpass");
   
+    // ----- 3D-паннер вместо обычного -----
+    const pos = defaultPositions[type];
+   const panner3D = new Tone.Panner3D({
+   panningModel: "HRTF",
+   positionX: pos.x,
+   positionY: pos.y,
+   positionZ: pos.z
+   }).connect(gain);
+
+   pannerRefs.current[type] = panner3D;
+  
+    // Эффекты (chorus, reverb)
     const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
     const reverb = new Tone.Reverb({ decay: 1.2, wet: 1 });
     const chorusGain = new Tone.Gain(0);
@@ -823,18 +974,22 @@ window.__fxMasterGain = fxMasterGain;
   
     fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
   
-    filter.connect(panner);
+    // Подключаем эффекты к 3D-паннеру
     filter.connect(chorus);
     chorus.connect(chorusGain);
-    chorusGain.connect(panner);
+    chorusGain.connect(panner3D);
+  
     filter.connect(reverb);
     reverb.connect(reverbGain);
-    reverbGain.connect(panner);
+    reverbGain.connect(panner3D);
+  
+    // Основной сигнал
+    filter.connect(panner3D);
   
     gainsRef.current[type] = gain;
     filtersRef.current[type] = filter;
   
-    // Создаём синтезаторы
+    // --- Создание синтезаторов (без изменений) ---
     if (type === "bass") {
       const bassSynth = new Tone.MonoSynth({
         oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
@@ -851,10 +1006,7 @@ window.__fxMasterGain = fxMasterGain;
         envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
         modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
       }).connect(filter);
-    
-    
     } else if (type === "drum") {
-      // Создаём пул из 4 мембранных синтезаторов и 4 шумовых
       const membranePool = [];
       const noisePool = [];
       for (let i = 0; i < 8; i++) {
@@ -864,15 +1016,13 @@ window.__fxMasterGain = fxMasterGain;
           oscillator: { type: "sine" },
           envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
         }).connect(filter));
-        
         noisePool.push(new Tone.NoiseSynth({
           noise: { type: "white" },
           envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
         }).connect(filter));
       }
       synthsRef.current[type] = { membranePool, noisePool };
-    }
-    else if (type === "chip") {
+    } else if (type === "chip") {
       const chipSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "square" },
         envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
@@ -882,7 +1032,7 @@ window.__fxMasterGain = fxMasterGain;
       chipSynth.connect(bitCrusher);
       bitCrusher.connect(filter);
       synthsRef.current[type] = chipSynth;
-    } else { // synth (по умолчанию)
+    } else {
       synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "sawtooth" },
         envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
@@ -1023,6 +1173,23 @@ Object.values(synthsRef.current).forEach(item => {
     loopStartRef.current = loopStart;
     loopEndRef.current = loopEnd;
   }, [loopStart, loopEnd]);
+  useEffect(() => {
+    const appDiv = document.querySelector('.app');
+    if (appDiv) {
+      if (theme === "light") appDiv.classList.add('light-theme');
+      else appDiv.classList.remove('light-theme');
+    }
+  }, [theme]);
+  useEffect(() => {
+    // Обновляем все инструменты при изменении позиций или режима 3D
+    Object.entries(pannerRefs.current).forEach(([type, panner]) => {
+      if (!panner) return;
+      const pos = is3DEnabled ? positions3D[type] : { x: 0, y: 0, z: 0 };
+      panner.positionX.rampTo(pos.x, 0.1);
+      panner.positionY.rampTo(pos.y, 0.1);
+      panner.positionZ.rampTo(pos.z, 0.1);
+    });
+  }, [positions3D, is3DEnabled]);
   const handleShare = async () => {
     try {
       // Собираем все данные проекта (как в твоем handleSaveProject)
@@ -1157,28 +1324,28 @@ Object.values(synthsRef.current).forEach(item => {
   }; 
 
   const startPlayheadDrag = (e) => {
-    // Не перетаскиваем, если клик был по блоку (ноте)
+    // Не перетаскиваем, если клик был по блоку
     if (e.target.closest(".block")) return;
     
     e.preventDefault();
     const grid = scrollRef.current;
     const startClientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    
+    isPlayheadDraggingRef.current = true; // <- флаг, что перетаскиваем
   
     const onMove = (moveEvent) => {
       const currentClientX = moveEvent.type.includes('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      
       const rect = grid.getBoundingClientRect();
       const xInView = currentClientX - rect.left;
       const xInGrid = xInView + grid.scrollLeft;
       const boundedX = Math.max(0, xInGrid);
       playheadXRef.current = boundedX;
-      // Если мы в режиме установки лупа (начало установлено, конец ещё нет)
       if (loopStart !== 0 && loopEnd === 0) {
-      setPreviewLoopEnd(boundedX);
+        setPreviewLoopEnd(boundedX);
       }
-      
-      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${boundedX}px)`;
-      
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${Math.round(boundedX)}px)`;
+      }
       const edgeThreshold = 50;
       const scrollSpeed = 15;
       if (xInView > rect.width - edgeThreshold) grid.scrollLeft += scrollSpeed;
@@ -1192,6 +1359,7 @@ Object.values(synthsRef.current).forEach(item => {
     };
   
     const onUp = () => {
+      isPlayheadDraggingRef.current = false; // <- сбрасываем флаг
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
@@ -1207,30 +1375,35 @@ Object.values(synthsRef.current).forEach(item => {
   const startEngine = () => {
     const lastStartTimeMap = new Map();
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    
+    let frameCount = 0; // счётчик для уменьшения частоты обновления стейта
+  
     const loop = () => {
       const now = Tone.now();
       const stepTime = 60 / bpm / 4;
       let elapsed = now - startTimeRef.current;
       const allBlocks = Object.values(tracks).flat();
   
-      // Глобальная логика окончания всего трека (только если есть блоки и луп выключен)
+      // Глобальная логика окончания трека (если есть блоки и луп выключен)
       if (allBlocks.length > 0) {
         const lastBlockEndPX = Math.max(...allBlocks.map(b => b.x + b.length));
         const globalLoopEndTime = (lastBlockEndPX / STEP_WIDTH) * stepTime;
-        
-        // Отображение времени: такт / доля / секунды (всегда)
-        const elapsedSeconds = elapsed;
-        const secondsPerBeat = 60 / bpm;
-        const beats = elapsedSeconds / secondsPerBeat;
-        const currentBar = Math.floor(beats / 4) + 1;
-        const currentBeat = (Math.floor(beats) % 4) + 1;
-        setCurrentPosition({
-          bar: currentBar,
-          beat: currentBeat,
-          seconds: elapsedSeconds
-        });
   
-        // Сброс трека только если луп НЕ активен
+        // Обновляем позицию (текущий такт/доля) только каждый второй кадр
+        if (frameCount % 2 === 0) {
+          const elapsedSeconds = elapsed;
+          const secondsPerBeat = 60 / bpm;
+          const beats = elapsedSeconds / secondsPerBeat;
+          const currentBar = Math.floor(beats / 4) + 1;
+          const currentBeat = (Math.floor(beats) % 4) + 1;
+          setCurrentPosition({
+            bar: currentBar,
+            beat: currentBeat,
+            seconds: elapsedSeconds
+          });
+        }
+  
+        // Сброс трека, если конец и луп не активен
         if (!loopActive && elapsed >= globalLoopEndTime) {
           startTimeRef.current = now;
           pauseOffsetRef.current = 0;
@@ -1251,7 +1424,7 @@ Object.values(synthsRef.current).forEach(item => {
         }
       }
   
-      // Обработка нот
+      // ========== ОБРАБОТКА НОТ (критично для звука – каждый кадр) ==========
       Object.entries(tracks).forEach(([type, blocks]) => {
         if (!filtersRef.current[type]) return;
         blocks.forEach((b) => {
@@ -1271,25 +1444,18 @@ Object.values(synthsRef.current).forEach(item => {
               const durationSec = duration;
               const velocityAdjusted = Math.min(1, velocity * 1.2);
               const timeShift = (Math.abs(b.id) % 1000) * 0.0001;
-const startTime = now + 0.01 + timeShift;
-
-// Выбираем синтезатор строго по кругу (Round-Robin), чтобы избежать наслоений
-if (typeof pools.currentIndex !== 'number') pools.currentIndex = 0;
-const index = pools.currentIndex;
-pools.currentIndex = (pools.currentIndex + 1) % pools.membranePool.length;
-
-const membraneSynth = pools.membranePool[index];
-const noiseSynth = pools.noisePool[index];
+              const startTime = now + 0.01 + timeShift;
+              if (typeof pools.currentIndex !== 'number') pools.currentIndex = 0;
+              const index = pools.currentIndex;
+              pools.currentIndex = (pools.currentIndex + 1) % pools.membranePool.length;
+              const membraneSynth = pools.membranePool[index];
+              const noiseSynth = pools.noisePool[index];
               if (!membraneSynth || !noiseSynth) return;
-              
               const drumIdx = (b.fret % 20) + (b.string % 3) * 20;
               const typeIdx = drumIdx % 20;
-              
-              // Сброс параметров по умолчанию
               noiseSynth.noise.type = "white";
               noiseSynth.envelope.decay = 0.2;
               membraneSynth.pitchDecay = 0.05;
-              
               if (typeIdx >= 0 && typeIdx <= 7) {
                 const pitchMap = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3"];
                 membraneSynth.triggerAttackRelease(pitchMap[typeIdx], durationSec, startTime, velocityAdjusted);
@@ -1311,12 +1477,10 @@ const noiseSynth = pools.noisePool[index];
                 }
               }
             } else if (type === "bass") {
-              // triggerAttackRelease автоматически отменяет старые релизы при наслоении нот!
               synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
             } else {
               synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
             }
-  
             triggeredRef.current.add(key);
             if (b.effect && uiSoundsEnabled) {
               uiSounds.playEffect(b.effect, velocity);
@@ -1325,36 +1489,43 @@ const noiseSynth = pools.noisePool[index];
         });
       });
   
+      // ========== ВИЗУАЛЬНЫЕ ОБНОВЛЕНИЯ (обновляем реже) ==========
       const x = (elapsed / stepTime) * STEP_WIDTH;
       playheadXRef.current = x;
   
-      const currentStep = Math.floor(x / STEP_WIDTH);
-      if (activeStep !== currentStep) setActiveStep(currentStep);
+      // activeStep – только каждый второй кадр
+      if (frameCount % 2 === 0) {
+        const currentStep = Math.floor(x / STEP_WIDTH);
+        if (activeStep !== currentStep) setActiveStep(currentStep);
+      }
   
-      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${x}px)`;
+      // Позиция плейхеда – обновляем всегда, кроме случаев, когда пользователь перетаскивает
+if (!isPlayheadDraggingRef.current && playheadRef.current) {
+  playheadRef.current.style.transform = `translateX(${Math.round(x)}px)`;
+}
+      
   
+      // Автоскролл – всегда
       if (scrollRef.current) {
         const target = Math.max(0, x - FOLLOW_OFFSET);
         scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
       }
   
-      if (meterRef.current) {
+      // VU-метр и амплитуда – только каждый второй кадр
+      if (frameCount % 2 === 0 && meterRef.current) {
         const level = meterRef.current.getValue();
         let normalized = (level + 60) / 60;
         normalized = Math.min(1, Math.max(0, normalized));
         setMasterVolume(normalized);
-      }
-      if (meterRef.current) {
-        const level = meterRef.current.getValue();
-        let normalized = (level + 60) / 60;
-        normalized = Math.min(1, Math.max(0, normalized));
-        setMasterVolume(normalized);
-        // Мгновенная амплитуда для волны (от 5 до 35)
         setWaveAmp(5 + normalized * 30);
       }
   
+      // Увеличиваем счётчик кадров
+      frameCount++;
+  
       animationRef.current = requestAnimationFrame(loop);
     };
+  
     loop();
   };
 
@@ -1546,7 +1717,9 @@ const handleStop = () => {
         synthsRef.current.bass = normalSynth;
       }
     }
-  
+  // Сброс 3D-позиций
+  setPositions3D(defaultPositions);
+
     // ===== СБРОС ГЛОБАЛЬНОЙ ГРОМКОСТИ (MASTER VOL) =====
     setMasterGainValue(1.0);
     if (masterGainRef.current) {
@@ -2115,11 +2288,11 @@ const removeAllEffects = () => {
       state.mode = null;
       return;
   }
-    if (state.mode === 'color' && state.hasMoved) {
-      const fretChange = Math.floor(-deltaY / 20); 
-      const newFret = Math.max(0, state.initialFret + fretChange);
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, fret: newFret } : b)}));
-    } 
+  if (state.mode === 'color' && state.hasMoved) {
+    const fretChange = Math.floor(-deltaY / 20); 
+    const newFret = Math.max(0, Math.min(MAX_FRET, state.initialFret + fretChange));
+    setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, fret: newFret } : b)}));
+  }
     else if (state.mode === 'volume' && state.hasMoved) {
       const volChange = -deltaY / 200; 
       const newVol = Math.min(1, Math.max(0, state.initialVelocity + volChange));
@@ -2160,7 +2333,7 @@ const removeAllEffects = () => {
   };
   if (mode === "landing") {
     return (
-      <div className="app landing">
+      <div className={`app landing ${theme === 'light' ? 'light-theme' : ''}`}>
         <div className="landing-content" style={{
           display: "flex",
           flexDirection: "column",
@@ -2196,13 +2369,29 @@ const removeAllEffects = () => {
   })}
 </p>
   
-          <button
-            onClick={() => handleStartCreating("guitar")}
-            className="start-btn"
-            style={{ marginTop: "15px" }}
-          >
-          {t('startBtn')}
-          </button>
+<button
+  onClick={() => handleStartCreating("guitar")}
+  className="start-btn"
+  style={{
+    marginTop: "15px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "2px",
+    padding: "12px 30px"
+  }}
+>
+  <span style={{ fontSize: "inherit", lineHeight: 1.2 }}>{t('startBtn')}</span>
+  <span style={{
+    fontSize: "10px",
+    opacity: 0.8,
+    letterSpacing: "1.5px",
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500"
+  }}>
+    🎧 3D SOUND
+  </span>
+</button>
   
           {mode === "landing" && (
   <div style={{
@@ -2211,10 +2400,16 @@ const removeAllEffects = () => {
     right: '25px',
     zIndex: 9999,
     display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '12px'
+    gap: '12px',
+    alignItems: 'center'
   }}>
+    {/* Кнопка переключения темы */}
+    <button
+      onClick={toggleTheme}
+      className="top-btn"
+    >
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
     {/* Google кнопка (ваша оригинальная) */}
     <div 
       onClick={() => login()}
@@ -2233,14 +2428,7 @@ const removeAllEffects = () => {
         transition: 'all 0.3s ease',
         boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-        e.currentTarget.style.transform = 'scale(1.05)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
+      
     >
       <svg width="20" height="20" viewBox="0 0 48 48">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -2249,39 +2437,13 @@ const removeAllEffects = () => {
         <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
       </svg>
     </div>
-
-    {/* Кнопка-флаг (один компактный флаг) */}
-    <button
-  onClick={toggleLang}
-  style={{
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    background: '#1a1a2e',
-    border: '2px solid #4D88FF',
-    cursor: 'pointer',
-    fontSize: '14px',           // меньший шрифт для двух букв
-    fontWeight: 'bold',
-    color: '#4D88FF',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s ease',
-    boxShadow: '0 0 12px rgba(77,136,255,0.4)'
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.background = '#2a2a4e';
-    e.currentTarget.style.transform = 'scale(1.1)';
-    e.currentTarget.style.boxShadow = '0 0 20px #4D88FF';
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.background = '#1a1a2e';
-    e.currentTarget.style.transform = 'scale(1)';
-    e.currentTarget.style.boxShadow = '0 0 12px rgba(77,136,255,0.4)';
-  }}
->
-  {lang === 'en' ? 'EN' : 'RU'}
-</button>
+{/* Кнопка переключения языка */}
+<button
+      onClick={toggleLang}
+      className="top-btn"
+    >
+      {lang === 'en' ? 'EN' : 'RU'}
+    </button>
   </div>
 )}
   
@@ -2383,16 +2545,19 @@ const removeAllEffects = () => {
             position: "relative",
             zIndex: 2
           }}>
-            <p style={{
-              color: "rgba(255, 255, 255, 0.3)",
-              fontSize: "10px",
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              margin: 0,
-              fontFamily: "sans-serif"
-            }}>
-              Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
-            </p>
+            <p
+  className="powered-by-text"
+  style={{
+    fontSize: "10px",
+    letterSpacing: "4px",
+    textTransform: "uppercase",
+    margin: 0,
+    fontFamily: "sans-serif"
+  }}
+>
+  Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
+ 
+</p>
             <span style={{
               fontSize: "9px",
               color: "#4D88FF",
@@ -2411,7 +2576,7 @@ const removeAllEffects = () => {
     );
   }
   return (
-    <div className="app">
+    <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
       <style>{`
         @keyframes pulse-record {
           0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
@@ -2423,41 +2588,41 @@ const removeAllEffects = () => {
       {/* Верхняя панель: EXIT, логотип, SAVE/LOAD/DRIVE/SHARE */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <button 
-            onClick={() => {
-              stopSound();
-              setMode("landing");
-            }} 
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "rgba(255, 255, 255, 0.3)",
-              cursor: "pointer",
-              padding: "5px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.3s ease",
-            }}
-            onMouseOver={(e) => { 
-              e.currentTarget.style.color = "#FF4D4D"; 
-              e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
-              e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
-            }}
-            onMouseOut={(e) => { 
-              e.currentTarget.style.color = "rgba(255, 255, 255, 0.3)"; 
-              e.currentTarget.style.filter = "none";
-              e.currentTarget.style.transform = "translateX(0) scale(1)";
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-            </svg>
-          </button>
+        <button 
+  onClick={() => {
+    stopSound();
+    setMode("landing");
+  }} 
+  style={{
+    background: "transparent",
+    border: "none",
+    color: "var(--text-primary)",
+    cursor: "pointer",
+    padding: "5px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s ease",
+  }}
+  onMouseOver={(e) => { 
+    e.currentTarget.style.color = "#FF4D4D"; 
+    e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
+    e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
+  }}
+  onMouseOut={(e) => { 
+    e.currentTarget.style.color = "var(--text-primary)"; 
+    e.currentTarget.style.filter = "none";
+    e.currentTarget.style.transform = "translateX(0) scale(1)";
+  }}
+>
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+  </svg>
+</button>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
               <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.2-BETA</span>
+              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3-BETA</span>
             </div>
           </div>
         </div>
@@ -2513,6 +2678,15 @@ const removeAllEffects = () => {
       <span className="inst-text" style={{ fontSize: "9px" }}>{t('fx')}</span>
       {showFX && <div className="active-glow"></div>}
     </button>
+    <button
+  onClick={() => setShow3D(!show3D)}
+  className={`inst-btn fx-toggle-btn ${show3D ? "fx-active" : ""}`}
+  style={{ borderRadius: "0 20px 20px 0" }}
+>
+  <span className="inst-icon">🎛️</span>
+  <span className="inst-text" style={{ fontSize: "9px" }}>3D</span>
+  {show3D && <div className="active-glow"></div>}
+</button>
   </div>
 </div>
   
@@ -2528,146 +2702,200 @@ const removeAllEffects = () => {
 
     {/* ========== БЛОК TEMPO ========== */}
     <div style={{
-      background: "#0a0e1a", padding: "15px", borderRadius: "12px",
-      border: "1px solid #2a3a6e", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-      width: "200px", textAlign: "center", display: "flex", flexDirection: "column",
-      justifyContent: "space-between"
-    }}>
-      <div>
-        <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>{t('tempo')}</div>
-        <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88" }}>{bpm}</div>
-        <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "12px" }}>{t('bpm')}</div>
-      </div>
-      <div>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          <button onClick={() => {
-            const currentX = playheadXRef.current;
-            if (loopStart === 0 && loopEnd === 0) {
-              setLoopStart(currentX); setLoopEnd(0); setPreviewLoopEnd(currentX);
-            } else if (loopStart !== 0 && loopEnd === 0) {
-              if (previewLoopEnd > loopStart) setLoopEnd(previewLoopEnd);
-              else { setLoopStart(previewLoopEnd); setLoopEnd(loopStart); }
-              setPreviewLoopEnd(0);
-            } else {
-              setLoopStart(0); setLoopEnd(0); setPreviewLoopEnd(0); setLoopActive(false);
-            }
-          }} style={{
-            background: "#0a0e1a",
-            border: `2px solid ${loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D")}`,
-            borderRadius: "20px", padding: "4px 8px", flex: 1,
-            color: loopStart === 0 ? "#4DFF88" : (loopEnd === 0 ? "#FFA500" : "#FF4D4D"),
-            fontSize: "9px", fontWeight: "bold", cursor: "pointer"
-          }}>
-            {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
-          </button>
-          <button onClick={() => {
-            if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive);
-            else setInfoModal({ visible: true, message: t('infoSetLoop') });
-          }} style={{
-            background: loopActive ? "#4DFF88" : "#0a0e1a",
-            border: `2px solid ${loopActive ? "#4DFF88" : "#FF4D4D"}`,
-            borderRadius: "20px", padding: "4px 8px", flex: 1,
-            color: loopActive ? "#0a0e1a" : "#FF4D4D",
-            fontSize: "9px", fontWeight: "bold", cursor: "pointer"
-          }}>
-            {loopActive ? t('loopOn') : t('loopOff')}
-          </button>
-        </div>
-        <input type="range" min="60" max="200" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: "100%", cursor: "pointer" }} />
-      </div>
-    </div>
-
-    {/* ========== БЛОК ATTACH EFFECT ========== */}
-    <div style={{
-      background: "#0a0e1a", padding: "12px", borderRadius: "12px",
-      border: "1px solid #2a3a6e", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-      width: "200px", textAlign: "center", display: "flex", flexDirection: "column",
-      justifyContent: "space-between"
-    }}>
-      <div>
-        <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "6px" }}>{t('attachEffect')}</div>
-        <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-          {[
-            { name: 'click', icon: '🔊', play: () => uiSounds.playClick() },
-            { name: 'pop', icon: '🎯', play: () => uiSounds.playPop() },
-            { name: 'pixel', icon: '🕹️', play: () => uiSounds.playPixel() },
-            { name: 'boom', icon: '💥', play: () => uiSounds.playBoom() },
-            { name: 'chirp', icon: '🐤', play: () => uiSounds.playChirp() }
-          ].map(effect => (
-            <button
-              key={effect.name}
-              onClick={(e) => {
-                const btn = e.currentTarget;
-                btn.classList.add('btn-flash');
-                setTimeout(() => btn.classList.remove('btn-flash'), 150);
-                applyEffectToSelectedBlocks(effect.name);
-                effect.play();
-              }}
-              style={{ background: "#1e2a50", border: "none", borderRadius: "20px", padding: "6px 8px", color: "#4DFF88", cursor: "pointer", fontSize: "12px", transition: "all 0.05s linear" }}
-            >
-              {effect.icon}
-            </button>
-          ))}
-          <button
-            onClick={(e) => {
-              const btn = e.currentTarget;
-              btn.classList.add('btn-flash-red');
-              setTimeout(() => btn.classList.remove('btn-flash-red'), 150);
-              applyEffectToSelectedBlocks(null);
-            }}
-            style={{ background: "#2A3350", border: "none", borderRadius: "20px", padding: "6px 8px", color: "#FFB84D", cursor: "pointer", fontSize: "12px", transition: "all 0.05s linear" }}
-          >
-            ❌
-          </button>
-        </div>
-        <div style={{ fontSize: "9px", color: "#AAB3C2", marginBottom: "8px" }}>{t('selectBlock')}</div>
-        <button
-          onClick={(e) => {
-            const btn = e.currentTarget;
-            btn.classList.add('btn-flash-red');
-            setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
-            removeAllEffects();
-          }}
-          style={{ backgroundColor: "#0f172a", border: "1px solid #ff4d4d", borderRadius: "20px", padding: "6px 8px", width: "100%", color: "#ff4d4d", cursor: "pointer", fontSize: "10px", fontWeight: "bold", marginBottom: "8px", transition: "all 0.05s linear" }}
-        >
-          {t('removeAllEffects')}
-        </button>
-      </div>
-      <div>
-        <button
-          onClick={toggleSubMode}
-          style={{ background: "rgba(77,136,255,0.1)", border: `2px solid ${subMode ? "#bd00ff" : "#4D88FF"}`, borderRadius: "20px", padding: "6px 12px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer", transition: "all 0.1s ease" }}
-        >
-          <span style={{ fontSize: "14px" }}>🔊</span>
-          <span style={{ fontSize: "10px", fontWeight: "bold", color: subMode ? "#bd00ff" : "#4D88FF" }}>
-            {subMode ? t('subOn') : t('subOff')}
-          </span>
-        </button>
-      </div>
-    </div>
-
-    {/* ========== БЛОК MASTER VOL ========== */}
-<div style={{
-  background: "#0a0e1a", padding: "15px", borderRadius: "12px",
-  border: "1px solid #2a3a6e", boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px", textAlign: "center", display: "flex", flexDirection: "column",
+  background: "var(--bg-card)",
+  padding: "15px",
+  borderRadius: "12px",
+  border: "1px solid var(--border-color)",
+  boxShadow: "var(--shadow)",
+  width: "200px",
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
   justifyContent: "space-between"
 }}>
   <div>
-    <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "4px" }}>{t('masterVol')}</div>
+    <div style={{ fontSize: "12px", color: "var(--text-accent)", marginBottom: "6px" }}>{t('tempo')}</div>
+    <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)" }}>{bpm}</div>
+    <div style={{ fontSize: "10px", color: "var(--text-accent)", marginBottom: "12px" }}>{t('bpm')}</div>
+  </div>
+  <div>
+    <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+    <button onClick={() => {
+  const currentX = playheadXRef.current;
+  if (loopStart === 0 && loopEnd === 0) {
+    // Первый клик: установить начало
+    setLoopStart(currentX);
+    setLoopEnd(0);
+    setPreviewLoopEnd(currentX);
+  } else if (loopStart !== 0 && loopEnd === 0) {
+    // Второй клик: установить конец
+    // Если previewLoopEnd изменился (пользователь двигал плейхед) – используем его, иначе currentX
+    let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX;
+    // Если endX всё ещё равен или меньше loopStart – добавим минимальную длину (20px)
+    if (endX <= loopStart) {
+      endX = loopStart + STEP_WIDTH;
+    }
+    setLoopEnd(endX);
+    setPreviewLoopEnd(0);
+    // Автоматически включаем луп (чтобы не нажимать LOOP ON отдельно)
+    setLoopActive(true);
+  } else {
+    // Сброс (третий клик или когда луп уже установлен)
+    setLoopStart(0);
+    setLoopEnd(0);
+    setPreviewLoopEnd(0);
+    setLoopActive(false);
+  }
+}} style={{
+  background: "var(--bg-card)",
+  border: `2px solid ${loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)")}`,
+  borderRadius: "20px",
+  padding: "4px 8px",
+  flex: 1,
+  color: loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)"),
+  fontSize: "9px",
+  fontWeight: "bold",
+  cursor: "pointer"
+}}>
+  {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
+</button>
+      <button onClick={() => {
+        if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive);
+        else setInfoModal({ visible: true, message: t('infoSetLoop') });
+      }} style={{
+        background: loopActive ? "var(--text-bright)" : "var(--bg-card)",
+        border: `2px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`,
+        borderRadius: "20px", padding: "4px 8px", flex: 1,
+        color: loopActive ? "var(--bg-card)" : "var(--warning-border)",
+        fontSize: "9px", fontWeight: "bold", cursor: "pointer"
+      }}>
+        {loopActive ? t('loopOn') : t('loopOff')}
+      </button>
+    </div>
+    <input type="range" min="60" max="200" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: "100%", cursor: "pointer" }} />
+  </div>
+</div>
+
+    {/* ========== БЛОК ATTACH EFFECT ========== */}
+    <div style={{
+  background: "var(--bg-card)",
+  padding: "12px",
+  borderRadius: "12px",
+  border: "1px solid var(--border-color)",
+  boxShadow: "var(--shadow)",
+  width: "200px",
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between"
+}}>
+  <div>
+  <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
+  {[
+    { name: 'click', icon: '🔊', play: () => uiSounds.playClick() },
+    { name: 'pop', icon: '🎯', play: () => uiSounds.playPop() },
+    { name: 'pixel', icon: '🕹️', play: () => uiSounds.playPixel() },
+    { name: 'boom', icon: '💥', play: () => uiSounds.playBoom() },
+    { name: 'chirp', icon: '🐤', play: () => uiSounds.playChirp() }
+  ].map(effect => (
+    <button
+      key={effect.name}
+      onClick={(e) => {
+        const btn = e.currentTarget;
+        btn.classList.add('btn-flash');
+        setTimeout(() => btn.classList.remove('btn-flash'), 150);
+        applyEffectToSelectedBlocks(effect.name);
+        effect.play();
+      }}
+      style={{
+        background: "var(--btn-bg)",
+        border: "1px solid var(--border-color)",
+        borderRadius: "20px",
+        padding: "6px 8px",
+        color: "var(--text-accent)",
+        cursor: "pointer",
+        fontSize: "12px",
+        transition: "all 0.05s linear"
+      }}
+    >
+      {effect.icon}
+    </button>
+  ))}
+  <button
+    onClick={(e) => {
+      const btn = e.currentTarget;
+      btn.classList.add('btn-flash-red');
+      setTimeout(() => btn.classList.remove('btn-flash-red'), 150);
+      applyEffectToSelectedBlocks(null);
+    }}
+    style={{
+      background: "var(--btn-bg)",
+      border: "1px solid var(--border-color)",
+      borderRadius: "20px",
+      padding: "6px 8px",
+      color: "#FFB84D",
+      cursor: "pointer",
+      fontSize: "12px",
+      transition: "all 0.05s linear"
+    }}
+  >
+    ❌
+  </button>
+</div>
+    <div style={{ fontSize: "9px", color: "var(--text-secondary)", marginBottom: "8px" }}>{t('selectBlock')}</div>
+    <button
+      onClick={(e) => {
+        const btn = e.currentTarget;
+        btn.classList.add('btn-flash-red');
+        setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
+        removeAllEffects();
+      }}
+      style={{ backgroundColor: "var(--btn-bg)", border: "1px solid var(--warning-border)", borderRadius: "20px", padding: "6px 8px", width: "100%", color: "var(--warning-border)", cursor: "pointer", fontSize: "10px", fontWeight: "bold", marginBottom: "8px", transition: "all 0.05s linear" }}
+    >
+      {t('removeAllEffects')}
+    </button>
+  </div>
+  <div>
+    <button
+      onClick={toggleSubMode}
+      style={{ background: "rgba(77,136,255,0.1)", border: `2px solid ${subMode ? "#bd00ff" : "var(--text-accent)"}`, borderRadius: "20px", padding: "6px 12px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer", transition: "all 0.1s ease" }}
+    >
+      <span style={{ fontSize: "14px" }}>🔊</span>
+      <span style={{ fontSize: "10px", fontWeight: "bold", color: subMode ? "#bd00ff" : "var(--text-accent)" }}>
+        {subMode ? t('subOn') : t('subOff')}
+      </span>
+    </button>
+  </div>
+</div>
+
+    {/* ========== БЛОК MASTER VOL ========== */}
+    <div style={{
+  background: "var(--bg-card)",
+  padding: "15px",
+  borderRadius: "12px",
+  border: "1px solid var(--border-color)",
+  boxShadow: "var(--shadow)",
+  width: "200px",
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between"
+}}>
+  <div>
+    <div style={{ fontSize: "10px", color: "var(--text-accent)", marginBottom: "4px" }}>{t('masterVol')}</div>
     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
       <span style={{ fontSize: "12px" }}>🔊</span>
       <input type="range" min="0" max="1" step="0.01" value={masterGainValue} onChange={(e) => { const val = parseFloat(e.target.value); setMasterGainValue(val); if (masterGainRef.current) masterGainRef.current.gain.rampTo(val, 0.05); }} style={{ flex: 1, height: "4px" }} />
     </div>
-    <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", textShadow: "0 0 8px #4DFF88", marginBottom: "12px" }}>
+    <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)", textShadow: "0 0 8px var(--text-bright)", marginBottom: "12px" }}>
       {Math.round(masterGainValue * 100)}%
     </div>
   </div>
   <div>
     <div style={{ display: "flex", justifyContent: "center", gap: "8px", alignItems: "center", marginBottom: "12px" }}>
-      <button onClick={() => setMasterDisplayMode("vu")} style={{ background: masterDisplayMode === "vu" ? "#4DFF88" : "transparent", border: `1px solid ${masterDisplayMode === "vu" ? "#4DFF88" : "#4D88FF"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "vu" ? "#0a0e1a" : "#4D88FF", fontWeight: "bold", cursor: "pointer" }}>{t('vu')}</button>
-      <span style={{ fontSize: "10px", color: "#4D88FF" }}>{t('master')}</span>
-      <button onClick={() => setMasterDisplayMode("wave")} style={{ background: masterDisplayMode === "wave" ? "#4DFF88" : "transparent", border: `1px solid ${masterDisplayMode === "wave" ? "#4DFF88" : "#4D88FF"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "wave" ? "#0a0e1a" : "#4D88FF", fontWeight: "bold", cursor: "pointer" }}>{t('wave')}</button>
+      <button onClick={() => setMasterDisplayMode("vu")} style={{ background: masterDisplayMode === "vu" ? "var(--text-bright)" : "transparent", border: `1px solid ${masterDisplayMode === "vu" ? "var(--text-bright)" : "var(--text-accent)"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "vu" ? "var(--bg-card)" : "var(--text-accent)", fontWeight: "bold", cursor: "pointer" }}>{t('vu')}</button>
+      <span style={{ fontSize: "10px", color: "var(--text-accent)" }}>{t('master')}</span>
+      <button onClick={() => setMasterDisplayMode("wave")} style={{ background: masterDisplayMode === "wave" ? "var(--text-bright)" : "transparent", border: `1px solid ${masterDisplayMode === "wave" ? "var(--text-bright)" : "var(--text-accent)"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "wave" ? "var(--bg-card)" : "var(--text-accent)", fontWeight: "bold", cursor: "pointer" }}>{t('wave')}</button>
     </div>
     {masterDisplayMode === "vu" ? (
       <div style={{ marginBottom: "8px" }}>
@@ -2675,20 +2903,20 @@ const removeAllEffects = () => {
           {[...Array(20)].map((_, idx) => {
             const intensity = idx / 20;
             const isActive = masterVolume > intensity;
-            let color = "#4DFF88";
+            let color = "var(--text-bright)";
             if (intensity > 0.7) color = "#FFB84D";
-            if (intensity > 0.9) color = "#FF4D4D";
-            return <div key={idx} style={{ width: "5px", height: `${6 + intensity * 25}px`, backgroundColor: isActive ? color : "rgba(77,136,255,0.2)", borderRadius: "2px", transition: "height 0.05s" }} />;
+            if (intensity > 0.9) color = "var(--warning-border)";
+            return <div key={idx} style={{ width: "5px", height: `${6 + intensity * 25}px`, backgroundColor: isActive ? color : "rgba(var(--bg-card-rgb), 0.2)", borderRadius: "2px", transition: "height 0.05s" }} />;
           })}
         </div>
       </div>
     ) : (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "55px", marginBottom: "8px" }}>
-        <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: `radial-gradient(circle, ${masterVolume < 0.33 ? "rgba(77,255,136,0.4)" : masterVolume < 0.66 ? "rgba(255,184,77,0.4)" : "rgba(255,77,77,0.4)"}, transparent)`, border: `2px solid ${masterVolume < 0.33 ? "#4DFF88" : masterVolume < 0.66 ? "#FFB84D" : "#FF4D4D"}`, transform: `scale(${0.4 + masterVolume * 0.8})`, transition: "all 0.05s" }} />
+        <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: `radial-gradient(circle, ${masterVolume < 0.33 ? "rgba(77,255,136,0.4)" : masterVolume < 0.66 ? "rgba(255,184,77,0.4)" : "rgba(255,77,77,0.4)"}, transparent)`, border: `2px solid ${masterVolume < 0.33 ? "var(--text-bright)" : masterVolume < 0.66 ? "#FFB84D" : "var(--warning-border)"}`, transform: `scale(${0.4 + masterVolume * 0.8})`, transition: "all 0.05s" }} />
       </div>
     )}
-    <div style={{ fontSize: "14px", fontWeight: "bold", color: "#4DFF88", marginTop: "6px" }}>{currentPosition.seconds.toFixed(1)}s</div>
-    <div style={{ fontSize: "9px", color: "#4D88FF" }}>({currentPosition.bar}.{currentPosition.beat})</div>
+    <div style={{ fontSize: "14px", fontWeight: "bold", color: "var(--text-bright)", marginTop: "6px" }}>{currentPosition.seconds.toFixed(1)}s</div>
+    <div style={{ fontSize: "9px", color: "var(--text-accent)" }}>({currentPosition.bar}.{currentPosition.beat})</div>
   </div>
 </div>
 
@@ -2698,10 +2926,10 @@ const removeAllEffects = () => {
 {/* FX-панель (ползунки) – выровнена по высоте */}
 <div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0, width: "640px" }}>
   <div style={{
-    background: "#0a0e1a",
-    border: "1px solid #2a3a6e",
+    background: "var(--bg-card)",
+    border: "1px solid var(--border-color)",
     borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+    boxShadow: "var(--shadow)",
     padding: "15px 20px 20px 20px",
     display: "grid",
     gridTemplateColumns: "repeat(6, 1fr)",
@@ -2709,62 +2937,238 @@ const removeAllEffects = () => {
     width: "100%",
     boxSizing: "border-box"
   }}>
-    {/* Надпись с названием инструмента */}
     <div style={{ gridColumn: "span 6", textAlign: "center", marginBottom: "6px", fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: getInstrumentColor(instrument) }}>
       {instrument.toUpperCase()}
     </div>
 
     {/* VOLUME */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-        {t('volume')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{volumes[instrument].toFixed(2)}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('volume')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{volumes[instrument].toFixed(2)}</span>
       </div>
       <input type="range" min="0" max="1" step="0.01" value={volumes[instrument]} onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 1.0 }))}>{t('reset')}</button>
     </div>
-    {/* FX VOLUME – сокращённое название */}
+    {/* FX VOLUME */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-      {t('fxVol')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{fxVolume.toFixed(2)}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('fxVol')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fxVolume.toFixed(2)}</span>
       </div>
       <input type="range" min="0" max="1" step="0.01" value={fxVolume} onChange={(e) => setFxVolume(parseFloat(e.target.value))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFxVolume(0.5)}>{t('reset')}</button>
     </div>
     {/* CUTOFF */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-        {t('cutoff')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{filters[instrument].cutoff}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('cutoff')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{filters[instrument].cutoff}</span>
       </div>
       <input type="range" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>{t('reset')}</button>
     </div>
     {/* Q (RES) */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-        {t('q')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{filters[instrument].q}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('q')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{filters[instrument].q}</span>
       </div>
       <input type="range" min="0.1" max="20" step="0.1" value={filters[instrument].q} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>{t('reset')}</button>
     </div>
     {/* CHORUS */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-        {t('chorus')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{fx[instrument].chorus.toFixed(2)}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('chorus')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fx[instrument].chorus.toFixed(2)}</span>
       </div>
       <input type="range" min="0" max="1" step="0.01" value={fx[instrument].chorus} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>{t('reset')}</button>
     </div>
     {/* REVERB */}
     <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "#AAB3C2", lineHeight: 1.2 }}>
-        {t('reverb')}<br/><span style={{ fontSize: "12px", color: "#4DFF88" }}>{fx[instrument].reverb.toFixed(2)}</span>
+      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
+        {t('reverb')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fx[instrument].reverb.toFixed(2)}</span>
       </div>
       <input type="range" min="0" max="1" step="0.01" value={fx[instrument].reverb} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
       <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>{t('reset')}</button>
     </div>
   </div>
 </div>
+{/* ===== НОВАЯ ПАНЕЛЬ 3D (одна строка с цветным инструментом) ===== */}
+<div style={{
+  overflow: "hidden",
+  transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+  maxHeight: show3D ? "150px" : "0px",
+  opacity: show3D ? 1 : 0,
+  marginBottom: show3D ? "30px" : "0px",
+  width: "640px"
+}}>
+  <div style={{
+    background: "var(--bg-card)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "12px",
+    boxShadow: "var(--shadow)",
+    padding: "15px 20px 20px 20px",
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "16px",
+    width: "100%",
+    boxSizing: "border-box"
+  }}>
+    {/* Шапка: одна строка "3D + инструмент" */}
+    <div style={{
+  width: "100%",
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "center",
+  marginBottom: "4px",
+  gap: "8px"
+}}>
+  {/* Левая колонка (пусто, чтобы центрировать среднюю) */}
+  <div></div>
+  
+  {/* Центральная колонка: 3D + инструмент */}
+  <div style={{ textAlign: "center" }}>
+    <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-accent)", letterSpacing: "2px" }}>
+      🎧 3D
+    </span>
+    <span style={{
+      fontSize: "11px",
+      fontWeight: "bold",
+      letterSpacing: "2px",
+      color: getInstrumentColor(instrument),
+      marginLeft: "4px"
+    }}>
+      {instrument.toUpperCase()}
+    </span>
+  </div>
 
+  {/* Правая колонка: кнопка ON/OFF */}
+  <div style={{ textAlign: "right" }}>
+    <button
+      onClick={() => setIs3DEnabled(!is3DEnabled)}
+      style={{
+        fontSize: "9px",
+        fontWeight: "bold",
+        padding: "2px 10px",
+        borderRadius: "12px",
+        border: `1px solid ${is3DEnabled ? "var(--text-bright)" : "var(--text-secondary)"}`,
+        background: is3DEnabled ? "rgba(77,255,136,0.2)" : "transparent",
+        color: is3DEnabled ? "var(--text-bright)" : "var(--text-secondary)",
+        cursor: "pointer",
+        transition: "all 0.2s ease"
+      }}
+    >
+      {is3DEnabled ? t('3dOn') : t('3dOff')}
+    </button>
+  </div>
+</div>
+
+    {/* X */}
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>X</span>
+      <input
+        type="range"
+        min="-10"
+        max="10"
+        step="0.1"
+        value={positions3D[instrument]?.x ?? 0}
+        onChange={(e) => {
+          const val = parseFloat(e.target.value);
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], x: val }
+          }));
+        }}
+        style={{ width: "100px", cursor: "pointer" }}
+      />
+      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
+        {positions3D[instrument]?.x.toFixed(1) ?? 0}
+      </span>
+      <button
+        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
+        onClick={() => {
+          const defaultPos = defaultPositions[instrument];
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], x: defaultPos.x }
+          }));
+        }}
+      >
+        {t('reset')}
+      </button>
+    </div>
+
+    {/* Y */}
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>Y</span>
+      <input
+        type="range"
+        min="-10"
+        max="10"
+        step="0.1"
+        value={positions3D[instrument]?.y ?? 0}
+        onChange={(e) => {
+          const val = parseFloat(e.target.value);
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], y: val }
+          }));
+        }}
+        style={{ width: "100px", cursor: "pointer" }}
+      />
+      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
+        {positions3D[instrument]?.y.toFixed(1) ?? 0}
+      </span>
+      <button
+        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
+        onClick={() => {
+          const defaultPos = defaultPositions[instrument];
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], y: defaultPos.y }
+          }));
+        }}
+      >
+        {t('reset')}
+      </button>
+    </div>
+
+    {/* Z */}
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>Z</span>
+      <input
+        type="range"
+        min="-10"
+        max="10"
+        step="0.1"
+        value={positions3D[instrument]?.z ?? -5}
+        onChange={(e) => {
+          const val = parseFloat(e.target.value);
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], z: val }
+          }));
+        }}
+        style={{ width: "100px", cursor: "pointer" }}
+      />
+      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
+        {positions3D[instrument]?.z.toFixed(1) ?? -5}
+      </span>
+      <button
+        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
+        onClick={() => {
+          const defaultPos = defaultPositions[instrument];
+          setPositions3D(prev => ({
+            ...prev,
+            [instrument]: { ...prev[instrument], z: defaultPos.z }
+          }));
+        }}
+      >
+        {t('reset')}
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* Блок транспорта (над сеткой) */}
       <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" }}>
@@ -2791,66 +3195,36 @@ const removeAllEffects = () => {
 
   {/* AI (между Stop и Record) */}
   <button
-    onClick={generateAIPattern}
-    className="ai-btn"
-    style={{
-      width: "55px",
-      height: "50px",
-      background: "rgba(30, 42, 80, 0.5)",
-      border: "1px solid rgba(189, 0, 255, 0.4)",
-      color: "rgba(189, 0, 255, 0.5)",
-      borderRadius: "10px",
-      fontSize: "18px",
-      fontWeight: "bold",
-      letterSpacing: "2px",
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }}
-  >
-    AI
-  </button>
+  onClick={generateAIPattern}
+  className="ai-btn"
+  style={{
+    width: "55px",
+    height: "50px",
+    background: "rgba(var(--bg-card-rgb), 0.5)",
+    border: "1px solid rgba(189, 0, 255, 0.4)",
+    color: "rgba(189, 0, 255, 0.5)",
+    borderRadius: "10px",
+    fontSize: "18px",
+    fontWeight: "bold",
+    letterSpacing: "2px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }}
+>
+  AI
+</button>
 
   {/* Record */}
   <button
-    onClick={handleRecord}
-    className={`record-square-btn ${isRecording ? 'recording-active' : ''}`}
-    style={{
-      width: "55px",
-      height: "50px",
-      background: isRecording ? "#ff4d4d" : "#0f172a",
-      border: "1px solid #ff4d4d",
-      color: isRecording ? "#ffffff" : "#ff4d4d",
-      borderRadius: "10px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "4px",
-      fontSize: "12px",
-      fontWeight: "bold",
-      cursor: "pointer",
-      transition: "all 0.2s ease",
-      boxShadow: isRecording ? "0 0 12px #ff4d4d" : "none"
-    }}
-    onMouseEnter={(e) => {
-      if (!isRecording) {
-        e.currentTarget.style.background = "#1e293b";
-        e.currentTarget.style.transform = "translateY(-1px)";
-      }
-    }}
-    onMouseLeave={(e) => {
-      if (!isRecording) {
-        e.currentTarget.style.background = "#0f172a";
-        e.currentTarget.style.transform = "translateY(0)";
-      }
-    }}
-  >
-    <div className="record-dot" style={{ width: "8px", height: "8px", backgroundColor: isRecording ? "#ffffff" : "#ff4d4d", borderRadius: "50%" }}></div>
-    {isRecording ? 'REC' : 'REC'}
-  </button>
-
+  onClick={handleRecord}
+  className={`record-square-btn ${isRecording ? 'recording-active' : ''}`}
+>
+  <div className="record-dot" style={{ width: "8px", height: "8px", backgroundColor: isRecording ? "#ffffff" : "#ff4d4d", borderRadius: "50%" }}></div>
+  {isRecording ? 'REC' : 'REC'}
+</button>
 
   {/* Reset с marginLeft: auto, чтобы прижать к правому краю */}
   <button onClick={() => setShowResetConfirm(true)} className="reset-btn" style={{ marginLeft: "auto" }}>{t('resetAll')}</button>
@@ -2859,8 +3233,7 @@ const removeAllEffects = () => {
       {/* Сетка (scroll-container) */}
       <div 
         ref={scrollRef}
-        onMouseMove={(e) => { if (!isDraggingRef.current) return; autoScrollIfNeeded(e.clientX); }}
-        onTouchMove={(e) => { if (!isDraggingRef.current) return; const touchX = e.touches[0].clientX; autoScrollIfNeeded(touchX); }}
+        
         className="scroll-container"
         onContextMenu={(e) => e.preventDefault()}
         style={{
@@ -2938,8 +3311,6 @@ const removeAllEffects = () => {
                         key={b.id} 
                         className={`block ${isPlaying && activeStep >= Math.floor(b.x / STEP_WIDTH) && activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) ? 'playing' : ''}`}
                         data-id={b.id}
-                        onMouseEnter={() => setHoveredBlockId(b.id)}
-                        onMouseLeave={() => setHoveredBlockId(null)}
                         onMouseDown={(e) => {
                           handleSelectBlock(e, b, instName);
                           if (instName === instrument) {
@@ -2990,7 +3361,7 @@ const removeAllEffects = () => {
                           borderRadius: 8,
                           pointerEvents: "auto",
                           touchAction: "none",
-                          transition: "all 0.05s linear"
+                          transition: "none"
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
@@ -3072,20 +3443,20 @@ const removeAllEffects = () => {
 {/* Модальное окно "Что нового" */}
 {showChangelog && (
   <div className="custom-modal-overlay" onClick={() => setShowChangelog(false)}>
-    <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="custom-modal changelog-modal" onClick={(e) => e.stopPropagation()}>
       <div className="neon-icon">📢</div>
-      <h2 style={{ color: '#4DFF88', textShadow: '0 0 8px #4DFF88' }}>{t('changelogTitle')}</h2>
-      <div style={{ textAlign: "left", margin: "20px 0", lineHeight: "1.8", fontSize: "14px", color: "#ccc" }}>
+      <h2 className="changelog-title">{t('changelogTitle')}</h2>
+      <div style={{ textAlign: "left", margin: "20px 0", lineHeight: "1.8", fontSize: "14px", color: "var(--text-secondary)" }}>
         {t('changelogText').map((item, idx) => (
           <div key={idx} style={{ padding: "4px 0" }}>{item}</div>
         ))}
       </div>
       <div className="modal-buttons">
-        <button className="close-modal-btn" onClick={() => setShowChangelog(false)}>OK</button>
+        <button className="close-modal-btn" onClick={() => setShowChangelog(false)}>{t('infoOk')}</button>
       </div>
     </div>
   </div>
-)} 
+)}
   
   {showResetConfirm && (
   <div className="custom-modal-overlay warning-overlay" onClick={() => setShowResetConfirm(false)}>
@@ -3105,7 +3476,7 @@ const removeAllEffects = () => {
         <div className="custom-modal-overlay" onClick={() => setInfoModal({ visible: false, message: '' })}>
           <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
             <div className="neon-icon">ℹ️</div>
-            <h2 style={{ color: '#4D88FF', textShadow: '0 0 8px #4D88FF' }}>{t('infoTitle')}</h2>
+            <h2 style={{ color: 'var(--text-accent)', textShadow: '0 0 8px var(--text-accent)' }}>{t('infoTitle')}</h2>
             <p>{infoModal.message}</p>
             <div className="modal-buttons">
             <button className="cancel-modal-btn" onClick={() => setInfoModal({ visible: false, message: '' })}>{t('infoOk')}</button>

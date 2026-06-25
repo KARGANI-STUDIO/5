@@ -167,7 +167,8 @@ const translations = {
       "• Glass design with blur effect",
       "• 3D sound support with spatial positioning of instruments",
       "• Performance optimization: smoother scrolling, faster block interaction, reduced CPU load",
-      "• Bug fixes: loop functionality, scroll improvements"
+      "• Bug fixes: loop functionality, scroll improvements",
+      "• Added Easter egg: Super Mario theme for CHIP instrument"
     ]
   },
   ru: {
@@ -249,7 +250,8 @@ const translations = {
       "• Стеклянный дизайн с эффектом размытия",
       "• Поддержка 3D-звука с пространственным позиционированием инструментов",
       "• Оптимизация производительности: плавный скролл, быстрая реакция блоков, снижена нагрузка на CPU",
-      "• Исправление ошибок: работа лупа, улучшения скроллинга"
+      "• Исправление ошибок: работа лупа, улучшения скроллинга",
+      "• Добавлена пасхалка: тема Super Mario для инструмента CHIP"
     ]
   }
 };
@@ -1755,6 +1757,120 @@ const handleStop = () => {
     const newBlocks = [];
     const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   
+   // ========== ПАСХАЛКА: SUPER MARIO ДЛЯ CHIP (расширенная аранжировка) ==========
+if (inst === 'chip' && Math.random() < 0.15) {
+  // Оригинальная главная тема Super Mario Bros (1985) – улучшенная многоголосная версия
+  // Используем несколько струн: 
+  // - струна 7 (e) для основной мелодии
+  // - струна 5 (D) для гармонии (терции/квинты)
+  // - струна 2 (A) для баса (низкие ноты)
+  
+  const melodyStr = 7;   // e (высокая)
+  const harmonyStr = 5;  // D (средняя)
+  const bassStr = 2;     // A (низкая)
+
+  // Основная мелодия (расширенная версия, полная тема)
+  // Формат: { step, fret, length } – step = шаг 1/16 такта, length = длительность в шагах
+  const melodyNotes = [
+    // --- Вступление (как в оригинале) ---
+    { step: 0,  fret: 12, length: 1 }, // E5
+    { step: 2,  fret: 12, length: 1 }, // E5
+    { step: 6,  fret: 12, length: 1 }, // E5
+    { step: 8,  fret: 8,  length: 1 }, // C5
+    { step: 10, fret: 12, length: 1 }, // E5
+    { step: 12, fret: 15, length: 2 }, // G5
+    { step: 20, fret: 3,  length: 2 }, // G4
+
+    // --- Основной мотив (Часть 1) ---
+    { step: 32, fret: 8,  length: 2 }, // C5
+    { step: 38, fret: 3,  length: 2 }, // G4
+    { step: 44, fret: 0,  length: 2 }, // E4
+
+    { step: 50, fret: 5,  length: 1 }, // A4
+    { step: 54, fret: 7,  length: 1 }, // B4
+    { step: 56, fret: 6,  length: 1 }, // Bb4
+    { step: 58, fret: 5,  length: 2 }, // A4
+    { step: 60, fret: 3,  length: 1 }, // G4
+
+    // --- Мотив с прыжком (Часть 2) ---
+    { step: 64, fret: 12, length: 1 }, // E5
+    { step: 66, fret: 15, length: 1 }, // G5
+    { step: 68, fret: 17, length: 2 }, // A5
+    { step: 72, fret: 13, length: 1 }, // F5
+    { step: 74, fret: 15, length: 1 }, // G5
+    { step: 76, fret: 12, length: 2 }, // E5
+
+    // --- Завершение (Часть 3) ---
+    { step: 80, fret: 8,  length: 1 }, // C5
+    { step: 82, fret: 10, length: 1 }, // D5
+    { step: 84, fret: 7,  length: 2 }, // B4
+
+    // --- Дополнительный кусок для большей полноты ---
+    { step: 92, fret: 5,  length: 2 }, // A4
+    { step: 96, fret: 3,  length: 2 }, // G4
+    { step: 100, fret: 8,  length: 2 }, // C5
+    { step: 104, fret: 7,  length: 2 }, // B4
+    { step: 108, fret: 5,  length: 2 }, // A4
+    { step: 112, fret: 3,  length: 2 }, // G4
+    { step: 116, fret: 0,  length: 4 }, // E4 (финальная)
+  ];
+
+  // Гармонические тоны (терции и квинты) – добавляем на тех же шагах, но на другой струне
+  const harmonyNotes = melodyNotes.map(n => {
+    // Для гармонии используем простые интервалы: терция (3 полутона) или кварта/квинта
+    // В зависимости от ноты мелодии, подбираем подходящую гармонию
+    let harmonyFret = n.fret;
+    // Для простоты добавим терцию (3 полутона) к большинству нот, но не к паузам
+    if (n.length > 0) {
+      harmonyFret = Math.min(MAX_FRET, n.fret + 3); // терция
+      // Если выходит за пределы, берём октаву ниже или квинту
+      if (harmonyFret > MAX_FRET) harmonyFret = n.fret - 3;
+      if (harmonyFret < 0) harmonyFret = n.fret + 5;
+    }
+    return { ...n, fret: harmonyFret };
+  });
+
+  // Басовая линия (на низкой струне) – идёт по основным тонам аккордов
+  // Обычно это тоника или доминанта, упрощённо повторяем основные ноты мелодии, но на октаву ниже
+  const bassNotes = melodyNotes.filter((_, i) => i % 2 === 0).map(n => {
+    let bassFret = Math.max(0, n.fret - 12); // опускаем на октаву
+    // Если басовая нота выходит за пределы струны, корректируем
+    if (bassFret < 0) bassFret = 0;
+    return { ...n, fret: bassFret, length: n.length * 2 }; // басовые ноты длиннее
+  });
+
+  // Добавляем все голоса в newBlocks
+  const addNotes = (notes, stringIdx) => {
+    notes.forEach((note, idx) => {
+      if (note.step >= numSteps) return;
+      const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
+      const x = note.step * stepSize;
+      const lengthPx = note.length * stepSize * 1.5;
+      const velocity = 0.85 + Math.random() * 0.15;
+      newBlocks.push({
+        id: now + idx + Math.random() + stringIdx * 1000,
+        string: stringIdx,
+        x: x,
+        length: lengthPx,
+        fret: fret,
+        velocity: velocity,
+        effect: null
+      });
+    });
+  };
+
+  // Добавляем основную мелодию
+  addNotes(melodyNotes, melodyStr);
+  // Добавляем гармонию (терции)
+  addNotes(harmonyNotes, harmonyStr);
+  // Добавляем бас
+  addNotes(bassNotes, bassStr);
+
+  setTracks(prev => ({ ...prev, [inst]: newBlocks }));
+  if (uiSoundsEnabled) uiSounds.playClick();
+  return; // выходим, не генерируем случайный паттерн
+}
+  
     // -------------------------------------------------------------
     // ПАТТЕРНЫ
     // -------------------------------------------------------------
@@ -1805,7 +1921,7 @@ const handleStop = () => {
       const HIHAT_C = { fret: 8, string: 1 };
       const HIHAT_O = { fret: 12, string: 1 };
       const CRASH   = { fret: 16, string: 1 };
-
+  
       // Расширенная библиотека (10 вариантов для каждого элемента)
       const kickPatterns = [
         [0, 8], [0, 4, 8, 12], [0, 7, 10], [0, 8, 11], [0, 10],
@@ -1820,15 +1936,15 @@ const handleStop = () => {
         [0, 4, 8, 12], [0, 2, 4, 6, 8, 9, 10, 12, 14, 15], [0, 2, 3, 4, 6, 8, 10, 11, 12, 14],
         [0, 4, 8, 10, 12], [0, 3, 6, 9, 12], [2, 4, 6, 10, 12, 14], [0, 2, 8, 10]
       ];
-
+  
       const currentKick = randomPick(kickPatterns);
       const currentSnare = randomPick(snarePatterns);
       const currentHat = randomPick(hatPatterns);
-
+  
       for (let step = 0; step < numSteps; step++) {
-        const stepInBar = step % 16; 
+        const stepInBar = step % 16;
         const x = step * stepSize;
-
+  
         // 1. Kick
         if (currentKick.includes(stepInBar)) {
           newBlocks.push({ id: now + step + Math.random(), string: KICK.string, x, length: stepSize, fret: KICK.fret, velocity: 0.85 + Math.random() * 0.15, effect: null });
@@ -1839,7 +1955,7 @@ const handleStop = () => {
         }
         // 3. Hi-Hats
         if (currentHat.includes(stepInBar)) {
-          const isOpen = Math.random() > 0.85 && stepInBar % 4 !== 0; 
+          const isOpen = Math.random() > 0.85 && stepInBar % 4 !== 0;
           const hat = isOpen ? HIHAT_O : HIHAT_C;
           newBlocks.push({ id: now + step + Math.random() + 2000, string: hat.string, x, length: stepSize, fret: hat.fret, velocity: 0.4 + Math.random() * 0.4, effect: null });
         }
@@ -1889,11 +2005,11 @@ const handleStop = () => {
       const motifLength = Math.floor(Math.random() * 3) + 4; // 4,5,6
       const startFret = pentatonicMinor[Math.floor(Math.random() * pentatonicMinor.length)];
       const motif = generateMotif(motifLength, startFret);
-      
+  
       // Сколько раз повторить мотив, чтобы заполнить numSteps
       const motifDurationSteps = 8; // базовый мотив длится 8 шагов (1/2 такта)
       const repetitions = Math.ceil(numSteps / motifDurationSteps);
-      
+  
       // Строим полную последовательность нот, повторяя мотив с небольшими вариациями
       const fullMelody = [];
       for (let rep = 0; rep < repetitions; rep++) {
@@ -1908,7 +2024,7 @@ const handleStop = () => {
           fullMelody.push(note);
         }
       }
-      
+  
       // Генерируем шаги для этих нот (равномерно, с лёгким сдвигом)
       const totalNotes = fullMelody.length;
       const stepInterval = numSteps / totalNotes;
@@ -1922,7 +2038,7 @@ const handleStop = () => {
         if (!steps.includes(step)) steps.push(step);
       }
       steps.sort((a,b)=>a-b);
-      
+  
       // Создаём блоки
       steps.forEach((step, idx) => {
         const fret = fullMelody[idx % fullMelody.length];

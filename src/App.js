@@ -89,7 +89,7 @@ function App() {
 // Переводы для двух фраз
 const translations = {
   en: {
-    tagline: "UNBOUND SOUND",
+    tagline: "LIQUID GLASS",
     startBtn: "START CREATING",
     desktopOnly: "Desktop Version Only",
     save: "SAVE",
@@ -172,7 +172,7 @@ const translations = {
     ]
   },
   ru: {
-    tagline: "МУЗЫКА БЕЗ ГРАНИЦ",
+    tagline: "ЖИДКОЕ СТЕКЛО",
     startBtn: "НАЧАТЬ ТВОРИТЬ",
     desktopOnly: "Только для ПК",
     save: "СОХРАНИТЬ",

@@ -1009,33 +1009,48 @@ body:has(.landing) {
   transform: translateZ(0);
   backface-visibility: hidden;
 }
-/* ===== LIQUID GLASS ДЛЯ 4 КНОПОК: PLAY, STOP, AI, REC ===== */
-
-/* Общие стили для всех четырёх кнопок */
+/* ===== ЕДИНЫЙ СТИЛЬ «LIQUID GLASS» ДЛЯ ВСЕХ КНОПОК ===== */
+.save-btn,
+.load-btn,
+.share-btn,
+.inst-btn,
+.fx-toggle-btn,
 .play-pause-btn,
 .stop-btn,
+.record-square-btn,
+.reset-btn,
 .ai-btn,
-.record-square-btn {
+div[style*="background: var(--bg-card)"] button,
+div[style*="background-color: var(--bg-card)"] button {
   background: rgba(255, 255, 255, 0.06) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   transition: all 0.25s ease !important;
+  color: var(--text-primary) !important;
 }
 
-/* При наведении */
+.save-btn:hover,
+.load-btn:hover,
+.share-btn:hover,
+.inst-btn:hover,
+.fx-toggle-btn:hover,
 .play-pause-btn:hover,
 .stop-btn:hover,
+.record-square-btn:hover,
+.reset-btn:hover,
 .ai-btn:hover,
-.record-square-btn:hover {
+div[style*="background: var(--bg-card)"] button:hover,
+div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
   transform: translateY(-1px) !important;
 }
 
-/* Активные состояния: Play (playing), Record (recording-active) */
+.inst-btn.active,
+.fx-toggle-btn.fx-active,
 .play-pause-btn.playing,
 .record-square-btn.recording-active {
   background: rgba(255, 255, 255, 0.15) !important;
@@ -1043,36 +1058,159 @@ body:has(.landing) {
   box-shadow: 0 0 20px currentColor, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Stop (без активного состояния – просто кнопка) */
 .stop-btn:active {
   transform: scale(0.95) !important;
 }
 
+.reset-btn {
+  border-color: rgba(255, 77, 77, 0.3) !important;
+  color: #ff4d4d !important;
+}
+.reset-btn:hover {
+  border-color: #ff4d4d !important;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.2) !important;
+}
+
 /* ===== СВЕТЛАЯ ТЕМА ===== */
+.app.light-theme .save-btn,
+.app.light-theme .load-btn,
+.app.light-theme .share-btn,
+.app.light-theme .inst-btn,
+.app.light-theme .fx-toggle-btn,
 .app.light-theme .play-pause-btn,
 .app.light-theme .stop-btn,
+.app.light-theme .record-square-btn,
+.app.light-theme .reset-btn,
 .app.light-theme .ai-btn,
-.app.light-theme .record-square-btn {
+.app.light-theme div[style*="background: var(--bg-card)"] button,
+.app.light-theme div[style*="background-color: var(--bg-card)"] button {
   background: rgba(255, 255, 255, 0.5) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: var(--text-primary) !important;
 }
-
+.app.light-theme .save-btn:hover,
+.app.light-theme .load-btn:hover,
+.app.light-theme .share-btn:hover,
+.app.light-theme .inst-btn:hover,
+.app.light-theme .fx-toggle-btn:hover,
 .app.light-theme .play-pause-btn:hover,
 .app.light-theme .stop-btn:hover,
+.app.light-theme .record-square-btn:hover,
+.app.light-theme .reset-btn:hover,
 .app.light-theme .ai-btn:hover,
-.app.light-theme .record-square-btn:hover {
+.app.light-theme div[style*="background: var(--bg-card)"] button:hover,
+.app.light-theme div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(255, 255, 255, 0.7) !important;
   border-color: rgba(0, 0, 0, 0.15) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
-
+.app.light-theme .inst-btn.active,
+.app.light-theme .fx-toggle-btn.fx-active,
 .app.light-theme .play-pause-btn.playing,
 .app.light-theme .record-square-btn.recording-active {
-  background: rgba(255, 77, 77, 0.9) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  color: #ffffff !important;
-  border-color: #ff4d4d !important;
-  box-shadow: 0 0 20px rgba(255, 77, 77, 0.6) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 20px currentColor, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .reset-btn {
+  color: #cc3333 !important;
+  border-color: rgba(204, 51, 51, 0.3) !important;
+}
+.app.light-theme .reset-btn:hover {
+  border-color: #cc3333 !important;
+  box-shadow: 0 0 15px rgba(204, 51, 51, 0.2) !important;
+}
+/* ===== ИНДИВИДУАЛЬНЫЕ ЦВЕТА ДЛЯ КНОПОК ИНСТРУМЕНТОВ (поверх стеклянного стиля) ===== */
+
+/* GUITAR */
+.inst-btn.guitar-btn.active,
+.inst-btn.guitar-btn.fx-active {
+  border-color: #FFB84D !important;
+  box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #FFB84D !important;
+}
+.inst-btn.guitar-btn:hover {
+  border-color: rgba(255, 184, 77, 0.5) !important;
+  box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important;
+  color: #FFB84D !important;
+}
+
+/* SYNTH */
+.inst-btn.synth-btn.active,
+.inst-btn.synth-btn.fx-active {
+  border-color: #4DC3FF !important;
+  box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #4DC3FF !important;
+}
+.inst-btn.synth-btn:hover {
+  border-color: rgba(77, 195, 255, 0.5) !important;
+  box-shadow: 0 0 15px rgba(77, 195, 255, 0.3) !important;
+  color: #4DC3FF !important;
+}
+
+/* DRUM */
+.inst-btn.drum-btn.active,
+.inst-btn.drum-btn.fx-active {
+  border-color: #FF4D4D !important;
+  box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #FF4D4D !important;
+}
+.inst-btn.drum-btn:hover {
+  border-color: rgba(255, 77, 77, 0.5) !important;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.3) !important;
+  color: #FF4D4D !important;
+}
+
+/* BASS */
+.inst-btn.bass-btn.active,
+.inst-btn.bass-btn.fx-active {
+  border-color: #BD00FF !important;
+  box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #BD00FF !important;
+}
+.inst-btn.bass-btn:hover {
+  border-color: rgba(189, 0, 255, 0.5) !important;
+  box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important;
+  color: #BD00FF !important;
+}
+
+/* CHIP */
+.inst-btn.chip-btn.active,
+.inst-btn.chip-btn.fx-active {
+  border-color: #4DFF88 !important;
+  box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #4DFF88 !important;
+}
+.inst-btn.chip-btn:hover {
+  border-color: rgba(77, 255, 136, 0.5) !important;
+  box-shadow: 0 0 15px rgba(77, 255, 136, 0.3) !important;
+  color: #4DFF88 !important;
+}
+
+/* ===== СВЕТЛАЯ ТЕМА (цвета остаются теми же, но фон чуть плотнее) ===== */
+.app.light-theme .inst-btn.guitar-btn.active,
+.app.light-theme .inst-btn.guitar-btn.fx-active {
+  border-color: #FFB84D !important;
+  box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .inst-btn.synth-btn.active,
+.app.light-theme .inst-btn.synth-btn.fx-active {
+  border-color: #4DC3FF !important;
+  box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .inst-btn.drum-btn.active,
+.app.light-theme .inst-btn.drum-btn.fx-active {
+  border-color: #FF4D4D !important;
+  box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .inst-btn.bass-btn.active,
+.app.light-theme .inst-btn.bass-btn.fx-active {
+  border-color: #BD00FF !important;
+  box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .inst-btn.chip-btn.active,
+.app.light-theme .inst-btn.chip-btn.fx-active {
+  border-color: #4DFF88 !important;
+  box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }

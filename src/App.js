@@ -115,6 +115,9 @@ const translations = {
     // 3D SOUND
     "3dOn": "ON",
     "3dOff": "OFF",
+    // AUTOSAVE
+    "autosaveOn": "AUTO ON",
+    "autosaveOff": "AUTO OFF", 
     // Блок MASTER VOL
     masterVol: "MASTER VOL",
     master: "MASTER",
@@ -161,14 +164,13 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-    changelogTitle: "✨ What's New (v1.5.3-Beta)",
+    changelogTitle: "✨ What's New (v1.5.3.1-Beta)",
     changelogText: [
+      "• Liquid Glass design style",
       "• Added light theme",
-      "• Glass design with blur effect",
-      "• 3D sound support with spatial positioning of instruments",
-      "• Performance optimization: smoother scrolling, faster block interaction, reduced CPU load",
-      "• Bug fixes: loop functionality, scroll improvements",
-      "• Added Easter egg: Super Mario theme for CHIP instrument"
+      "• 3D sound support with spatial positioning",
+      "• Autosave project for authorized users",
+      "• Added Super Mario Easter egg for CHIP instrument"
     ]
   },
   ru: {
@@ -198,6 +200,9 @@ const translations = {
     // 3D SOUND
     "3dOn": "ВКЛ",
     "3dOff": "ВЫКЛ",
+    // AUTOSAVE
+    "autosaveOn": "АВТО ВКЛ",
+    "autosaveOff": "АВТО ВЫКЛ",
     // Блок MASTER VOL
     masterVol: "ОБЩАЯ ГРОМКОСТЬ",
     master: "ОБЩИЙ",
@@ -244,14 +249,13 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-    changelogTitle: "✨ Что нового (v1.5.3-Beta)",
+    changelogTitle: "✨ Что нового (v1.5.3.1-Beta)",
     changelogText: [
+      "• Дизайн в стиле Liquid Glass",
       "• Добавлена светлая тема",
-      "• Стеклянный дизайн с эффектом размытия",
-      "• Поддержка 3D-звука с пространственным позиционированием инструментов",
-      "• Оптимизация производительности: плавный скролл, быстрая реакция блоков, снижена нагрузка на CPU",
-      "• Исправление ошибок: работа лупа, улучшения скроллинга",
-      "• Добавлена пасхалка: тема Super Mario для инструмента CHIP"
+      "• Поддержка 3D-звука с пространственным позиционированием",
+      "• Автосохранение проекта для авторизованных пользователей",
+      "• Добавлена пасхалка Super Mario для инструмента CHIP"
     ]
   }
 };
@@ -354,6 +358,11 @@ const [subMode, setSubMode] = useState(() => {
     });
   };
   const [show3D, setShow3D] = useState(false);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
+    const saved = localStorage.getItem('struna_autosave_enabled');
+    return saved !== null ? saved === 'true' : true; // по умолчанию включено
+  });
+  const [isDataLoaded, setIsDataLoaded] = useState(false); 
   const [positions3D, setPositions3D] = useState(defaultPositions);
   const [is3DEnabled, setIs3DEnabled] = useState(true);
 
@@ -1192,6 +1201,68 @@ Object.values(synthsRef.current).forEach(item => {
       panner.positionZ.rampTo(pos.z, 0.1);
     });
   }, [positions3D, is3DEnabled]);
+
+  // ===== ЗАГРУЗКА АВТОСОХРАНЕНИЯ (ПЕРВЫЙ) =====
+useEffect(() => {
+  // Если пользователь не залогинен или автосохранение выключено – просто разрешаем работу
+  if (!user?.email || !autosaveEnabled) {
+    setIsDataLoaded(true);
+    return;
+  }
+
+  const key = `struna_autosave_${user.email}`;
+  const saved = localStorage.getItem(key);
+
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data.tracks) setTracks(data.tracks);
+      if (data.bpm) setBpm(data.bpm);
+      if (data.filters) setFilters(data.filters);
+      if (data.fx) setFx(data.fx);
+      if (data.volumes) setVolumes(data.volumes);
+      if (data.positions3D) setPositions3D(data.positions3D);
+      if (data.loopActive !== undefined) setLoopActive(data.loopActive);
+      if (data.loopStart !== undefined) setLoopStart(data.loopStart);
+      if (data.loopEnd !== undefined) setLoopEnd(data.loopEnd);
+      console.log('✅ Автосохранение загружено');
+    } catch (e) {
+      console.warn('Ошибка загрузки автосохранения:', e);
+    }
+  }
+
+  setIsDataLoaded(true);
+}, [user, autosaveEnabled]);
+
+// ===== АВТОСОХРАНЕНИЕ (ВТОРОЙ) =====
+useEffect(() => {
+  // Если данные ещё не загружены, пользователь не залогинен или автосохранение выключено – пропускаем
+  if (!isDataLoaded || !user?.email || !autosaveEnabled) return;
+
+  const key = `struna_autosave_${user.email}`;
+  const data = {
+    tracks,
+    bpm,
+    filters,
+    fx,
+    volumes,
+    positions3D,
+    loopActive,
+    loopStart,
+    loopEnd
+  };
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn('Автосохранение не удалось:', e);
+  }
+}, [isDataLoaded, user, tracks, bpm, filters, fx, volumes, positions3D, loopActive, loopStart, loopEnd, autosaveEnabled]);
+
+// Сохраняем состояние автокнопки в localStorage при изменении
+useEffect(() => {
+  localStorage.setItem('struna_autosave_enabled', String(autosaveEnabled));
+}, [autosaveEnabled]);
+
   const handleShare = async () => {
     try {
       // Собираем все данные проекта (как в твоем handleSaveProject)
@@ -2258,11 +2329,14 @@ const removeAllEffects = () => {
     return updated;
   });
 };
-  const handleLogout = () => {
-    localStorage.removeItem("struna_user");
-    setUser(null);
-    setMode("landing");
-  };
+const handleLogout = () => {
+  if (user?.email) {
+    localStorage.removeItem(`struna_autosave_${user.email}`);
+  }
+  localStorage.removeItem("struna_user");
+  setUser(null);
+  setMode("landing");
+};
   const toggleSubMode = async () => {
     const newMode = !subMode;
     setSubMode(newMode);
@@ -2738,7 +2812,7 @@ const removeAllEffects = () => {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
               <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3-BETA</span>
+              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.1-BETA</span>
             </div>
           </div>
         </div>
@@ -2754,6 +2828,36 @@ const removeAllEffects = () => {
 {user && (
   <button onClick={handleShare} className="save-btn share-btn" style={{ marginLeft: '10px' }}>
     <span>🔗</span> {t('share')}
+  </button>
+)}
+{/* ===== КНОПКА АВТОСОХРАНЕНИЯ (только для авторизованных) ===== */}
+{user && (
+  <button
+    onClick={() => setAutosaveEnabled(!autosaveEnabled)}
+    className="save-btn"
+    style={{
+      marginLeft: '10px',
+      background: autosaveEnabled
+        ? 'rgba(77, 255, 136, 0.15)'
+        : 'rgba(255, 255, 255, 0.06)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      border: `1px solid ${autosaveEnabled ? 'var(--text-bright)' : 'var(--border-color)'}`,
+      color: autosaveEnabled ? 'var(--text-bright)' : 'var(--text-secondary)',
+      boxShadow: autosaveEnabled ? '0 0 15px rgba(77, 255, 136, 0.2)' : 'none',
+      transition: 'all 0.25s ease',
+      padding: '8px 14px',
+      borderRadius: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontSize: '11px',
+      fontWeight: 'bold',
+      cursor: 'pointer'
+    }}
+  >
+    <span>💾</span>
+    {autosaveEnabled ? t('autosaveOn') : t('autosaveOff')}
   </button>
 )}
           <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />

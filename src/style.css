@@ -1009,3 +1009,70 @@ body:has(.landing) {
   transform: translateZ(0);
   backface-visibility: hidden;
 }
+/* ===== LIQUID GLASS ДЛЯ 4 КНОПОК: PLAY, STOP, AI, REC ===== */
+
+/* Общие стили для всех четырёх кнопок */
+.play-pause-btn,
+.stop-btn,
+.ai-btn,
+.record-square-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.25s ease !important;
+}
+
+/* При наведении */
+.play-pause-btn:hover,
+.stop-btn:hover,
+.ai-btn:hover,
+.record-square-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Активные состояния: Play (playing), Record (recording-active) */
+.play-pause-btn.playing,
+.record-square-btn.recording-active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 20px currentColor, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Stop (без активного состояния – просто кнопка) */
+.stop-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* ===== СВЕТЛАЯ ТЕМА ===== */
+.app.light-theme .play-pause-btn,
+.app.light-theme .stop-btn,
+.app.light-theme .ai-btn,
+.app.light-theme .record-square-btn {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.app.light-theme .play-pause-btn:hover,
+.app.light-theme .stop-btn:hover,
+.app.light-theme .ai-btn:hover,
+.app.light-theme .record-square-btn:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.app.light-theme .play-pause-btn.playing,
+.app.light-theme .record-square-btn.recording-active {
+  background: rgba(255, 77, 77, 0.9) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #ffffff !important;
+  border-color: #ff4d4d !important;
+  box-shadow: 0 0 20px rgba(255, 77, 77, 0.6) !important;
+}

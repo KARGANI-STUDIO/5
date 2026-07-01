@@ -92,10 +92,19 @@ const translations = {
     tagline: "LIQUID GLASS",
     startBtn: "START CREATING",
     desktopOnly: "Desktop Version Only",
+    // Верхняя панель (старые ключи, оставляем для совместимости)
     save: "SAVE",
     load: "LOAD",
     driveSave: "DRIVE SAVE",
     share: "SHARE",
+    // Новые ключи для меню "МОЯ СТРУНА"
+    myStruna: "MY STRUNA",
+    saveProject: "💾 Save Project",
+    loadProject: "📂 Load Project",
+    driveSaveProject: "▲ Drive Save",
+    shareProject: "🔗 Share Project",
+    autosaveToggle: "💾 Autosave",
+    logout: "🚪 Logout",
     info: "INFO",
     fx: "FX",
     // Блок TEMPO
@@ -106,6 +115,13 @@ const translations = {
     resetLoop: "RESET LOOP",
     loopOn: "LOOP ON",
     loopOff: "LOOP OFF",
+    "metroOn": "🔔 ON",
+    "metroOff": "🔔 OFF",
+    "metroSoundClick": "Click",
+    "metroSoundBeep": "Beep",
+    "metroSoundDrum": "Drum",
+    "metroSoundNoise": "Noise",
+    "metroSoundBell": "Bell",
     // Блок ATTACH EFFECT
     attachEffect: "ATTACH EFFECT",
     selectBlock: "Select block(s) → choose effect",
@@ -115,9 +131,9 @@ const translations = {
     // 3D SOUND
     "3dOn": "ON",
     "3dOff": "OFF",
-    // AUTOSAVE
+    // AUTOSAVE (для кнопки)
     "autosaveOn": "AUTO ON",
-    "autosaveOff": "AUTO OFF", 
+    "autosaveOff": "AUTO OFF",
     // Блок MASTER VOL
     masterVol: "MASTER VOL",
     master: "MASTER",
@@ -164,11 +180,13 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-    changelogTitle: "✨ What's New (v1.5.3.1-Beta)",
+    changelogTitle: "✨ What's New (v1.5.3.2-Beta)",
     changelogText: [
       "• Liquid Glass design style",
       "• Added light theme",
       "• 3D sound support with spatial positioning",
+      "• Added metronome",
+      "• Personal account with unified control menu (MY STRUNA)",
       "• Autosave project for authorized users",
       "• Added Super Mario Easter egg for CHIP instrument"
     ]
@@ -177,10 +195,19 @@ const translations = {
     tagline: "ЖИДКОЕ СТЕКЛО",
     startBtn: "НАЧАТЬ ТВОРИТЬ",
     desktopOnly: "Только для ПК",
+    // Верхняя панель (старые ключи, оставляем для совместимости)
     save: "СОХРАНИТЬ",
     load: "ЗАГРУЗИТЬ",
     driveSave: "СОХРАНИТЬ НА ДИСК",
     share: "ПОДЕЛИТЬСЯ",
+    // Новые ключи для меню "МОЯ СТРУНА"
+    myStruna: "МОЯ СТРУНА",
+    saveProject: "💾 Сохранить проект",
+    loadProject: "📂 Загрузить проект",
+    driveSaveProject: "▲ Сохранить на диск",
+    shareProject: "🔗 Поделиться",
+    autosaveToggle: "💾 Автосохранение",
+    logout: "🚪 Выйти",
     info: "ИНФО",
     fx: "ЭФФЕКТЫ",
     // Блок TEMPO
@@ -191,6 +218,13 @@ const translations = {
     resetLoop: "СБРОСИТЬ ЛУП",
     loopOn: "ЛУП ВКЛ",
     loopOff: "ЛУП ВЫКЛ",
+    "metroOn": "🔔 ВКЛ",
+    "metroOff": "🔔 ВЫКЛ",
+    "metroSoundClick": "Щелчок",
+    "metroSoundBeep": "Бип",
+    "metroSoundDrum": "Удар",
+    "metroSoundNoise": "Шум",
+    "metroSoundBell": "Колокол",
     // Блок ATTACH EFFECT
     attachEffect: "ПРИКРЕПИТЬ ЭФФЕКТ",
     selectBlock: "Выберите блок(и) → выберите эффект",
@@ -200,7 +234,7 @@ const translations = {
     // 3D SOUND
     "3dOn": "ВКЛ",
     "3dOff": "ВЫКЛ",
-    // AUTOSAVE
+    // AUTOSAVE (для кнопки)
     "autosaveOn": "АВТО ВКЛ",
     "autosaveOff": "АВТО ВЫКЛ",
     // Блок MASTER VOL
@@ -249,11 +283,13 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-    changelogTitle: "✨ Что нового (v1.5.3.1-Beta)",
+    changelogTitle: "✨ Что нового (v1.5.3.2-Beta)",
     changelogText: [
       "• Дизайн в стиле Liquid Glass",
       "• Добавлена светлая тема",
       "• Поддержка 3D-звука с пространственным позиционированием",
+      "• Добавлен метроном",
+      "• Личный кабинет с единым меню управления (МОЯ СТРУНА)",
       "• Автосохранение проекта для авторизованных пользователей",
       "• Добавлена пасхалка Super Mario для инструмента CHIP"
     ]
@@ -365,6 +401,20 @@ const [subMode, setSubMode] = useState(() => {
   const [isDataLoaded, setIsDataLoaded] = useState(false); 
   const [positions3D, setPositions3D] = useState(defaultPositions);
   const [is3DEnabled, setIs3DEnabled] = useState(true);
+  const [metroOn, setMetroOn] = useState(false);
+  const [metroVolume, setMetroVolume] = useState(0.7);
+  const [metroSound, setMetroSound] = useState('click');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null); 
+  const metroOnRef = useRef(metroOn);
+  const metroVolumeRef = useRef(metroVolume);
+  const metroSoundRef = useRef(metroSound);
+  const metroSynthRef = useRef(null);
+  useEffect(() => {
+    metroOnRef.current = metroOn;
+    metroVolumeRef.current = metroVolume;
+    metroSoundRef.current = metroSound;
+  }, [metroOn, metroVolume, metroSound]);
 
   const pannerRefs = useRef({}); // для хранения ссылок на Panner3D
   const loopStartRef = useRef(0);
@@ -906,7 +956,7 @@ useEffect(() => {
     attack: 0.01,
     release: 0.2,
     knee: 5
-  }).toDestination(); // отправляем на колонки
+  }).toDestination();
 
   // 2. Лимитер для защиты от перегрузки
   const limiter = new Tone.Limiter(-3).connect(masterCompressor);
@@ -916,15 +966,23 @@ useEffect(() => {
   masterGainRef.current = master;
   const meter = new Tone.Meter();
   master.connect(meter);
-  meterRef.current = meter; 
+  meterRef.current = meter;
+
   // Общий узел для громкости спецэффектов (не зависит от инструментов)
-const fxMasterGain = new Tone.Gain(fxVolume);
-fxMasterGain.connect(master);
-window.__fxMasterGain = fxMasterGain;
+  const fxMasterGain = new Tone.Gain(fxVolume);
+  fxMasterGain.connect(master);
+  window.__fxMasterGain = fxMasterGain;
 
   // 4. Recorder
   recorderRef.current = new Tone.Recorder();
   master.connect(recorderRef.current);
+
+  // ===== МЕТРОНОМ (синтезатор для кликов) =====
+  const metroSynth = new Tone.Synth({
+    oscillator: { type: 'square' },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
+  }).toDestination(); // подключаем напрямую к выходу
+  metroSynthRef.current = metroSynth;
 
   // ---------- SIDECHAIN KICK (невидимый ритмический импульс) ----------
   const kickNoise = new Tone.Noise("brown");
@@ -960,47 +1018,46 @@ window.__fxMasterGain = fxMasterGain;
 
   ["guitar", "synth", "drum", "bass", "chip"].forEach((type) => {
     let volume = volumes[type];
-    // Убираем panValue, он не нужен
     let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : (type === 'chip' ? 10000 : 8000)));
-  
+
     const gain = new Tone.Gain(volume).connect(master);
     const filter = new Tone.Filter(cutoffFreq, "lowpass");
-  
+
     // ----- 3D-паннер вместо обычного -----
     const pos = defaultPositions[type];
-   const panner3D = new Tone.Panner3D({
-   panningModel: "HRTF",
-   positionX: pos.x,
-   positionY: pos.y,
-   positionZ: pos.z
-   }).connect(gain);
+    const panner3D = new Tone.Panner3D({
+      panningModel: "HRTF",
+      positionX: pos.x,
+      positionY: pos.y,
+      positionZ: pos.z
+    }).connect(gain);
 
-   pannerRefs.current[type] = panner3D;
-  
+    pannerRefs.current[type] = panner3D;
+
     // Эффекты (chorus, reverb)
     const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
     const reverb = new Tone.Reverb({ decay: 1.2, wet: 1 });
     const chorusGain = new Tone.Gain(0);
     const reverbGain = new Tone.Gain(0);
-  
+
     fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
-  
+
     // Подключаем эффекты к 3D-паннеру
     filter.connect(chorus);
     chorus.connect(chorusGain);
     chorusGain.connect(panner3D);
-  
+
     filter.connect(reverb);
     reverb.connect(reverbGain);
     reverbGain.connect(panner3D);
-  
+
     // Основной сигнал
     filter.connect(panner3D);
-  
+
     gainsRef.current[type] = gain;
     filtersRef.current[type] = filter;
-  
-    // --- Создание синтезаторов (без изменений) ---
+
+    // --- Создание синтезаторов ---
     if (type === "bass") {
       const bassSynth = new Tone.MonoSynth({
         oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
@@ -1058,18 +1115,21 @@ window.__fxMasterGain = fxMasterGain;
       Object.values(effectSynths).forEach(synth => synth?.dispose());
       delete window.__fxMasterGain;
     }
+
     // Отключаем и уничтожаем все узлы
     masterGainRef.current?.dispose();
-   // Уничтожаем все синтезаторы, включая пулы DRUM
-Object.values(synthsRef.current).forEach(item => {
-  if (!item) return;
-  if (item.membranePool && item.noisePool) {
-    item.membranePool.forEach(s => s.dispose());
-    item.noisePool.forEach(s => s.dispose());
-  } else if (typeof item.dispose === 'function') {
-    item.dispose();
-  }
-});
+
+    // Уничтожаем все синтезаторы, включая пулы DRUM
+    Object.values(synthsRef.current).forEach(item => {
+      if (!item) return;
+      if (item.membranePool && item.noisePool) {
+        item.membranePool.forEach(s => s.dispose());
+        item.noisePool.forEach(s => s.dispose());
+      } else if (typeof item.dispose === 'function') {
+        item.dispose();
+      }
+    });
+
     Object.values(filtersRef.current).forEach(f => f?.dispose());
     Object.values(gainsRef.current).forEach(g => g?.dispose());
     Object.values(fxRef.current).forEach(fx => {
@@ -1078,11 +1138,19 @@ Object.values(synthsRef.current).forEach(item => {
       fx.chorusGain?.dispose();
       fx.reverbGain?.dispose();
     });
+
+    // Очистка метронома
+    if (metroSynthRef.current) {
+      metroSynthRef.current.dispose();
+      metroSynthRef.current = null;
+    }
+
     kickNoise?.dispose();
     kickFilter?.dispose();
     kickEnv?.dispose();
     bassSidechainComp?.dispose();
     kickLoop?.dispose();
+
     delete window.__sidechain;
   };
 }, []);
@@ -1299,6 +1367,66 @@ useEffect(() => {
       alert('Не удалось создать ссылку: ' + error.message);
     }
   };
+  // ===== ПЕРЕСОЗДАНИЕ СИНТЕЗАТОРА МЕТРОНОМА ПРИ СМЕНЕ ЗВУКА =====
+  useEffect(() => {
+    if (metroSynthRef.current) {
+      metroSynthRef.current.dispose();
+    }
+    let synth;
+    switch (metroSound) {
+      case 'click':
+        synth = new Tone.Synth({
+          oscillator: { type: 'square' },
+          envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
+        });
+        break;
+      case 'beep':
+        synth = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.002, decay: 0.1, sustain: 0, release: 0.05 }
+        });
+        break;
+      case 'drum':
+        synth = new Tone.MembraneSynth({
+          pitchDecay: 0.02,
+          octaves: 2,
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 }
+        });
+        break;
+      case 'noise':
+        synth = new Tone.NoiseSynth({
+          noise: { type: 'white' },
+          envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 }
+        });
+        break;
+      case 'bell':
+        synth = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.001, decay: 0.3, sustain: 0.1, release: 0.5 }
+        });
+        break;
+      default:
+        synth = new Tone.Synth({
+          oscillator: { type: 'square' },
+          envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 }
+        });
+    }
+    synth.toDestination();
+    metroSynthRef.current = synth;
+  }, [metroSound]);
+
+  // Закрытие меню при клике вне
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+      setIsUserMenuOpen(false);
+    }
+  };
+  document.addEventListener('mousedown', handleClickOutside);
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, []);
+  
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
@@ -1496,7 +1624,27 @@ useEffect(() => {
           triggeredRef.current.clear();
         }
       }
-  
+  // ========== МЕТРОНОМ ==========
+if (metroOnRef.current && metroSynthRef.current) {
+  const beatDuration = 60 / bpm;
+  const currentBeatIndex = Math.floor(elapsed / beatDuration);
+  const metroKey = `metro_${currentBeatIndex}`;
+  if (elapsed >= currentBeatIndex * beatDuration && !triggeredRef.current.has(metroKey)) {
+    const isFirstBeat = currentBeatIndex % 4 === 0;
+    const freq = isFirstBeat ? 'A5' : 'A4';
+    const velocity = isFirstBeat ? 0.8 : 0.4;
+
+    // Для шума вызываем без частоты
+    if (metroSoundRef.current === 'noise') {
+      metroSynthRef.current.triggerAttackRelease('16n', now + 0.01, metroVolumeRef.current * velocity);
+    } else {
+      metroSynthRef.current.triggerAttackRelease(freq, '16n', now + 0.01, metroVolumeRef.current * velocity);
+    }
+
+    triggeredRef.current.add(metroKey);
+  }
+}
+
       // ========== ОБРАБОТКА НОТ (критично для звука – каждый кадр) ==========
       Object.entries(tracks).forEach(([type, blocks]) => {
         if (!filtersRef.current[type]) return;
@@ -2510,6 +2658,23 @@ const handleLogout = () => {
   const verticalSliderStyle = { height: "120px", width: "30px", appearance: "slider-vertical", WebkitAppearance: "slider-vertical", cursor: "pointer" };
   const resetBtnStyle = { fontSize: "10px", padding: "4px 8px", background: "#2A3350", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" };
   const labelStyle = { fontSize: "11px", fontWeight: "bold", color: "#AAB3C2", textAlign: "center", lineHeight: 1.2 };
+
+const menuItemStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  width: '100%',
+  padding: '10px 16px',
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--text-primary)',
+  fontSize: '12px',
+  fontWeight: '500',
+  cursor: 'pointer',
+  transition: 'all 0.15s ease',
+  textAlign: 'left',
+  fontFamily: 'inherit'
+};
   // ========== ДОБАВЬТЕ ЭТУ ФУНКЦИЮ ПРЯМО СЮДА ==========
   const getInstrumentColor = (inst) => {
     switch(inst) {
@@ -2776,93 +2941,154 @@ const handleLogout = () => {
       `}</style>
   
       {/* Верхняя панель: EXIT, логотип, SAVE/LOAD/DRIVE/SHARE */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-        <button 
-  onClick={() => {
-    stopSound();
-    setMode("landing");
-  }} 
-  style={{
-    background: "transparent",
-    border: "none",
-    color: "var(--text-primary)",
-    cursor: "pointer",
-    padding: "5px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "all 0.3s ease",
-  }}
-  onMouseOver={(e) => { 
-    e.currentTarget.style.color = "#FF4D4D"; 
-    e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
-    e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
-  }}
-  onMouseOut={(e) => { 
-    e.currentTarget.style.color = "var(--text-primary)"; 
-    e.currentTarget.style.filter = "none";
-    e.currentTarget.style.transform = "translateX(0) scale(1)";
-  }}
->
-  <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-  </svg>
-</button>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-              <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-              <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.1-BETA</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <UserProfile user={user} onLogout={handleLogout} />
-          <button onClick={handleSaveProject} className="save-btn">💾 {t('save')}</button>
-<button onClick={() => fileInputRef.current.click()} className="load-btn">📂 {t('load')}</button>
-{user && (
-  <button onClick={handleDriveSave} className="save-btn" style={{ background: '#34A853', marginLeft: '10px' }}>
-    ▲ {t('driveSave')}
-  </button>
-)}
-{user && (
-  <button onClick={handleShare} className="save-btn share-btn" style={{ marginLeft: '10px' }}>
-    <span>🔗</span> {t('share')}
-  </button>
-)}
-{/* ===== КНОПКА АВТОСОХРАНЕНИЯ (только для авторизованных) ===== */}
-{user && (
-  <button
-    onClick={() => setAutosaveEnabled(!autosaveEnabled)}
-    className="save-btn"
-    style={{
-      marginLeft: '10px',
-      background: autosaveEnabled
-        ? 'rgba(77, 255, 136, 0.15)'
-        : 'rgba(255, 255, 255, 0.06)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      border: `1px solid ${autosaveEnabled ? 'var(--text-bright)' : 'var(--border-color)'}`,
-      color: autosaveEnabled ? 'var(--text-bright)' : 'var(--text-secondary)',
-      boxShadow: autosaveEnabled ? '0 0 15px rgba(77, 255, 136, 0.2)' : 'none',
-      transition: 'all 0.25s ease',
-      padding: '8px 14px',
-      borderRadius: '6px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '6px',
-      fontSize: '11px',
-      fontWeight: 'bold',
-      cursor: 'pointer'
-    }}
-  >
-    <span>💾</span>
-    {autosaveEnabled ? t('autosaveOn') : t('autosaveOff')}
-  </button>
-)}
-          <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
-        </div>
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+    <button
+      onClick={() => {
+        stopSound();
+        setMode("landing");
+      }}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "var(--text-primary)",
+        cursor: "pointer",
+        padding: "5px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "all 0.3s ease",
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.color = "#FF4D4D";
+        e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
+        e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.filter = "none";
+        e.currentTarget.style.transform = "translateX(0) scale(1)";
+      }}
+    >
+      <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+      </svg>
+    </button>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+        <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.2-BETA</span>
       </div>
+    </div>
+  </div>
+
+  {/* ===== ПРАВАЯ ЧАСТЬ ===== */}
+  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+    {user ? (
+      // ===== АВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ: меню «МОЯ СТРУНА» =====
+      <div style={{ position: 'relative' }} ref={userMenuRef}>
+        <button
+          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '6px 16px 6px 8px',
+            borderRadius: '30px',
+            background: 'rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+            transition: 'all 0.25s ease',
+            color: 'var(--text-primary)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)';
+          }}
+        >
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #4D88FF, #8A2BE2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 'bold',
+            fontSize: '14px',
+            flexShrink: 0
+          }}>
+            {user.picture ? (
+              <img src={user.picture} alt="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+            ) : (
+              user.email?.[0]?.toUpperCase() || 'U'
+            )}
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '1px', color: 'var(--text-accent)' }}>
+            {t('myStruna')}
+          </span>
+          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', transition: 'transform 0.25s ease', transform: isUserMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            ▼
+          </span>
+        </button>
+
+        {isUserMenuOpen && (
+          <div className="user-menu-dropdown">
+            <div className="user-info">
+              <div className="user-name">{user.name || user.email}</div>
+              <div className="user-email">{user.email}</div>
+            </div>
+
+            <button className="menu-item" onClick={() => { handleSaveProject(); setIsUserMenuOpen(false); }}>
+              {t('saveProject')}
+            </button>
+            <button className="menu-item" onClick={() => { fileInputRef.current.click(); setIsUserMenuOpen(false); }}>
+              {t('loadProject')}
+            </button>
+            <button className="menu-item" onClick={() => { handleDriveSave(); setIsUserMenuOpen(false); }}>
+              {t('driveSaveProject')}
+            </button>
+            <button className="menu-item" onClick={() => { handleShare(); setIsUserMenuOpen(false); }}>
+              {t('shareProject')}
+            </button>
+
+            <div className="divider" />
+
+            <button
+              className="menu-item"
+              onClick={() => { setAutosaveEnabled(!autosaveEnabled); setIsUserMenuOpen(false); }}
+              style={{ color: autosaveEnabled ? 'var(--text-bright)' : 'var(--text-secondary)' }}
+            >
+              {t('autosaveToggle')} {autosaveEnabled ? '✅' : '⬜'}
+            </button>
+
+            <div className="divider" />
+
+            <button className="menu-item logout" onClick={() => { handleLogout(); setIsUserMenuOpen(false); }}>
+              {t('logout')}
+            </button>
+          </div>
+        )}
+      </div>
+    ) : (
+      // ===== НЕАВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ: кнопки SAVE и LOAD =====
+      <>
+        <button onClick={handleSaveProject} className="save-btn">💾 {t('save')}</button>
+        <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 {t('load')}</button>
+        <UserProfile user={user} onLogout={handleLogout} />
+      </>
+    )}
+    <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
+  </div>
+</div>
   
       {/* ===== НОВОЕ МЕСТО: БЛОК ВЫБОРА ИНСТРУМЕНТОВ ===== */}
       <div className="instrument-selector">
@@ -2921,7 +3147,7 @@ const handleLogout = () => {
   <div style={{ display: "flex", gap: "20px", alignItems: "stretch", flexWrap: "wrap" }}>
 
     {/* ========== БЛОК TEMPO ========== */}
-    <div style={{
+<div style={{
   background: "var(--bg-card)",
   padding: "15px",
   borderRadius: "12px",
@@ -2931,71 +3157,217 @@ const handleLogout = () => {
   textAlign: "center",
   display: "flex",
   flexDirection: "column",
-  justifyContent: "space-between"
+  justifyContent: "space-between",
+  boxSizing: "border-box"
 }}>
   <div>
     <div style={{ fontSize: "12px", color: "var(--text-accent)", marginBottom: "6px" }}>{t('tempo')}</div>
     <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)" }}>{bpm}</div>
     <div style={{ fontSize: "10px", color: "var(--text-accent)", marginBottom: "12px" }}>{t('bpm')}</div>
+
+    {/* ===== КНОПКА МЕТРОНОМА ===== */}
+    <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+      <button
+        onClick={() => {
+          if (!metroOn) Tone.start();
+          setMetroOn(!metroOn);
+        }}
+        style={{
+          background: metroOn ? 'rgba(77, 255, 136, 0.15)' : 'rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: `2px solid ${metroOn ? 'var(--text-bright)' : 'var(--border-color)'}`,
+          borderRadius: '20px',
+          padding: '4px 12px',
+          color: metroOn ? 'var(--text-bright)' : 'var(--text-secondary)',
+          fontSize: '9px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          transition: 'all 0.25s ease',
+          boxShadow: metroOn ? '0 0 15px rgba(77,255,136,0.2)' : 'none',
+          width: '100%',
+          maxWidth: '120px',
+          letterSpacing: '0.5px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
+        {metroOn ? t('metroOn') : t('metroOff')}
+      </button>
+    </div>
+
+    {/* ===== УПРАВЛЕНИЕ МЕТРОНОМОМ (громкость + звук) ===== */}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
+      marginBottom: "12px",
+      width: "100%",
+      alignItems: "center"
+    }}>
+      {/* Ползунок громкости */}
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center", width: "100%" }}>
+        <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>🔊</span>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={metroVolume}
+          onChange={(e) => setMetroVolume(parseFloat(e.target.value))}
+          style={{
+            flex: 1,
+            height: "4px",
+            cursor: "pointer",
+            maxWidth: "100px",
+            background: metroOn ? "var(--text-bright)" : "var(--border-color)"
+          }}
+        />
+        <span style={{ fontSize: "8px", color: "var(--text-bright)", minWidth: "24px" }}>
+          {Math.round(metroVolume * 100)}%
+        </span>
+      </div>
+
+      {/* ===== ВЫБОР ЗВУКА (стеклянный select с переводом) ===== */}
+<div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center", width: "100%", position: "relative" }}>
+  <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>🎵</span>
+  <div style={{ position: "relative", width: "100%", maxWidth: "120px" }}>
+    <select
+      value={metroSound}
+      onChange={(e) => setMetroSound(e.target.value)}
+      className="glass-select"
+      style={{
+        appearance: "none",
+        WebkitAppearance: "none",
+        background: "rgba(255,255,255,0.06)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        border: "1px solid var(--border-color)",
+        borderRadius: "12px",
+        padding: "4px 28px 4px 12px",
+        color: "var(--text-primary)",
+        fontSize: "9px",
+        fontWeight: "bold",
+        cursor: "pointer",
+        outline: "none",
+        width: "100%",
+        transition: "all 0.25s ease"
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+    >
+      <option value="click" style={{ background: "var(--bg-card)" }}>🎵 {t('metroSoundClick')}</option>
+      <option value="beep" style={{ background: "var(--bg-card)" }}>🔔 {t('metroSoundBeep')}</option>
+      <option value="drum" style={{ background: "var(--bg-card)" }}>🥁 {t('metroSoundDrum')}</option>
+      <option value="noise" style={{ background: "var(--bg-card)" }}>🎛️ {t('metroSoundNoise')}</option>
+      <option value="bell" style={{ background: "var(--bg-card)" }}>🔔 {t('metroSoundBell')}</option>
+    </select>
+    {/* Кастомная стрелка */}
+    <div style={{
+      position: "absolute",
+      right: "8px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      pointerEvents: "none",
+      color: "var(--text-secondary)",
+      fontSize: "8px"
+    }}>
+      ▼
+    </div>
   </div>
-  <div>
-    <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-    <button onClick={() => {
-  const currentX = playheadXRef.current;
-  if (loopStart === 0 && loopEnd === 0) {
-    // Первый клик: установить начало
-    setLoopStart(currentX);
-    setLoopEnd(0);
-    setPreviewLoopEnd(currentX);
-  } else if (loopStart !== 0 && loopEnd === 0) {
-    // Второй клик: установить конец
-    // Если previewLoopEnd изменился (пользователь двигал плейхед) – используем его, иначе currentX
-    let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX;
-    // Если endX всё ещё равен или меньше loopStart – добавим минимальную длину (20px)
-    if (endX <= loopStart) {
-      endX = loopStart + STEP_WIDTH;
-    }
-    setLoopEnd(endX);
-    setPreviewLoopEnd(0);
-    // Автоматически включаем луп (чтобы не нажимать LOOP ON отдельно)
-    setLoopActive(true);
-  } else {
-    // Сброс (третий клик или когда луп уже установлен)
-    setLoopStart(0);
-    setLoopEnd(0);
-    setPreviewLoopEnd(0);
-    setLoopActive(false);
-  }
-}} style={{
-  background: "var(--bg-card)",
-  border: `2px solid ${loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)")}`,
-  borderRadius: "20px",
-  padding: "4px 8px",
-  flex: 1,
-  color: loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)"),
-  fontSize: "9px",
-  fontWeight: "bold",
-  cursor: "pointer"
-}}>
-  {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
-</button>
+</div>
+    </div>
+  </div>
+
+  <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    {/* Строка кнопок SET LOOP и LOOP ON/OFF */}
+    <div style={{ 
+      display: "flex", 
+      gap: "8px", 
+      marginBottom: "16px", 
+      alignItems: "stretch", 
+      justifyContent: "center",
+      width: "100%"
+    }}>
+      <button onClick={() => {
+        const currentX = playheadXRef.current;
+        if (loopStart === 0 && loopEnd === 0) {
+          setLoopStart(currentX);
+          setLoopEnd(0);
+          setPreviewLoopEnd(currentX);
+        } else if (loopStart !== 0 && loopEnd === 0) {
+          let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX;
+          if (endX <= loopStart) {
+            endX = loopStart + STEP_WIDTH;
+          }
+          setLoopEnd(endX);
+          setPreviewLoopEnd(0);
+          setLoopActive(true);
+        } else {
+          setLoopStart(0);
+          setLoopEnd(0);
+          setPreviewLoopEnd(0);
+          setLoopActive(false);
+        }
+      }} style={{
+        flex: 1,
+        background: "var(--bg-card)",
+        border: `2px solid ${loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)")}`,
+        borderRadius: "20px",
+        padding: "4px",
+        color: loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)"),
+        fontSize: "8px",
+        fontWeight: "bold",
+        cursor: "pointer",
+        minWidth: 0,
+        whiteSpace: "normal", 
+        lineHeight: "1.1",
+        letterSpacing: '0.2px',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center"
+      }}>
+        {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
+      </button>
+
       <button onClick={() => {
         if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive);
         else setInfoModal({ visible: true, message: t('infoSetLoop') });
       }} style={{
+        flex: 1,
         background: loopActive ? "var(--text-bright)" : "var(--bg-card)",
         border: `2px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`,
-        borderRadius: "20px", padding: "4px 8px", flex: 1,
+        borderRadius: "20px",
+        padding: "4px",
         color: loopActive ? "var(--bg-card)" : "var(--warning-border)",
-        fontSize: "9px", fontWeight: "bold", cursor: "pointer"
+        fontSize: "8px",
+        fontWeight: "bold",
+        cursor: "pointer",
+        minWidth: 0,
+        whiteSpace: "normal",
+        lineHeight: "1.1",
+        letterSpacing: '0.2px',
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center"
       }}>
         {loopActive ? t('loopOn') : t('loopOff')}
       </button>
     </div>
-    <input type="range" min="60" max="200" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: "100%", cursor: "pointer" }} />
+
+    <input 
+      type="range" 
+      min="60" 
+      max="200" 
+      value={bpm} 
+      onChange={(e) => setBpm(Number(e.target.value))} 
+      style={{ width: "100%", cursor: "pointer", boxSizing: "border-box" }} 
+    />
   </div>
 </div>
-
     {/* ========== БЛОК ATTACH EFFECT ========== */}
     <div style={{
   background: "var(--bg-card)",

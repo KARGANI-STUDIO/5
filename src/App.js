@@ -1564,10 +1564,10 @@ const handleFavoriteToggle = async () => {
 
   try {
     let currentProjectId = projectId;
+    const projectData = getProjectData();
 
     // Если проект ещё не сохранён в БД – сначала сохраняем
     if (!currentProjectId) {
-      const projectData = getProjectData();
       const { data, error: insertError } = await supabase
         .from('projects')
         .insert([{
@@ -1580,6 +1580,21 @@ const handleFavoriteToggle = async () => {
       if (insertError) throw insertError;
       currentProjectId = data[0].id;
       setProjectId(currentProjectId);
+    } else {
+      // Если проект уже есть в БД, и мы добавляем в избранное (isFavorite === false),
+      // обновляем проект актуальными данными
+      if (!isFavorite) {
+        const { error: updateError } = await supabase
+          .from('projects')
+          .update({
+            tempo: bpm,
+            grid_data: projectData
+          })
+          .eq('id', currentProjectId)
+          .eq('user_email', user.email);
+        if (updateError) throw updateError;
+      }
+      // Если isFavorite === true, мы просто удалим из избранного (ниже), проект не трогаем
     }
 
     // Теперь работаем с ярлыком (favorites)

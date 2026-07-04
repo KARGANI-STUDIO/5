@@ -1289,116 +1289,503 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(0, 0, 0, 0.08) !important;
   color: #0066ff !important;
 }
-/* ===== ВЫПАДАЮЩЕЕ МЕНЮ «МОЯ СТРУНА» ===== */
-.user-menu-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  min-width: 220px;
-  background: rgba(20, 25, 45, 0.85);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  padding: 8px 0;
-  z-index: 9999;
-  animation: menuFadeIn 0.2s ease;
-  overflow: hidden;
-}
+/* ========================================================= */
+/* ===== ВЫПАДАЮЩЕЕ МЕНЮ «МОЯ СТРУНА» (LIQUID GLASS) ===== */
+/* ========================================================= */
 
-/* Анимация появления */
-@keyframes menuFadeIn {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ===== Информация о пользователе ===== */
-.user-menu-dropdown .user-info {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  margin-bottom: 4px;
-}
-.user-menu-dropdown .user-info .user-name {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--text-primary);
-}
-.user-menu-dropdown .user-info .user-email {
-  font-size: 10px;
-  color: var(--text-secondary);
-  opacity: 0.7;
-}
-
-/* ===== Пункты меню ===== */
-.user-menu-dropdown .menu-item {
+.user-profile-btn {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-primary);
+}
+.user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 270px;
+  background: rgba(18, 22, 41, 0.55); /* Глубокий темный полупрозрачный фон */
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.2); /* Блик на верхней грани */
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 12px 0;
+  z-index: 9999;
+  animation: liquidMenuFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes liquidMenuFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.liquid-glass-menu .user-info {
+  padding: 8px 24px 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+}
+.liquid-glass-menu .user-info .user-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+.liquid-glass-menu .user-info .user-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+.liquid-glass-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 12px 24px;
   background: transparent;
   border: none;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   font-family: inherit;
 }
 
-.user-menu-dropdown .menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-bright);
+.liquid-glass-menu .menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  transform: translateX(4px); /* Плавное смещение текста вправо при наведении */
 }
 
-.user-menu-dropdown .menu-item.logout {
-  color: #FF4D4D;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  margin-top: 4px;
-}
-.user-menu-dropdown .menu-item.logout:hover {
-  background: rgba(255, 77, 77, 0.12);
-  color: #FF4D4D;
+.liquid-glass-menu .divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  margin: 8px 24px;
+  border: none;
 }
 
-.user-menu-dropdown .divider {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  margin: 4px 12px;
+.liquid-glass-menu .menu-item.logout {
+  color: #ff4d4d;
+}
+.liquid-glass-menu .menu-item.logout:hover {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff6666;
+}
+
+/* Кастомный чекбокс автосохранения */
+.autosave-item {
+  justify-content: space-between;
+}
+.custom-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+.custom-checkbox.checked {
+  background: #d4b5e6; /* Нежный сиренево-белый цвет как на скриншоте */
+  border-color: transparent;
+  box-shadow: 0 0 8px rgba(212, 181, 230, 0.6);
+}
+
+/* ========================================================= */
+/* СВЕТЛАЯ ТЕМА ДЛЯ МЕНЮ LIQUID GLASS                        */
+/* ========================================================= */
+
+.app.light-theme .user-profile-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1a1a2e;
+}
+.app.light-theme .user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+.app.light-theme .liquid-glass-menu {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.app.light-theme .liquid-glass-menu .user-info {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+.app.light-theme .liquid-glass-menu .user-info .user-name {
+  color: #1a1a2e;
+}
+.app.light-theme .liquid-glass-menu .user-info .user-email {
+  color: rgba(26, 26, 46, 0.6);
+}
+.app.light-theme .liquid-glass-menu .menu-item {
+  color: rgba(26, 26, 46, 0.85);
+}
+.app.light-theme .liquid-glass-menu .menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0066ff;
+}
+.app.light-theme .liquid-glass-menu .divider {
+  background: rgba(0, 0, 0, 0.06);
+}
+.app.light-theme .liquid-glass-menu .menu-item.logout {
+  color: #cc3333;
+}
+.app.light-theme .liquid-glass-menu .menu-item.logout:hover {
+  background: rgba(204, 51, 51, 0.08);
+}
+.app.light-theme .custom-checkbox {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+}
+.app.light-theme .custom-checkbox.checked {
+  background: #0066ff;
+  box-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
+}
+/* ===== КНОПКА ИЗБРАННОГО (СЕРДЕЧКО) ===== */
+.favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 55px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  cursor: pointer;
+  transition: all 0.25s ease !important;
+  color: var(--text-primary) !important;
+  font-size: 22px; /* чтобы сердечко было хорошо видно */
+  line-height: 1;
+}
+
+.favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.favorite-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: #ff4b6e !important;
+  box-shadow: 0 0 20px rgba(255, 75, 110, 0.3), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #ff4b6e !important;
+}
+
+.favorite-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ===== СВЕТЛАЯ ТЕМА ===== */
-.app.light-theme .user-menu-dropdown {
-  background: rgba(255, 255, 255, 0.85) !important;
+.app.light-theme .favorite-btn {
+  background: rgba(255, 255, 255, 0.5) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: var(--text-primary) !important;
 }
 
-.app.light-theme .user-menu-dropdown .user-info {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-.app.light-theme .user-menu-dropdown .user-info .user-name {
-  color: #1a1a2e;
-}
-.app.light-theme .user-menu-dropdown .user-info .user-email {
-  color: #555566;
+.app.light-theme .favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
-.app.light-theme .user-menu-dropdown .menu-item {
-  color: #1a1a2e;
+.app.light-theme .favorite-btn.active {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: #e63956 !important;
+  box-shadow: 0 0 20px rgba(230, 57, 86, 0.2), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  color: #e63956 !important;
 }
-.app.light-theme .user-menu-dropdown .menu-item:hover {
-  background: rgba(0, 0, 0, 0.05);
+/* ========================================================= */
+/* ==== ИЗБРАННОЕ (Favorites) — СТИЛЬ LIQUID GLASS ======== */
+/* ========================================================= */
+
+/* Каждый элемент списка */
+.favorite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.favorite-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Поле ввода названия проекта */
+.fav-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0;
+  width: 100%;
+  transition: border-color 0.25s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.fav-name-input:hover,
+.fav-name-input:focus {
+  border-bottom-color: var(--text-accent);
+}
+
+/* Дата создания */
+.fav-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  opacity: 0.7;
+  letter-spacing: 0.3px;
+}
+
+/* Кнопка «Загрузить» */
+.fav-load-btn {
+  background: rgba(77, 136, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(77, 136, 255, 0.2);
+  border-radius: 30px;
+  padding: 5px 16px;
+  color: var(--text-accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.fav-load-btn:hover {
+  background: rgba(77, 136, 255, 0.25);
+  border-color: var(--text-accent);
+  box-shadow: 0 0 20px rgba(77, 136, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Кнопка корзины (удалить) */
+.fav-delete-btn {
+  background: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 77, 77, 0.15);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff4d4d;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 77, 77, 0.04);
+}
+
+.fav-delete-btn:hover {
+  background: rgba(255, 77, 77, 0.15);
+  border-color: #ff4d4d;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.3);
+  transform: scale(1.08);
+}
+
+/* ===== СВЕТЛАЯ ТЕМА ===== */
+.app.light-theme .favorite-item {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.app.light-theme .favorite-item:hover {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.app.light-theme .fav-name-input {
+  color: #1a1a2e;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.app.light-theme .fav-name-input:hover,
+.app.light-theme .fav-name-input:focus {
+  border-bottom-color: #0066ff;
+}
+
+.app.light-theme .fav-load-btn {
+  background: rgba(0, 102, 255, 0.08);
+  border-color: rgba(0, 102, 255, 0.15);
   color: #0066ff;
 }
-.app.light-theme .user-menu-dropdown .menu-item.logout {
-  color: #cc3333;
+
+.app.light-theme .fav-load-btn:hover {
+  background: rgba(0, 102, 255, 0.18);
+  border-color: #0066ff;
+  box-shadow: 0 0 20px rgba(0, 102, 255, 0.15);
 }
-.app.light-theme .user-menu-dropdown .menu-item.logout:hover {
-  background: rgba(204, 51, 51, 0.1);
+
+.app.light-theme .fav-delete-btn {
   color: #cc3333;
+  border-color: rgba(204, 51, 51, 0.15);
+  background: rgba(204, 51, 51, 0.04);
 }
-.app.light-theme .user-menu-dropdown .divider {
-  border-top-color: rgba(0, 0, 0, 0.06);
+
+.app.light-theme .fav-delete-btn:hover {
+  background: rgba(204, 51, 51, 0.12);
+  border-color: #cc3333;
+  box-shadow: 0 0 16px rgba(204, 51, 51, 0.2);
+}
+/* Анимация вращения для индикатора автосохранения */
+.fav-status-spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+/* ========================================================= */
+/* ==== АНИМИРОВАННЫЙ ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ (ТЁМНАЯ/СВЕТЛАЯ) ==== */
+/* ========================================================= */
+
+.theme-toggle-item {
+  padding: 8px 24px !important;
+  cursor: default !important;
+}
+
+.theme-toggle-item span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Основа переключателя */
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Ползунок (трек) */
+.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+/* Круглая ручка */
+.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Иконки внутри переключателя (солнце/луна) */
+.theme-switch .slider::after {
+  content: "🌙";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.8;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1;
+}
+
+/* Активное состояние (светлая тема) */
+.theme-switch input:checked + .slider {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+.theme-switch input:checked + .slider::before {
+  transform: translateX(24px);
+  background: #1a1a2e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.theme-switch input:checked + .slider::after {
+  content: "☀️";
+  right: auto;
+  left: 4px;
+}
+
+/* Hover-эффект */
+.theme-switch:hover .slider {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.theme-switch input:checked:hover .slider {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Анимация клика */
+.theme-switch input:active + .slider::before {
+  width: 26px;
+  transition: width 0.15s ease;
 }

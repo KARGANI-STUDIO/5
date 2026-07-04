@@ -4,7 +4,9 @@ import "./style.css";
 import { useGoogleLogin } from '@react-oauth/google';
 import UserProfile from './UserProfile';
 import { supabase } from './supabaseClient';
-
+import * as MidiModule from '@tonejs/midi';
+// Автоматически определяем правильный конструктор
+const Midi = MidiModule.Midi || MidiModule.default || MidiModule;
 function App() {
   const [user, setUser] = useState(() => {
     // При загрузке страницы проверяем, есть ли сохраненный юзер в памяти браузера
@@ -99,6 +101,7 @@ const translations = {
     share: "SHARE",
     // Новые ключи для меню "МОЯ СТРУНА"
     myStruna: "MY STRUNA",
+    theme: "Theme",
     saveProject: "💾 Save Project",
     loadProject: "📂 Load Project",
     driveSaveProject: "▲ Drive Save",
@@ -107,6 +110,14 @@ const translations = {
     logout: "🚪 Logout",
     info: "INFO",
     fx: "FX",
+    "favorites": "Favorites",
+    "favoritesTitle": "⭐ Favorites", 
+    "noFavorites": "You have no favorite projects yet",
+    saveToCloud: "☁️ Save to Cloud",
+    "exportMIDI": "🎵 Export MIDI",
+    "load": "Load",
+    "delete": "Delete",
+    "close": "Close",
     // Блок TEMPO
     tempo: "TEMPO",
     bpm: "BPM",
@@ -180,16 +191,18 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-    changelogTitle: "✨ What's New (v1.5.3.2-Beta)",
-    changelogText: [
-      "• Liquid Glass design style",
-      "• Added light theme",
-      "• 3D sound support with spatial positioning",
-      "• Added metronome",
-      "• Personal account with unified control menu (MY STRUNA)",
-      "• Autosave project for authorized users",
-      "• Added Super Mario Easter egg for CHIP instrument"
-    ]
+changelogTitle: "✨ What's New (v1.5.3.3-Beta)",
+changelogText: [
+  "• Liquid Glass design style",
+  "• 3D sound support with spatial positioning",
+  "• Added metronome",
+  "• Personal account with unified control menu (MY STRUNA)",
+  "• Favorites: save your projects and quick access from personal account",
+  "• Cloud update: use 'Save to Cloud'",
+  "• Autosave project for authorized users",
+  "• MIDI export: open your tracks in any sequencer or DAW"
+  
+]
   },
   ru: {
     tagline: "ЖИДКОЕ СТЕКЛО",
@@ -202,6 +215,7 @@ const translations = {
     share: "ПОДЕЛИТЬСЯ",
     // Новые ключи для меню "МОЯ СТРУНА"
     myStruna: "МОЯ СТРУНА",
+    theme: "Тема",
     saveProject: "💾 Сохранить проект",
     loadProject: "📂 Загрузить проект",
     driveSaveProject: "▲ Сохранить на диск",
@@ -210,6 +224,14 @@ const translations = {
     logout: "🚪 Выйти",
     info: "ИНФО",
     fx: "ЭФФЕКТЫ",
+    "favorites": "Избранное",
+    "favoritesTitle": "⭐ Избранное",
+    saveToCloud: "☁️ Сохранить в облако",
+    "exportMIDI": "🎵 Экспорт MIDI",
+    "noFavorites": "У вас пока нет избранных проектов",
+    "load": "Загрузить",
+    "delete": "Удалить",
+    "close": "Закрыть",
     // Блок TEMPO
     tempo: "ТЕМП",
     bpm: "BPM",
@@ -283,16 +305,17 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-    changelogTitle: "✨ Что нового (v1.5.3.2-Beta)",
-    changelogText: [
-      "• Дизайн в стиле Liquid Glass",
-      "• Добавлена светлая тема",
-      "• Поддержка 3D-звука с пространственным позиционированием",
-      "• Добавлен метроном",
-      "• Личный кабинет с единым меню управления (МОЯ СТРУНА)",
-      "• Автосохранение проекта для авторизованных пользователей",
-      "• Добавлена пасхалка Super Mario для инструмента CHIP"
-    ]
+changelogTitle: "✨ Что нового (v1.5.3.3-Beta)",
+changelogText: [
+  "• Дизайн в стиле Liquid Glass",
+  "• Поддержка 3D-звука с пространственным позиционированием",
+  "• Добавлен метроном",
+  "• Личный кабинет с единым меню управления (МОЯ СТРУНА)",
+  "• Избранное: сохраняйте проекты и быстро загружайте их из личного кабинета",
+  "• Обновление проектов в облаке",
+  "• MIDI-экспорт: ваши треки теперь можно открывать в любом секвенсоре",
+  
+]
   }
 };
 
@@ -394,6 +417,11 @@ const [subMode, setSubMode] = useState(() => {
     });
   };
   const [show3D, setShow3D] = useState(false);
+  // ===== ИЗБРАННОЕ =====
+  const [projectId, setProjectId] = useState(null); // ID текущего проекта в БД
+  const [favoritesList, setFavoritesList] = useState([]);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false);
   const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
     const saved = localStorage.getItem('struna_autosave_enabled');
     return saved !== null ? saved === 'true' : true; // по умолчанию включено
@@ -405,6 +433,9 @@ const [subMode, setSubMode] = useState(() => {
   const [metroVolume, setMetroVolume] = useState(0.7);
   const [metroSound, setMetroSound] = useState('click');
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState('idle');
+  const statusTimerRef = useRef(null);
+
   const userMenuRef = useRef(null); 
   const metroOnRef = useRef(metroOn);
   const metroVolumeRef = useRef(metroVolume);
@@ -1186,20 +1217,19 @@ useEffect(() => {
       }
     });
   }, [fx]);
+
   useEffect(() => {
     const loadFromUrl = async () => {
-      // 1. Ищем ID проекта в ссылке
       const params = new URLSearchParams(window.location.search);
-      const projectId = params.get('project');
+      const projectIdFromUrl = params.get('project');
   
-      if (projectId) {
+      if (projectIdFromUrl) {
         console.log("Обнаружен ID проекта в ссылке, загружаю...");
-        
-        // 2. Достаем данные из Supabase
+  
         const { data, error } = await supabase
           .from('projects')
           .select('grid_data')
-          .eq('id', projectId)
+          .eq('id', projectIdFromUrl)
           .single();
   
         if (error) {
@@ -1209,20 +1239,30 @@ useEffect(() => {
   
         if (data && data.grid_data) {
           const p = data.grid_data;
-          
-          // 3. Загружаем всё в плеер (убедись, что эти функции у тебя так называются)
           if (p.bpm) setBpm(p.bpm);
           if (p.tracks) setTracks(p.tracks);
           if (p.filters) setFilters(p.filters);
           if (p.fx) setFx(p.fx);
-          
+          if (p.volumes) setVolumes(p.volumes);
+          if (p.positions3D) setPositions3D(p.positions3D);
+          if (p.loopActive !== undefined) setLoopActive(p.loopActive);
+          if (p.loopStart !== undefined) setLoopStart(p.loopStart);
+          if (p.loopEnd !== undefined) setLoopEnd(p.loopEnd);
+          if (p.masterGainValue !== undefined) setMasterGainValue(p.masterGainValue);
+          if (p.fxVolume !== undefined) setFxVolume(p.fxVolume);
+  
+          setProjectId(Number(projectIdFromUrl));
+          if (user?.email) {
+            loadFavorites(); // перезагружаем избранное для проверки
+          }
           alert("Проект успешно загружен по вашей ссылке! Нажмите PLAY.");
         }
       }
     };
   
     loadFromUrl();
-  }, []);
+  }, [user]);
+  
   useEffect(() => {
     Object.entries(volumes).forEach(([type, vol]) => {
       const gain = gainsRef.current[type];
@@ -1331,42 +1371,433 @@ useEffect(() => {
   localStorage.setItem('struna_autosave_enabled', String(autosaveEnabled));
 }, [autosaveEnabled]);
 
-  const handleShare = async () => {
-    try {
-      // Собираем все данные проекта (как в твоем handleSaveProject)
-      const projectData = { 
-        tracks: tracks, 
-        bpm: bpm, 
-        filters: filters, 
-        fx: fx 
-      };
-  
+const handleShare = async () => {
+  if (!user?.email) {
+    alert("Войдите в аккаунт.");
+    return;
+  }
+  try {
+    let targetProjectId = projectId;
+    const projectData = getProjectData();
+
+    if (!targetProjectId) {
       const { data, error } = await supabase
         .from('projects')
-        .insert([
-          { 
-            user_email: user?.email || 'guest', 
-            tempo: bpm, 
-            grid_data: projectData // сохраняем весь объект со всеми настройками
-          }
-        ])
+        .insert([{
+          user_email: user.email,
+          tempo: bpm,
+          grid_data: projectData,
+          name: projectData.name
+        }])
         .select();
-  
       if (error) throw error;
-  
-      if (data && data[0]) {
-        // Создаем ссылку
-        const shareUrl = `${window.location.origin}?project=${data[0].id}`;
-        
-        // Копируем в буфер
-        await navigator.clipboard.writeText(shareUrl);
-        alert('Ссылка на твой трек скопирована! Можно отправлять друзьям.');
-      }
-    } catch (error) {
-      console.error('Ошибка Supabase:', error.message);
-      alert('Не удалось создать ссылку: ' + error.message);
+      targetProjectId = data[0].id;
+      setProjectId(targetProjectId);
+    } else {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          tempo: bpm,
+          grid_data: projectData
+        })
+        .eq('id', targetProjectId)
+        .eq('user_email', user.email);
+      if (error) throw error;
     }
-  };
+
+    const shareUrl = `${window.location.origin}?project=${targetProjectId}`;
+    await navigator.clipboard.writeText(shareUrl);
+    alert('Ссылка на проект скопирована!');
+  } catch (error) {
+    alert('Не удалось создать ссылку: ' + error.message);
+  }
+};
+
+// ===== СОХРАНЕНИЕ / ОБНОВЛЕНИЕ ПРОЕКТА В БД =====
+const handleSaveProjectToCloud = async () => {
+  if (!user?.email) {
+    alert("Войдите в аккаунт.");
+    return;
+  }
+  const projectData = getProjectData();
+  try {
+    if (projectId) {
+      // Обновляем существующий проект
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          tempo: bpm,
+          grid_data: projectData
+        })
+        .eq('id', projectId)
+        .eq('user_email', user.email);
+      if (error) throw error;
+      alert("Проект обновлён в облаке!");
+    } else {
+      // Создаём новый проект
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([{
+          user_email: user.email,
+          tempo: bpm,
+          grid_data: projectData,
+          name: projectData.name
+        }])
+        .select();
+      if (error) throw error;
+      setProjectId(data[0].id);
+      alert("Новый проект сохранён в облаке!");
+    }
+  } catch (e) {
+    alert('Ошибка сохранения: ' + e.message);
+  }
+};
+
+const getProjectData = () => ({
+  tracks,
+  bpm,
+  filters,
+  fx,
+  volumes,
+  positions3D,
+  loopActive,
+  loopStart,
+  loopEnd,
+  masterGainValue,
+  fxVolume,
+  name: `Проект ${new Date().toLocaleString()}`
+});
+
+  // ===== ФУНКЦИИ ДЛЯ ИЗБРАННОГО =====
+const loadFavorites = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('project_id, created_at, projects(grid_data)')
+      .eq('user_email', user.email);
+    if (error) throw error;
+    setFavoritesList(data || []);
+  } catch (e) {
+    console.error('Ошибка загрузки избранного:', e);
+  }
+};
+// ===== ОБНОВЛЕНИЕ НАЗВАНИЯ ПРОЕКТА =====
+const renameFavorite = async (projectId, newName) => {
+  if (!projectId || !newName.trim()) return;
+
+  try {
+    const { error } = await supabase
+      .from('projects')
+      .update({ name: newName.trim() })
+      .eq('id', projectId);
+
+    if (error) throw error;
+
+    // Обновляем локальный список избранного
+    setFavoritesList(prev =>
+      prev.map(fav => {
+        if (fav.project_id === projectId) {
+          return {
+            ...fav,
+            projects: {
+              ...fav.projects,
+              grid_data: {
+                ...fav.projects?.grid_data,
+                name: newName.trim()
+              }
+            }
+          };
+        }
+        return fav;
+      })
+    );
+  } catch (e) {
+    console.error('Ошибка переименования:', e);
+    alert('Не удалось переименовать проект');
+  }
+};
+
+const loadFavoriteProject = async (projectId) => {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('grid_data')
+      .eq('id', projectId)
+      .single();
+    if (error) throw error;
+    if (data && data.grid_data) {
+      const p = data.grid_data;
+      if (p.bpm) setBpm(p.bpm);
+      if (p.tracks) setTracks(p.tracks);
+      if (p.filters) setFilters(p.filters);
+      if (p.fx) setFx(p.fx);
+      if (p.volumes) setVolumes(p.volumes);
+      if (p.positions3D) setPositions3D(p.positions3D);
+      if (p.loopActive !== undefined) setLoopActive(p.loopActive);
+      if (p.loopStart !== undefined) setLoopStart(p.loopStart);
+      if (p.loopEnd !== undefined) setLoopEnd(p.loopEnd);
+      if (p.masterGainValue !== undefined) setMasterGainValue(p.masterGainValue);
+      if (p.fxVolume !== undefined) setFxVolume(p.fxVolume);
+
+      setProjectId(projectId);
+      setShowFavoritesModal(false);
+      const isFav = favoritesList.some(f => f.project_id === projectId);
+      setIsFavorite(isFav);
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки избранного проекта:', e);
+    alert('Не удалось загрузить проект');
+  }
+};
+
+// ===== ИЗБРАННОЕ: ВСЕГДА СОЗДАЁМ НОВУЮ ВЕРСИЮ ПРОЕКТА =====
+const handleFavoriteToggle = async () => {
+  if (!user?.email) {
+    alert("Пожалуйста, войдите в аккаунт.");
+    return;
+  }
+  const totalBlocks = Object.values(tracks).flat().length;
+  if (totalBlocks === 0) {
+    alert("Добавьте ноты, прежде чем добавлять в избранное!");
+    return;
+  }
+
+  try {
+    let currentProjectId = projectId;
+
+    // Если проект ещё не сохранён в БД – сначала сохраняем
+    if (!currentProjectId) {
+      const projectData = getProjectData();
+      const { data, error: insertError } = await supabase
+        .from('projects')
+        .insert([{
+          user_email: user.email,
+          tempo: bpm,
+          grid_data: projectData,
+          name: projectData.name
+        }])
+        .select();
+      if (insertError) throw insertError;
+      currentProjectId = data[0].id;
+      setProjectId(currentProjectId);
+    }
+
+    // Теперь работаем с ярлыком (favorites)
+    if (isFavorite) {
+      // Удаляем ярлык
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_email', user.email)
+        .eq('project_id', currentProjectId);
+      if (error) throw error;
+      setIsFavorite(false);
+      setFavoritesList(prev => prev.filter(f => f.project_id !== currentProjectId));
+    } else {
+      // Добавляем ярлык
+      const { error: favError } = await supabase
+        .from('favorites')
+        .insert([{ user_email: user.email, project_id: currentProjectId }]);
+      if (favError) throw favError;
+      setIsFavorite(true);
+      setFavoritesList(prev => [
+        ...prev,
+        { project_id: currentProjectId, created_at: new Date().toISOString() }
+      ]);
+    }
+  } catch (e) {
+    console.error('Ошибка при работе с избранным:', e);
+    alert('Не удалось обновить статус избранного');
+  }
+};
+
+// ===== ЭКСПОРТ В MIDI =====
+const exportMIDI = () => {
+  const allBlocks = Object.values(tracks).flat();
+  if (allBlocks.length === 0) {
+    setInfoModal({ visible: true, message: t('infoNoNotes') });
+    return;
+  }
+
+  try {
+    const midi = new Midi();
+    midi.header.setTempo(bpm);
+
+    Object.entries(tracks).forEach(([instrumentName, blocks]) => {
+      if (blocks.length === 0) return;
+      const track = midi.addTrack();
+      track.name = instrumentName;
+
+      blocks.forEach((block) => {
+        if (block.x === undefined || block.length === undefined ||
+            block.fret === undefined || block.string === undefined) return;
+
+        const stepTime = 60 / bpm / 4;
+        const startTime = (block.x / STEP_WIDTH) * stepTime;
+        const duration = (block.length / STEP_WIDTH) * stepTime;
+
+        const freq = OPEN_STRINGS[block.string] * Math.pow(2, block.fret / 12);
+        if (!isFinite(freq)) return;
+        let midiNote = Math.round(12 * Math.log2(freq / 440) + 69);
+        midiNote = Math.max(0, Math.min(127, midiNote));
+
+        const velocity = Math.min(1, Math.max(0, block.velocity ?? 1));
+        track.addNote({ midi: midiNote, time: startTime, duration, velocity });
+      });
+    });
+
+    // Универсальное получение ArrayBuffer
+    let arrayBuffer;
+    if (typeof midi.toArrayBuffer === 'function') {
+      arrayBuffer = midi.toArrayBuffer();
+    } else if (typeof midi.toBytes === 'function') {
+      const bytes = midi.toBytes();
+      arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    } else if (typeof midi.encode === 'function') {
+      const encoded = midi.encode();
+      arrayBuffer = encoded instanceof ArrayBuffer ? encoded :
+                    encoded instanceof Uint8Array ? encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength) :
+                    null;
+    } else if (typeof midi.toBase64 === 'function') {
+      const base64 = midi.toBase64();
+      const binaryString = atob(base64);
+      arrayBuffer = new ArrayBuffer(binaryString.length);
+      const bytes = new Uint8Array(arrayBuffer);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+    } else {
+      // Fallback-генератор (можно оставить, если он у вас есть)
+      arrayBuffer = generateFallbackMIDI(tracks, bpm);
+    }
+
+    if (!arrayBuffer) throw new Error('Не удалось получить MIDI-данные');
+
+    const blob = new Blob([arrayBuffer], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `struna_project_${Date.now()}.mid`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Экспорт MIDI:', error);
+    alert('Ошибка экспорта: ' + error.message);
+  }
+};
+
+const generateFallbackMIDI = (tracksData, tempo) => {
+  // Простой генератор MIDI Type 0 (только один трек)
+  // Возвращает ArrayBuffer
+  const trackChunks = [];
+  let ticksPerQuarter = 96; // стандарт
+  let time = 0;
+
+  // Собираем все ноты в один массив
+  const allNotes = [];
+  Object.values(tracksData).forEach(blocks => {
+    blocks.forEach(block => {
+      if (block.x === undefined || block.fret === undefined || block.string === undefined) return;
+      const stepTime = 60 / tempo / 4;
+      const startTime = (block.x / STEP_WIDTH) * stepTime;
+      const duration = (block.length / STEP_WIDTH) * stepTime;
+      const freq = OPEN_STRINGS[block.string] * Math.pow(2, block.fret / 12);
+      const midiNote = Math.round(12 * Math.log2(freq / 440) + 69);
+      const velocity = Math.round((block.velocity || 1) * 127);
+      allNotes.push({ start: startTime, duration, midiNote, velocity });
+    });
+  });
+
+  // Сортируем по времени
+  allNotes.sort((a, b) => a.start - b.start);
+
+  // Формируем MIDI-события (упрощённо)
+  const events = [];
+  allNotes.forEach(note => {
+    // Note On
+    events.push({ delta: note.start - time, status: 0x90, note: note.midiNote, velocity: note.velocity });
+    time = note.start;
+    // Note Off
+    events.push({ delta: note.duration, status: 0x80, note: note.midiNote, velocity: 0 });
+    time = note.start + note.duration;
+  });
+
+  // Заголовок MIDI (SMF Type 0)
+  const header = new Uint8Array([
+    0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, // header chunk
+    0x00, 0x00, // format 0
+    0x00, 0x01, // tracks 1
+    (tempo >> 8) & 0xFF, tempo & 0xFF, 0x00 // division (ticks per quarter)
+  ]);
+
+  // Строим трек
+  let trackData = [];
+  let runningStatus = 0;
+  let currentTime = 0;
+  events.forEach(ev => {
+    let deltaTicks = Math.round(ev.delta * ticksPerQuarter);
+    let deltaBytes = [];
+    if (deltaTicks < 0) deltaTicks = 0;
+    // variable-length
+    let v = deltaTicks;
+    if (v === 0) deltaBytes.push(0);
+    else {
+      while (v > 0) {
+        let byte = v & 0x7F;
+        v >>= 7;
+        if (v > 0) byte |= 0x80;
+        deltaBytes.push(byte);
+      }
+    }
+    // status byte with running status
+    let status = ev.status;
+    if (status === runningStatus) {
+      // running status – пропускаем
+    } else {
+      trackData.push(...deltaBytes);
+      trackData.push(status);
+      runningStatus = status;
+      deltaBytes = []; // уже записали
+    }
+    // данные ноты
+    trackData.push(ev.note);
+    trackData.push(ev.velocity);
+    // обновляем время
+    currentTime += ev.delta;
+  });
+
+  // Конец трека
+  trackData.push(0x00, 0xFF, 0x2F, 0x00);
+
+  // Длина трека
+  const trackLength = trackData.length;
+  const trackChunk = new Uint8Array(8 + trackLength);
+  trackChunk.set([0x4D, 0x54, 0x72, 0x6B], 0); // "MTrk"
+  trackChunk[4] = (trackLength >> 24) & 0xFF;
+  trackChunk[5] = (trackLength >> 16) & 0xFF;
+  trackChunk[6] = (trackLength >> 8) & 0xFF;
+  trackChunk[7] = trackLength & 0xFF;
+  trackChunk.set(trackData, 8);
+
+  // Объединяем заголовок и трек
+  const full = new Uint8Array(header.length + trackChunk.length);
+  full.set(header, 0);
+  full.set(trackChunk, header.length);
+
+  return full.buffer;
+};
+
+// Проверяем, находится ли текущий проект в избранном
+useEffect(() => {
+  if (projectId && favoritesList.length > 0) {
+    const found = favoritesList.some(f => f.project_id === projectId);
+    setIsFavorite(found);
+  } else {
+    setIsFavorite(false);
+  }
+}, [projectId, favoritesList]);
+
   // ===== ПЕРЕСОЗДАНИЕ СИНТЕЗАТОРА МЕТРОНОМА ПРИ СМЕНЕ ЗВУКА =====
   useEffect(() => {
     if (metroSynthRef.current) {
@@ -1426,6 +1857,57 @@ useEffect(() => {
   document.addEventListener('mousedown', handleClickOutside);
   return () => document.removeEventListener('mousedown', handleClickOutside);
 }, []);
+
+// ===== ЗАГРУЗКА ИЗБРАННОГО =====
+useEffect(() => {
+  if (user?.email) {
+    loadFavorites();
+  } else {
+    setFavoritesList([]);
+    setIsFavorite(false);
+  }
+}, [user]);
+
+useEffect(() => {
+  if (!autosaveEnabled || !user?.email || !isDataLoaded) return;
+
+  // Очищаем предыдущие таймеры
+  if (statusTimerRef.current) {
+    clearTimeout(statusTimerRef.current);
+    clearTimeout(statusTimerRef.currentSaved);
+  }
+
+  setAutosaveStatus('saving');
+
+  const timer1 = setTimeout(() => {
+    setAutosaveStatus('saved');
+  }, 2000);
+
+  const timer2 = setTimeout(() => {
+    setAutosaveStatus('idle');
+  }, 2500);
+
+  statusTimerRef.current = timer1;
+  statusTimerRef.currentSaved = timer2;
+
+  return () => {
+    clearTimeout(timer1);
+    clearTimeout(timer2);
+  };
+}, [
+  tracks,
+  bpm,
+  filters,
+  fx,
+  volumes,
+  positions3D,
+  loopActive,
+  loopStart,
+  loopEnd,
+  autosaveEnabled,
+  user,
+  isDataLoaded
+]);
   
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
@@ -1905,9 +2387,7 @@ const handleStop = () => {
     setLoopEnd(0);
     setPreviewLoopEnd(0);
     setLoopActive(false);
-    // возможно, сбросить playheadXRef.current = 0;
     playheadXRef.current = 0;
-    // также перезаписать ref-ы
     loopStartRef.current = 0;
     loopEndRef.current = 0;
   
@@ -1916,7 +2396,6 @@ const handleStop = () => {
       setSubMode(false);
       localStorage.setItem("struna_sub_mode", "false");
       
-      // Пересоздаём басовый синтезатор в обычный режим, если он существует
       if (synthsRef.current.bass) {
         const oldSynth = synthsRef.current.bass;
         const filterNode = filtersRef.current.bass;
@@ -1938,14 +2417,18 @@ const handleStop = () => {
         synthsRef.current.bass = normalSynth;
       }
     }
-  // Сброс 3D-позиций
-  setPositions3D(defaultPositions);
-
+    // Сброс 3D-позиций
+    setPositions3D(defaultPositions);
+  
     // ===== СБРОС ГЛОБАЛЬНОЙ ГРОМКОСТИ (MASTER VOL) =====
     setMasterGainValue(1.0);
     if (masterGainRef.current) {
       masterGainRef.current.gain.value = 1.0;
     }
+  
+    // ===== НОВОЕ: СБРАСЫВАЕМ ID ПРОЕКТА И СТАТУС ИЗБРАННОГО =====
+    setProjectId(null);
+    setIsFavorite(false);
   };
   
   const generateAIPattern = () => {
@@ -2977,7 +3460,7 @@ const menuItemStyle = {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.2-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.3-BETA</span>
       </div>
     </div>
   </div>
@@ -2989,29 +3472,7 @@ const menuItemStyle = {
       <div style={{ position: 'relative' }} ref={userMenuRef}>
         <button
           onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '6px 16px 6px 8px',
-            borderRadius: '30px',
-            background: 'rgba(255,255,255,0.06)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-            cursor: 'pointer',
-            transition: 'all 0.25s ease',
-            color: 'var(--text-primary)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-            e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)';
-          }}
+          className="user-profile-btn"
         >
           <div style={{
             width: '32px',
@@ -3024,28 +3485,44 @@ const menuItemStyle = {
             color: '#fff',
             fontWeight: 'bold',
             fontSize: '14px',
-            flexShrink: 0
+            flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
           }}>
             {user.picture ? (
-              <img src={user.picture} alt="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+              <img src={user.picture} alt="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
               user.email?.[0]?.toUpperCase() || 'U'
             )}
           </div>
-          <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '1px', color: 'var(--text-accent)' }}>
+          <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1px', color: 'var(--text-accent)' }}>
             {t('myStruna')}
           </span>
-          <span style={{ fontSize: '10px', color: 'var(--text-secondary)', transition: 'transform 0.25s ease', transform: isUserMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-            ▼
+          <span style={{ 
+            fontSize: '10px', 
+            color: 'var(--text-secondary)', 
+            transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+            transform: isUserMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)' 
+          }}>
+            ▲
           </span>
         </button>
 
         {isUserMenuOpen && (
-          <div className="user-menu-dropdown">
+          <div className="liquid-glass-menu">
             <div className="user-info">
               <div className="user-name">{user.name || user.email}</div>
               <div className="user-email">{user.email}</div>
             </div>
+           {/* 👇 ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ С ПЕРЕВОДОМ */}
+<div className="menu-item theme-toggle-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 24px' }}>
+  <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
+    {theme === 'dark' ? '🌙' : '☀️'} {t('theme')}
+  </span>
+  <label className="theme-switch">
+    <input type="checkbox" checked={theme === 'light'} onChange={toggleTheme} />
+    <span className="slider"></span>
+  </label>
+</div>
 
             <button className="menu-item" onClick={() => { handleSaveProject(); setIsUserMenuOpen(false); }}>
               {t('saveProject')}
@@ -3056,19 +3533,34 @@ const menuItemStyle = {
             <button className="menu-item" onClick={() => { handleDriveSave(); setIsUserMenuOpen(false); }}>
               {t('driveSaveProject')}
             </button>
+            <button className="menu-item" onClick={() => { handleSaveProjectToCloud(); setIsUserMenuOpen(false); }}>
+              {t('saveToCloud')}
+            </button>
             <button className="menu-item" onClick={() => { handleShare(); setIsUserMenuOpen(false); }}>
               {t('shareProject')}
+            </button>
+            <button className="menu-item" onClick={() => { exportMIDI(); setIsUserMenuOpen(false); }}>
+              {t('exportMIDI')}
+            </button>
+            
+            <button className="menu-item" onClick={() => { setShowFavoritesModal(true); setIsUserMenuOpen(false); }}>
+              ⭐ {t('favorites')}
             </button>
 
             <div className="divider" />
 
-            <button
-              className="menu-item"
-              onClick={() => { setAutosaveEnabled(!autosaveEnabled); setIsUserMenuOpen(false); }}
-              style={{ color: autosaveEnabled ? 'var(--text-bright)' : 'var(--text-secondary)' }}
-            >
-              {t('autosaveToggle')} {autosaveEnabled ? '✅' : '⬜'}
-            </button>
+            <button className="menu-item autosave-item" onClick={() => { setAutosaveEnabled(!autosaveEnabled); setIsUserMenuOpen(false); }}>
+  <span>{t('autosaveToggle')}</span>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className={`custom-checkbox ${autosaveEnabled ? 'checked' : ''}`}></div>
+    {autosaveEnabled && autosaveStatus === 'saved' && (
+      <span style={{ color: '#4DFF88', fontSize: '14px' }}>✓</span>
+    )}
+    {autosaveEnabled && autosaveStatus === 'saving' && (
+      <span className="fav-status-spinner" style={{ color: '#FFB84D', fontSize: '14px' }}>⟳</span>
+    )}
+  </div>
+</button>
 
             <div className="divider" />
 
@@ -3817,6 +4309,15 @@ const menuItemStyle = {
   <div className="record-dot" style={{ width: "8px", height: "8px", backgroundColor: isRecording ? "#ffffff" : "#ff4d4d", borderRadius: "50%" }}></div>
   {isRecording ? 'REC' : 'REC'}
 </button>
+{/* Кнопка избранного (только для авторизованных) */}
+{user && (
+  <button
+    onClick={handleFavoriteToggle}
+    className={`favorite-btn ${isFavorite ? 'active' : ''} ${Object.values(tracks).flat().length === 0 ? 'disabled' : ''}`}
+  >
+    {isFavorite ? '❤️' : '🤍'}
+  </button>
+)}
 
   {/* Reset с marginLeft: auto, чтобы прижать к правому краю */}
   <button onClick={() => setShowResetConfirm(true)} className="reset-btn" style={{ marginLeft: "auto" }}>{t('resetAll')}</button>
@@ -4060,6 +4561,83 @@ const menuItemStyle = {
         <button className="cancel-modal-btn" onClick={() => setShowResetConfirm(false)}>{t('cancel')}</button>
         <button className="confirm-reset-btn" onClick={() => { handleResetAll(); setShowResetConfirm(false); }}>{t('confirmReset')}</button>
       </div>
+    </div>
+  </div>
+)}
+{/* ===== МОДАЛЬНОЕ ОКНО ИЗБРАННОГО (обновлённый стиль) ===== */}
+{showFavoritesModal && (
+  <div className="custom-modal-overlay" onClick={() => setShowFavoritesModal(false)}>
+    <div className="custom-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', textAlign: 'center' }}>
+    <h2 style={{ color: 'var(--text-accent)', marginBottom: '20px' }}>{t('favoritesTitle')}</h2>
+      {favoritesList.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)' }}>{t('noFavorites')}</p>
+      ) : (
+        <div style={{ maxHeight: '400px', overflowY: 'auto', textAlign: 'left' }}>
+          {favoritesList.map((fav) => {
+            const projectName = fav.projects?.grid_data?.name || 'Без названия';
+            return (
+              <div key={fav.project_id} className="favorite-item">
+                {/* Левая часть: название + дата */}
+                <div style={{ flex: 1, marginRight: '12px', minWidth: 0 }}>
+                  <input
+                    type="text"
+                    defaultValue={projectName}
+                    className="fav-name-input"
+                    onBlur={(e) => {
+                      const newName = e.target.value.trim();
+                      if (newName && newName !== projectName) {
+                        renameFavorite(fav.project_id, newName);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.target.blur();
+                      }
+                    }}
+                  />
+                  <div className="fav-date">
+                    {new Date(fav.created_at).toLocaleString()}
+                  </div>
+                </div>
+
+                {/* Правая часть: кнопки */}
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  <button
+                    className="fav-load-btn"
+                    onClick={() => loadFavoriteProject(fav.project_id)}
+                  >
+                    {t('load')}
+                  </button>
+                  <button
+                    className="fav-delete-btn"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('favorites')
+                          .delete()
+                          .eq('user_email', user.email)
+                          .eq('project_id', fav.project_id);
+                        if (error) throw error;
+                        setFavoritesList(prev => prev.filter(f => f.project_id !== fav.project_id));
+                        if (fav.project_id === projectId) setIsFavorite(false);
+                      } catch (e) {
+                        console.error('Ошибка удаления из избранного:', e);
+                        alert('Не удалось удалить');
+                      }
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <button className="close-modal-btn" onClick={() => setShowFavoritesModal(false)} style={{ marginTop: '20px' }}>
+        {t('close')}
+      </button>
     </div>
   </div>
 )}

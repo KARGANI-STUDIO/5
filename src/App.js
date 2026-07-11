@@ -55,7 +55,7 @@ function App() {
   bass:   { x:  0, y: 0, z: -5 },
   chip:   { x:  0, y: 3, z: -5 }
  }; 
-
+ const [balloons, setBalloons] = useState([]);
   const [filters, setFilters] = useState(defaultFilters);
   const [fx, setFx] = useState(defaultFx);
   const [volumes, setVolumes] = useState(defaultVolumes);
@@ -813,6 +813,62 @@ const uiSounds = {
   playBoom: () => { if (uiSoundsEnabled) uiSounds.playEffect('boom', 1); },
   playChirp: () => { if (uiSoundsEnabled) uiSounds.playEffect('chirp', 1); }
 };
+const createMiniConfetti = (x, y) => {
+  const colors = ['#ff0080', '#ff8c00', '#ffff00', '#00ff80', '#00bfff', '#8a2be2', '#ff4d4d', '#4dc3ff'];
+  const container = document.createElement('div');
+  container.style.cssText = `
+    position: fixed;
+    left: ${x}px;
+    top: ${y}px;
+    pointer-events: none;
+    z-index: 99999;
+    width: 1px;
+    height: 1px;
+  `;
+  document.body.appendChild(container);
+
+  for (let i = 0; i < 20; i++) {
+    const particle = document.createElement('div');
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = 40 + Math.random() * 80;
+    const size = 4 + Math.random() * 6;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const dx = Math.cos(angle) * speed;
+    const dy = Math.sin(angle) * speed - 20;
+    particle.style.cssText = `
+      position: absolute;
+      width: ${size}px;
+      height: ${size}px;
+      background: ${color};
+      border-radius: 50%;
+      box-shadow: 0 0 4px ${color};
+      transform: translate(-50%, -50%) scale(0);
+      transition: none;
+      pointer-events: none;
+    `;
+    container.appendChild(particle);
+
+    requestAnimationFrame(() => {
+      particle.style.transition = `all ${0.5 + Math.random() * 0.5}s cubic-bezier(0.2, 0.8, 0.3, 1)`;
+      particle.style.transform = `translate(${dx}px, ${dy}px) scale(1.2)`;
+      particle.style.opacity = '0';
+    });
+  }
+
+  setTimeout(() => container.remove(), 1500);
+};
+const popBalloon = (id, e) => {
+  if (uiSoundsEnabled) {
+    uiSounds.playPop();
+  }
+  setBalloons(prev => prev.filter(b => b.id !== id));
+  const rect = e.currentTarget.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  createMiniConfetti(cx, cy);
+};
+
+
   const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
@@ -2031,7 +2087,53 @@ useEffect(() => {
   user,
   isDataLoaded
 ]);
-  
+
+useEffect(() => {
+  if (mode === "landing") {
+    const colors = ['#ff4d4d', '#4dc3ff', '#ffb84d', '#4dff88', '#bd00ff', '#ff4dfc', '#ffaa00', '#00d2ff'];
+    const newBalloons = [];
+    for (let i = 0; i < 15; i++) {  // ← теперь 15 шариков
+      const left = Math.random() * 90 + 5;
+      const duration = 10 + Math.random() * 15;
+      const delay = Math.random() * 10;
+      const size = 30 + Math.random() * 35;
+      newBalloons.push({
+        id: Date.now() + i,          // уникальный ID
+        left,
+        duration,
+        delay,
+        size,
+        color: colors[i % colors.length],
+      });
+    }
+    setBalloons(newBalloons);
+  }
+}, [mode]);
+// ===== АВТОМАТИЧЕСКОЕ ВОСПОЛНЕНИЕ ШАРИКОВ =====
+useEffect(() => {
+  // Если мы на лендинге и шариков больше нет – через 3 секунды создаём новые
+  if (mode === "landing" && balloons.length === 0) {
+    const timer = setTimeout(() => {
+      const colors = ['#ff4d4d', '#4dc3ff', '#ffb84d', '#4dff88', '#bd00ff', '#ff4dfc', '#ffaa00', '#00d2ff'];
+      const newBalloons = [];
+      for (let i = 0; i < 15; i++) {
+        newBalloons.push({
+          id: Date.now() + i,
+          left: Math.random() * 90 + 5,
+          duration: 10 + Math.random() * 15,
+          delay: Math.random() * 10,
+          size: 30 + Math.random() * 35,
+          color: colors[i % colors.length],
+        });
+      }
+      setBalloons(newBalloons);
+    }, 3000); // 3 секунды паузы
+
+    // Очищаем таймер, если компонент размонтируется или шарики появятся раньше
+    return () => clearTimeout(timer);
+  }
+}, [balloons, mode]);
+
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
@@ -3259,32 +3361,35 @@ const menuItemStyle = {
             style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, pointerEvents: 'none' }}
           />
   
-          {/* ===== ВОЗДУШНЫЕ ШАРИКИ ===== */}
-          <div className="balloon-container">
-            {[...Array(8)].map((_, i) => {   // ← меньше шариков
-              const colors = ['#ff4d4d', '#4dc3ff', '#ffb84d', '#4dff88', '#bd00ff', '#ff4dfc', '#ffaa00', '#00d2ff'];
-              const left = Math.random() * 100;
-              const duration = 10 + Math.random() * 15;
-              const delay = Math.random() * 10;
-              const size = 30 + Math.random() * 35;
-              return (
-                <div
-                  key={i}
-                  className="balloon"
-                  style={{
-                    left: `${left}%`,
-                    width: `${size}px`,
-                    height: `${size * 1.2}px`,
-                    backgroundColor: colors[i % colors.length],
-                    animationDuration: `${duration}s`,
-                    animationDelay: `${delay}s`,
-                    borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
-                    boxShadow: `inset -5px -5px 15px rgba(0,0,0,0.2), 0 0 10px ${colors[i % colors.length]}`
-                  }}
-                />
-              );
-            })}
-          </div>
+          {/* ===== ВОЗДУШНЫЕ ШАРИКИ (кликабельные) ===== */}
+<div className="balloon-container" style={{ pointerEvents: 'none' }}>
+  {balloons.map((balloon) => (
+    <div
+      key={balloon.id}
+      className="balloon"
+      onClick={(e) => popBalloon(balloon.id, e)}
+      style={{
+        left: `${balloon.left}%`,
+        width: `${balloon.size}px`,
+        height: `${balloon.size * 1.2}px`,
+        backgroundColor: balloon.color,
+        animationDuration: `${balloon.duration}s`,
+        animationDelay: `${balloon.delay}s`,
+        borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+        boxShadow: `inset -5px -5px 15px rgba(0,0,0,0.2), 0 0 10px ${balloon.color}`,
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+        pointerEvents: 'auto', // важно!
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.08)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
+    />
+  ))}
+</div>
   
           {/* ===== ВЕРХНИЕ КНОПКИ (тема, гугл, язык) ===== */}
           <div style={{

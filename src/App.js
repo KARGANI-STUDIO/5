@@ -5,7 +5,6 @@ import { useGoogleLogin } from '@react-oauth/google';
 import UserProfile from './UserProfile';
 import { supabase } from './supabaseClient';
 import * as MidiModule from '@tonejs/midi';
-import Confetti from 'react-confetti';
 // Автоматически определяем правильный конструктор
 const Midi = MidiModule.Midi || MidiModule.default || MidiModule;
 function App() {
@@ -55,7 +54,7 @@ function App() {
   bass:   { x:  0, y: 0, z: -5 },
   chip:   { x:  0, y: 3, z: -5 }
  }; 
- const [balloons, setBalloons] = useState([]);
+
   const [filters, setFilters] = useState(defaultFilters);
   const [fx, setFx] = useState(defaultFx);
   const [volumes, setVolumes] = useState(defaultVolumes);
@@ -92,9 +91,6 @@ function App() {
 // Переводы для двух фраз
 const translations = {
   en: {
-    birthdayTitle: "🎉 Happy Birthday, Brother! 🎉",
-    birthdaySubtitle: "May music always play in your heart!",
-    birthdayBtn: "🎂 Play Birthday Song",
     tagline: "LIQUID GLASS",
     startBtn: "START CREATING",
     desktopOnly: "Desktop Version Only",
@@ -209,9 +205,6 @@ changelogText: [
 ]
   },
   ru: {
-    birthdayTitle: "🎉 С Днём Рождения, Брат! 🎉",
-    birthdaySubtitle: "Пусть музыка всегда звучит в твоём сердце!",
-    birthdayBtn: "🎂 Сыграть песню",
     tagline: "ЖИДКОЕ СТЕКЛО",
     startBtn: "НАЧАТЬ ТВОРИТЬ",
     desktopOnly: "Только для ПК",
@@ -442,8 +435,6 @@ const [subMode, setSubMode] = useState(() => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState('idle');
   const statusTimerRef = useRef(null);
-  const birthdaySynthRef = useRef(null);
-  const birthdayTimeoutRef = useRef(null);
 
   const userMenuRef = useRef(null); 
   const metroOnRef = useRef(metroOn);
@@ -659,105 +650,6 @@ const playDemo = async (inst) => {
 // Единые синтезаторы для каждого типа эффекта (переиспользование)
 const effectSynths = {};
 
-// ==================== playBirthdaySong ====================
-const playBirthdaySong = async () => {
-  if (Tone.context.state !== 'running') {
-    await Tone.start();
-  }
-
-  // 1. МГНОВЕННОЕ ПРЕРЫВАНИЕ СТАРОГО ТРЕКА (при повторном клике)
-  if (birthdaySynthRef.current) {
-    try {
-      birthdaySynthRef.current.releaseAll();
-      birthdaySynthRef.current.disconnect();
-      birthdaySynthRef.current.dispose();
-    } catch (e) {
-      console.error(e);
-    }
-    birthdaySynthRef.current = null;
-  }
-  
-  if (birthdayTimeoutRef.current) {
-    clearTimeout(birthdayTimeoutRef.current);
-    birthdayTimeoutRef.current = null;
-  }
-
-  // 2. СОЗДАНИЕ СИНТЕЗАТОРА С ОПТИМАЛЬНЫМ РЕЛИЗОМ
-  // release: 0.2 не позволяет голосам накапливаться и вызывать баг залипания
-  const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.01, decay: 0.1, sustain: 0.4, release: 0.2 }
-  });
-  
-  birthdaySynthRef.current = synth;
-
-  if (masterGainRef.current) {
-    synth.connect(masterGainRef.current);
-  } else {
-    synth.toDestination();
-  }
-
-  const notes = [
-    // Первый куплет
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'D4', duration: '4n' }, { note: 'C4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'E4', duration: '2n' },
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'D4', duration: '4n' }, { note: 'C4', duration: '4n' },
-    { note: 'G4', duration: '4n' }, { note: 'F4', duration: '2n' },
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'C5', duration: '4n' }, { note: 'A4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'E4', duration: '4n' },
-    { note: 'D4', duration: '4n' }, { note: 'Bb4', duration: '8n' },
-    { note: 'Bb4', duration: '8n' }, { note: 'A4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'G4', duration: '4n' },
-    { note: 'F4', duration: '2n' },
-    // Второй куплет
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'D4', duration: '4n' }, { note: 'C4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'E4', duration: '2n' },
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'D4', duration: '4n' }, { note: 'C4', duration: '4n' },
-    { note: 'G4', duration: '4n' }, { note: 'F4', duration: '2n' },
-    { note: 'C4', duration: '8n' }, { note: 'C4', duration: '8n' },
-    { note: 'C5', duration: '4n' }, { note: 'A4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'E4', duration: '4n' },
-    { note: 'D4', duration: '4n' }, { note: 'Bb4', duration: '8n' },
-    { note: 'Bb4', duration: '8n' }, { note: 'A4', duration: '4n' },
-    { note: 'F4', duration: '4n' }, { note: 'G4', duration: '4n' },
-    { note: 'F4', duration: '4n' }
-  ];
-
-  // 3. ПОСЛЕДОВАТЕЛЬНОЕ ПЛАНИРОВАНИЕ
-  const now = Tone.now();
-  let time = now;
-  
-  notes.forEach(({ note, duration }) => {
-    synth.triggerAttackRelease(note, duration, time);
-    time += Tone.Time(duration).toSeconds();
-  });
-
-  // Финальный аккорд
-  const chordDuration = '2n';
-  synth.triggerAttackRelease(['C4', 'E4', 'G4'], chordDuration, time);
-  time += Tone.Time(chordDuration).toSeconds();
-
-  // Жесткая команда расписанию Tone.js: принудительно выключить ВСЕ звуки в эту секунду
-  synth.releaseAll(time);
-
-  // 4. АВТОМАТИЧЕСКАЯ УТИЛИЗАЦИЯ ПОСЛЕ ФИНАЛА
-  birthdayTimeoutRef.current = setTimeout(() => {
-    if (birthdaySynthRef.current === synth) {
-      try {
-        synth.releaseAll();
-        synth.disconnect(); // Полностью отключаем от мастер-канала
-        synth.dispose();    // Удаляем из памяти устройства
-      } catch(e) {}
-      birthdaySynthRef.current = null;
-    }
-  }, (time - now) * 1000 + 500); 
-};
-
 const uiSounds = {
   getSynth: (effectName) => {
     if (effectSynths[effectName]) return effectSynths[effectName];
@@ -813,62 +705,6 @@ const uiSounds = {
   playBoom: () => { if (uiSoundsEnabled) uiSounds.playEffect('boom', 1); },
   playChirp: () => { if (uiSoundsEnabled) uiSounds.playEffect('chirp', 1); }
 };
-const createMiniConfetti = (x, y) => {
-  const colors = ['#ff0080', '#ff8c00', '#ffff00', '#00ff80', '#00bfff', '#8a2be2', '#ff4d4d', '#4dc3ff'];
-  const container = document.createElement('div');
-  container.style.cssText = `
-    position: fixed;
-    left: ${x}px;
-    top: ${y}px;
-    pointer-events: none;
-    z-index: 99999;
-    width: 1px;
-    height: 1px;
-  `;
-  document.body.appendChild(container);
-
-  for (let i = 0; i < 20; i++) {
-    const particle = document.createElement('div');
-    const angle = Math.random() * 2 * Math.PI;
-    const speed = 40 + Math.random() * 80;
-    const size = 4 + Math.random() * 6;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const dx = Math.cos(angle) * speed;
-    const dy = Math.sin(angle) * speed - 20;
-    particle.style.cssText = `
-      position: absolute;
-      width: ${size}px;
-      height: ${size}px;
-      background: ${color};
-      border-radius: 50%;
-      box-shadow: 0 0 4px ${color};
-      transform: translate(-50%, -50%) scale(0);
-      transition: none;
-      pointer-events: none;
-    `;
-    container.appendChild(particle);
-
-    requestAnimationFrame(() => {
-      particle.style.transition = `all ${0.5 + Math.random() * 0.5}s cubic-bezier(0.2, 0.8, 0.3, 1)`;
-      particle.style.transform = `translate(${dx}px, ${dy}px) scale(1.2)`;
-      particle.style.opacity = '0';
-    });
-  }
-
-  setTimeout(() => container.remove(), 1500);
-};
-const popBalloon = (id, e) => {
-  if (uiSoundsEnabled) {
-    uiSounds.playPop();
-  }
-  setBalloons(prev => prev.filter(b => b.id !== id));
-  const rect = e.currentTarget.getBoundingClientRect();
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-  createMiniConfetti(cx, cy);
-};
-
-
   const STEP_WIDTH = 20;
   const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
   const FOLLOW_OFFSET = 150;
@@ -2087,53 +1923,7 @@ useEffect(() => {
   user,
   isDataLoaded
 ]);
-
-useEffect(() => {
-  if (mode === "landing") {
-    const colors = ['#ff4d4d', '#4dc3ff', '#ffb84d', '#4dff88', '#bd00ff', '#ff4dfc', '#ffaa00', '#00d2ff'];
-    const newBalloons = [];
-    for (let i = 0; i < 15; i++) {  // ← теперь 15 шариков
-      const left = Math.random() * 90 + 5;
-      const duration = 10 + Math.random() * 15;
-      const delay = Math.random() * 10;
-      const size = 30 + Math.random() * 35;
-      newBalloons.push({
-        id: Date.now() + i,          // уникальный ID
-        left,
-        duration,
-        delay,
-        size,
-        color: colors[i % colors.length],
-      });
-    }
-    setBalloons(newBalloons);
-  }
-}, [mode]);
-// ===== АВТОМАТИЧЕСКОЕ ВОСПОЛНЕНИЕ ШАРИКОВ =====
-useEffect(() => {
-  // Если мы на лендинге и шариков больше нет – через 3 секунды создаём новые
-  if (mode === "landing" && balloons.length === 0) {
-    const timer = setTimeout(() => {
-      const colors = ['#ff4d4d', '#4dc3ff', '#ffb84d', '#4dff88', '#bd00ff', '#ff4dfc', '#ffaa00', '#00d2ff'];
-      const newBalloons = [];
-      for (let i = 0; i < 15; i++) {
-        newBalloons.push({
-          id: Date.now() + i,
-          left: Math.random() * 90 + 5,
-          duration: 10 + Math.random() * 15,
-          delay: Math.random() * 10,
-          size: 30 + Math.random() * 35,
-          color: colors[i % colors.length],
-        });
-      }
-      setBalloons(newBalloons);
-    }, 3000); // 3 секунды паузы
-
-    // Очищаем таймер, если компонент размонтируется или шарики появятся раньше
-    return () => clearTimeout(timer);
-  }
-}, [balloons, mode]);
-
+  
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
@@ -2684,70 +2474,119 @@ const handleStop = () => {
     const newBlocks = [];
     const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   
-    // ========== ПАСХАЛКА: SUPER MARIO ДЛЯ CHIP (расширенная аранжировка) ==========
-    if (inst === 'chip' && Math.random() < 0.15) {
-      const melodyStr = 7;   // e (высокая)
-      const harmonyStr = 5;  // D (средняя)
-      const bassStr = 2;     // A (низкая)
+   // ========== ПАСХАЛКА: SUPER MARIO ДЛЯ CHIP (расширенная аранжировка) ==========
+if (inst === 'chip' && Math.random() < 0.15) {
+  // Оригинальная главная тема Super Mario Bros (1985) – улучшенная многоголосная версия
+  // Используем несколько струн: 
+  // - струна 7 (e) для основной мелодии
+  // - струна 5 (D) для гармонии (терции/квинты)
+  // - струна 2 (A) для баса (низкие ноты)
+  
+  const melodyStr = 7;   // e (высокая)
+  const harmonyStr = 5;  // D (средняя)
+  const bassStr = 2;     // A (низкая)
 
-      // Основная мелодия
-      const melodyNotes = [
-        { step: 0,  fret: 12, length: 1 }, { step: 2,  fret: 12, length: 1 }, { step: 6,  fret: 12, length: 1 },
-        { step: 8,  fret: 8,  length: 1 }, { step: 10, fret: 12, length: 1 }, { step: 12, fret: 15, length: 2 },
-        { step: 20, fret: 3,  length: 2 }, { step: 32, fret: 8,  length: 2 }, { step: 38, fret: 3,  length: 2 },
-        { step: 44, fret: 0,  length: 2 }, { step: 50, fret: 5,  length: 1 }, { step: 54, fret: 7,  length: 1 },
-        { step: 56, fret: 6,  length: 1 }, { step: 58, fret: 5,  length: 2 }, { step: 60, fret: 3,  length: 1 },
-        { step: 64, fret: 12, length: 1 }, { step: 66, fret: 15, length: 1 }, { step: 68, fret: 17, length: 2 },
-        { step: 72, fret: 13, length: 1 }, { step: 74, fret: 15, length: 1 }, { step: 76, fret: 12, length: 2 },
-        { step: 80, fret: 8,  length: 1 }, { step: 82, fret: 10, length: 1 }, { step: 84, fret: 7,  length: 2 },
-        { step: 92, fret: 5,  length: 2 }, { step: 96, fret: 3,  length: 2 }, { step: 100, fret: 8,  length: 2 },
-        { step: 104, fret: 7,  length: 2 }, { step: 108, fret: 5,  length: 2 }, { step: 112, fret: 3,  length: 2 },
-        { step: 116, fret: 0,  length: 4 },
-      ];
+  // Основная мелодия (расширенная версия, полная тема)
+  // Формат: { step, fret, length } – step = шаг 1/16 такта, length = длительность в шагах
+  const melodyNotes = [
+    // --- Вступление (как в оригинале) ---
+    { step: 0,  fret: 12, length: 1 }, // E5
+    { step: 2,  fret: 12, length: 1 }, // E5
+    { step: 6,  fret: 12, length: 1 }, // E5
+    { step: 8,  fret: 8,  length: 1 }, // C5
+    { step: 10, fret: 12, length: 1 }, // E5
+    { step: 12, fret: 15, length: 2 }, // G5
+    { step: 20, fret: 3,  length: 2 }, // G4
 
-      const harmonyNotes = melodyNotes.map(n => {
-        let harmonyFret = n.fret;
-        if (n.length > 0) {
-          harmonyFret = Math.min(MAX_FRET, n.fret + 3); 
-          if (harmonyFret > MAX_FRET) harmonyFret = n.fret - 3;
-          if (harmonyFret < 0) harmonyFret = n.fret + 5;
-        }
-        return { ...n, fret: harmonyFret };
-      });
+    // --- Основной мотив (Часть 1) ---
+    { step: 32, fret: 8,  length: 2 }, // C5
+    { step: 38, fret: 3,  length: 2 }, // G4
+    { step: 44, fret: 0,  length: 2 }, // E4
 
-      const bassNotes = melodyNotes.filter((_, i) => i % 2 === 0).map(n => {
-        let bassFret = Math.max(0, n.fret - 12); 
-        if (bassFret < 0) bassFret = 0;
-        return { ...n, fret: bassFret, length: n.length * 2 }; 
-      });
+    { step: 50, fret: 5,  length: 1 }, // A4
+    { step: 54, fret: 7,  length: 1 }, // B4
+    { step: 56, fret: 6,  length: 1 }, // Bb4
+    { step: 58, fret: 5,  length: 2 }, // A4
+    { step: 60, fret: 3,  length: 1 }, // G4
 
-      const addNotes = (notes, stringIdx) => {
-        notes.forEach((note, idx) => {
-          if (note.step >= numSteps) return;
-          const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
-          const x = note.step * stepSize;
-          const lengthPx = note.length * stepSize * 1.5;
-          const velocity = 0.85 + Math.random() * 0.15;
-          newBlocks.push({
-            id: now + idx + Math.random() + stringIdx * 1000,
-            string: stringIdx,
-            x: x,
-            length: lengthPx,
-            fret: fret,
-            velocity: velocity,
-            effect: null
-          });
-        });
-      };
+    // --- Мотив с прыжком (Часть 2) ---
+    { step: 64, fret: 12, length: 1 }, // E5
+    { step: 66, fret: 15, length: 1 }, // G5
+    { step: 68, fret: 17, length: 2 }, // A5
+    { step: 72, fret: 13, length: 1 }, // F5
+    { step: 74, fret: 15, length: 1 }, // G5
+    { step: 76, fret: 12, length: 2 }, // E5
 
-      addNotes(melodyNotes, melodyStr);
-      addNotes(harmonyNotes, harmonyStr);
-      addNotes(bassNotes, bassStr);
+    // --- Завершение (Часть 3) ---
+    { step: 80, fret: 8,  length: 1 }, // C5
+    { step: 82, fret: 10, length: 1 }, // D5
+    { step: 84, fret: 7,  length: 2 }, // B4
 
-      setTracks(prev => ({ ...prev, [inst]: newBlocks }));
-      if (uiSoundsEnabled) uiSounds.playClick();
-      return; 
+    // --- Дополнительный кусок для большей полноты ---
+    { step: 92, fret: 5,  length: 2 }, // A4
+    { step: 96, fret: 3,  length: 2 }, // G4
+    { step: 100, fret: 8,  length: 2 }, // C5
+    { step: 104, fret: 7,  length: 2 }, // B4
+    { step: 108, fret: 5,  length: 2 }, // A4
+    { step: 112, fret: 3,  length: 2 }, // G4
+    { step: 116, fret: 0,  length: 4 }, // E4 (финальная)
+  ];
+
+  // Гармонические тоны (терции и квинты) – добавляем на тех же шагах, но на другой струне
+  const harmonyNotes = melodyNotes.map(n => {
+    // Для гармонии используем простые интервалы: терция (3 полутона) или кварта/квинта
+    // В зависимости от ноты мелодии, подбираем подходящую гармонию
+    let harmonyFret = n.fret;
+    // Для простоты добавим терцию (3 полутона) к большинству нот, но не к паузам
+    if (n.length > 0) {
+      harmonyFret = Math.min(MAX_FRET, n.fret + 3); // терция
+      // Если выходит за пределы, берём октаву ниже или квинту
+      if (harmonyFret > MAX_FRET) harmonyFret = n.fret - 3;
+      if (harmonyFret < 0) harmonyFret = n.fret + 5;
     }
+    return { ...n, fret: harmonyFret };
+  });
+
+  // Басовая линия (на низкой струне) – идёт по основным тонам аккордов
+  // Обычно это тоника или доминанта, упрощённо повторяем основные ноты мелодии, но на октаву ниже
+  const bassNotes = melodyNotes.filter((_, i) => i % 2 === 0).map(n => {
+    let bassFret = Math.max(0, n.fret - 12); // опускаем на октаву
+    // Если басовая нота выходит за пределы струны, корректируем
+    if (bassFret < 0) bassFret = 0;
+    return { ...n, fret: bassFret, length: n.length * 2 }; // басовые ноты длиннее
+  });
+
+  // Добавляем все голоса в newBlocks
+  const addNotes = (notes, stringIdx) => {
+    notes.forEach((note, idx) => {
+      if (note.step >= numSteps) return;
+      const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
+      const x = note.step * stepSize;
+      const lengthPx = note.length * stepSize * 1.5;
+      const velocity = 0.85 + Math.random() * 0.15;
+      newBlocks.push({
+        id: now + idx + Math.random() + stringIdx * 1000,
+        string: stringIdx,
+        x: x,
+        length: lengthPx,
+        fret: fret,
+        velocity: velocity,
+        effect: null
+      });
+    });
+  };
+
+  // Добавляем основную мелодию
+  addNotes(melodyNotes, melodyStr);
+  // Добавляем гармонию (терции)
+  addNotes(harmonyNotes, harmonyStr);
+  // Добавляем бас
+  addNotes(bassNotes, bassStr);
+
+  setTracks(prev => ({ ...prev, [inst]: newBlocks }));
+  if (uiSoundsEnabled) uiSounds.playClick();
+  return; // выходим, не генерируем случайный паттерн
+}
   
     // -------------------------------------------------------------
     // ПАТТЕРНЫ
@@ -2755,8 +2594,8 @@ const handleStop = () => {
     const drumPatterns = [
       { steps: [0,4,8,12, 2,6,10,14] },  // Rock
       { steps: [0,6,10,12, 2,7,11,14] }, // Funk
-      { steps: [0,4,8,12, 3,7,11,15] },  // Disco
-      { steps: [0,4,8,12, 1,5,9,13] }    // Electronic
+      { steps: [0,4,8,12, 3,7,11,15] }, // Disco
+      { steps: [0,4,8,12, 1,5,9,13] }   // Electronic
     ];
   
     const bassPatterns = [
@@ -2769,17 +2608,19 @@ const handleStop = () => {
     // -------------------------------------------------------------
     // МЕЛОДИЧЕСКАЯ ПЕНТАТОНИКА И ФУНКЦИИ
     // -------------------------------------------------------------
+    // Минорная пентатоника (ля минор): 0,3,5,7,10,12,15,17,19,22
     const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
   
+    // Генерация короткого мотива (остинато) с плавными интервалами
     const generateMotif = (length, startFret) => {
       let motif = [];
       let prev = startFret;
       for (let i = 0; i < length; i++) {
         let interval;
         const r = Math.random();
-        if (r < 0.6) interval = [0, 2, 3, 4][Math.floor(Math.random() * 4)]; 
-        else if (r < 0.85) interval = 5; 
-        else interval = 7; 
+        if (r < 0.6) interval = [0, 2, 3, 4][Math.floor(Math.random() * 4)]; // малые интервалы
+        else if (r < 0.85) interval = 5; // чистая кварта
+        else interval = 7; // квинта
         let direction = Math.random() > 0.5 ? 1 : -1;
         let newFret = prev + direction * interval;
         newFret = Math.min(22, Math.max(0, newFret));
@@ -2790,9 +2631,7 @@ const handleStop = () => {
       return motif;
     };
   
-    // -------------------------------------------------------------
-    // ГЕНЕРАЦИЯ ДЛЯ БАРАБАНОВ
-    // -------------------------------------------------------------
+    // ГЕНЕРАЦИЯ ДЛЯ БАРАБАНОВ (Улучшенная многослойная)
     if (inst === 'drum') {
       const KICK    = { fret: 0, string: 0 };
       const SNARE   = { fret: 4, string: 0 };
@@ -2800,6 +2639,7 @@ const handleStop = () => {
       const HIHAT_O = { fret: 12, string: 1 };
       const CRASH   = { fret: 16, string: 1 };
   
+      // Расширенная библиотека (10 вариантов для каждого элемента)
       const kickPatterns = [
         [0, 8], [0, 4, 8, 12], [0, 7, 10], [0, 8, 11], [0, 10],
         [0, 8, 10, 14], [0, 3, 8], [0, 4, 8, 12, 15], [0, 2, 8, 10], [0, 7, 8, 15]
@@ -2822,30 +2662,34 @@ const handleStop = () => {
         const stepInBar = step % 16;
         const x = step * stepSize;
   
+        // 1. Kick
         if (currentKick.includes(stepInBar)) {
           newBlocks.push({ id: now + step + Math.random(), string: KICK.string, x, length: stepSize, fret: KICK.fret, velocity: 0.85 + Math.random() * 0.15, effect: null });
         }
+        // 2. Snare
         if (currentSnare.includes(stepInBar)) {
           newBlocks.push({ id: now + step + Math.random() + 1000, string: SNARE.string, x, length: stepSize, fret: SNARE.fret, velocity: 0.8 + Math.random() * 0.2, effect: null });
         }
+        // 3. Hi-Hats
         if (currentHat.includes(stepInBar)) {
           const isOpen = Math.random() > 0.85 && stepInBar % 4 !== 0;
           const hat = isOpen ? HIHAT_O : HIHAT_C;
           newBlocks.push({ id: now + step + Math.random() + 2000, string: hat.string, x, length: stepSize, fret: hat.fret, velocity: 0.4 + Math.random() * 0.4, effect: null });
         }
+        // 4. Crash
         if (step % 32 === 0) {
           newBlocks.push({ id: now + step + Math.random() + 3000, string: CRASH.string, x, length: stepSize, fret: CRASH.fret, velocity: 1.0, effect: null });
         }
       }
     }
     // -------------------------------------------------------------
-    // ГЕНЕРАЦИЯ ДЛЯ БАСА
+    // ГЕНЕРАЦИЯ ДЛЯ БАСА (с пентатоникой и повторяющимся мотивом)
     // -------------------------------------------------------------
     else if (inst === 'bass') {
       const pattern = randomPick(bassPatterns);
       const baseSteps = pattern.steps;
       let baseFrets = pattern.frets;
-
+      // Транспонируем в пентатонику
       const trans = Math.floor(Math.random() * 7) - 3;
       let frets = baseFrets.map(f => Math.min(22, Math.max(0, f + trans)));
       frets = frets.map(f => pentatonicMinor.reduce((a, b) => Math.abs(b - f) < Math.abs(a - f) ? b : a));
@@ -2871,20 +2715,24 @@ const handleStop = () => {
       }
     }
     // -------------------------------------------------------------
-    // ГЕНЕРАЦИЯ ДЛЯ МЕЛОДИЧЕСКИХ ИНСТРУМЕНТОВ
+    // ГЕНЕРАЦИЯ ДЛЯ МЕЛОДИЧЕСКИХ ИНСТРУМЕНТОВ (гитара, синт, чип) – УЛУЧШЕННАЯ
     // -------------------------------------------------------------
     else {
-      const motifLength = Math.floor(Math.random() * 3) + 4; 
+      // Создаём основной мотив (4-6 нот)
+      const motifLength = Math.floor(Math.random() * 3) + 4; // 4,5,6
       const startFret = pentatonicMinor[Math.floor(Math.random() * pentatonicMinor.length)];
       const motif = generateMotif(motifLength, startFret);
   
-      const motifDurationSteps = 8; 
+      // Сколько раз повторить мотив, чтобы заполнить numSteps
+      const motifDurationSteps = 8; // базовый мотив длится 8 шагов (1/2 такта)
       const repetitions = Math.ceil(numSteps / motifDurationSteps);
   
+      // Строим полную последовательность нот, повторяя мотив с небольшими вариациями
       const fullMelody = [];
       for (let rep = 0; rep < repetitions; rep++) {
         for (let i = 0; i < motif.length; i++) {
           let note = motif[i];
+          // Вариация: иногда сдвиг на октаву (с сохранением в пентатонике)
           if (Math.random() < 0.2) {
             note += (Math.random() > 0.5 ? 12 : -12);
             note = Math.min(24, Math.max(0, note));
@@ -2894,6 +2742,7 @@ const handleStop = () => {
         }
       }
   
+      // Генерируем шаги для этих нот (равномерно, с лёгким сдвигом)
       const totalNotes = fullMelody.length;
       const stepInterval = numSteps / totalNotes;
       const steps = [];
@@ -2907,6 +2756,7 @@ const handleStop = () => {
       }
       steps.sort((a,b)=>a-b);
   
+      // Создаём блоки
       steps.forEach((step, idx) => {
         const fret = fullMelody[idx % fullMelody.length];
         let stringIdx;
@@ -3334,7 +3184,6 @@ const menuItemStyle = {
       default:       return '#4D88FF';
     }
   };
-  
   if (mode === "landing") {
     return (
       <div className={`app landing ${theme === 'light' ? 'light-theme' : ''}`}>
@@ -3342,189 +3191,116 @@ const menuItemStyle = {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "space-between",  // ← растягиваем по вертикали
+          justifyContent: "flex-start",
           minHeight: "100vh",
           width: "100%",
-          padding: "16px 20px",             // ← уменьшили отступы
-          paddingTop: "4vh",                // ← убрали большой отступ сверху
-          paddingBottom: "2vh",
+          padding: "20px",
+          paddingTop: "12vh",
           boxSizing: "border-box"
         }}>
-          {/* ===== КОНФЕТТИ ===== */}
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            numberOfPieces={120}             // ← чуть меньше для производительности
-            recycle={true}
-            gravity={0.1}
-            colors={['#ff0080', '#ff8c00', '#ffff00', '#00ff80', '#00bfff', '#8a2be2', '#ff4d4d', '#4dc3ff']}
-            style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, pointerEvents: 'none' }}
-          />
+          <div className="logo-wrapper">
+            <h1 className="neon-struna" style={{ marginBottom: "5px" }}>STRUNA</h1>
+          </div>
   
-          {/* ===== ВОЗДУШНЫЕ ШАРИКИ (кликабельные) ===== */}
-<div className="balloon-container" style={{ pointerEvents: 'none' }}>
-  {balloons.map((balloon) => (
-    <div
-      key={balloon.id}
-      className="balloon"
-      onClick={(e) => popBalloon(balloon.id, e)}
+          <p className="tagline" style={{ marginTop: "0", marginBottom: "25px", whiteSpace: "nowrap" }}>
+  {Array.from(t('tagline')).map((char, index) => {
+    if (char === ' ') {
+      return <span key={index} style={{ display: 'inline-block', width: '0.5em' }}>&nbsp;</span>;
+    }
+    return (
+      <span
+        key={index}
+        className="flicker-char"
+        style={{
+          animationDelay: `${index * 0.08}s`,
+          display: 'inline-block'
+        }}
+      >
+        {char}
+      </span>
+    );
+  })}
+</p>
+  
+<button
+  onClick={() => handleStartCreating("guitar")}
+  className="start-btn"
+  style={{
+    marginTop: "15px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "2px",
+    padding: "12px 30px"
+  }}
+>
+  <span style={{ fontSize: "inherit", lineHeight: 1.2 }}>{t('startBtn')}</span>
+  <span style={{
+    fontSize: "10px",
+    opacity: 0.8,
+    letterSpacing: "1.5px",
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "500"
+  }}>
+    🎧 3D SOUND
+  </span>
+</button>
+  
+          {mode === "landing" && (
+  <div style={{
+    position: 'fixed',
+    top: '25px',
+    right: '25px',
+    zIndex: 9999,
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'center'
+  }}>
+    {/* Кнопка переключения темы */}
+    <button
+      onClick={toggleTheme}
+      className="top-btn"
+    >
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
+    {/* Google кнопка (ваша оригинальная) */}
+    <div 
+      onClick={() => login()}
       style={{
-        left: `${balloon.left}%`,
-        width: `${balloon.size}px`,
-        height: `${balloon.size * 1.2}px`,
-        backgroundColor: balloon.color,
-        animationDuration: `${balloon.duration}s`,
-        animationDelay: `${balloon.delay}s`,
-        borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
-        boxShadow: `inset -5px -5px 15px rgba(0,0,0,0.2), 0 0 10px ${balloon.color}`,
+        background: 'rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.15)',
+        width: '50px',
+        height: '50px',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         cursor: 'pointer',
-        transition: 'all 0.15s ease',
-        pointerEvents: 'auto', // важно!
+        transition: 'all 0.3s ease',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
-    />
-  ))}
-</div>
+      
+    >
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+    </div>
+{/* Кнопка переключения языка */}
+<button
+      onClick={toggleLang}
+      className="top-btn"
+    >
+      {lang === 'en' ? 'EN' : 'RU'}
+    </button>
+  </div>
+)}
   
-          {/* ===== ВЕРХНИЕ КНОПКИ (тема, гугл, язык) ===== */}
-          <div style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 9999,
-            display: 'flex',
-            gap: '10px',
-            alignItems: 'center'
-          }}>
-            <button onClick={toggleTheme} className="top-btn">
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-            <div 
-              onClick={() => login()}
-              style={{
-                background: 'rgba(255,255,255,0.07)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-              </svg>
-            </div>
-            <button onClick={toggleLang} className="top-btn">
-              {lang === 'en' ? 'EN' : 'RU'}
-            </button>
-          </div>
-  
-          {/* ===== ЛОГОТИП ===== */}
-          <div className="logo-wrapper" style={{ marginTop: "10px" }}>
-            <h1 className="neon-struna" style={{ marginBottom: "0px", fontSize: "clamp(48px, 12vw, 100px)" }}>STRUNA</h1>
-          </div>
-  
-          {/* ===== ПОЗДРАВЛЕНИЕ ===== */}
-          <div style={{ marginTop: "5px", marginBottom: "10px", textAlign: "center" }}>
-            <h2 style={{
-              fontSize: "clamp(20px, 3.5vw, 34px)",
-              fontWeight: "bold",
-              background: "linear-gradient(135deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2)",
-              backgroundSize: "300% 300%",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              animation: "neonFlowSmooth 4s ease-in-out infinite",
-              margin: "0 0 4px 0",
-              letterSpacing: "1px"
-            }}>
-              {t('birthdayTitle')}
-            </h2>
-            <p style={{
-              fontSize: "clamp(12px, 1.4vw, 18px)",
-              color: "var(--text-accent)",
-              textShadow: "0 0 10px var(--text-accent)",
-              margin: "0",
-              fontWeight: "300",
-              letterSpacing: "1.5px"
-            }}>
-              {t('birthdaySubtitle')}
-            </p>
-          </div>
-  
-          {/* ===== КНОПКА ===== */}
-          <button
-            onClick={() => handleStartCreating("guitar")}
-            className="start-btn"
-            style={{
-              marginTop: "5px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "2px",
-              padding: "10px 24px"
-            }}
-          >
-            <span style={{ fontSize: "inherit", lineHeight: 1.2 }}>{t('startBtn')}</span>
-            <span style={{
-              fontSize: "9px",
-              opacity: 0.8,
-              letterSpacing: "1.5px",
-              color: "rgba(255,255,255,0.8)",
-              fontWeight: "500"
-            }}>
-              🎧 3D SOUND
-            </span>
-          </button>
-   {/* ===== НОВАЯ КНОПКА "С ДНЁМ РОЖДЕНИЯ" ===== */}
-   <button
-          onClick={playBirthdaySong}
-          className="birthday-btn"
-          style={{
-            marginTop: "10px",
-            padding: "8px 20px",
-            borderRadius: "30px",
-            border: "2px solid var(--text-accent)",
-            background: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(8px)",
-            color: "var(--text-accent)",
-            fontSize: "14px",
-            fontWeight: "bold",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            boxShadow: "0 0 15px rgba(77,136,255,0.2)"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(77,136,255,0.2)";
-            e.currentTarget.style.boxShadow = "0 0 30px rgba(77,136,255,0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-            e.currentTarget.style.boxShadow = "0 0 15px rgba(77,136,255,0.2)";
-          }}
-        >
-          {t('birthdayBtn')}
-        </button>
-          {/* ===== ПРЕВЬЮ (список инструментов) ===== */}
-          <div className="preview" style={{ marginTop: "15px", width: "340px" }}>
+          <div className="preview">
             {/* GUITAR */}
             <div
               className="preview-track guitar"
@@ -3611,33 +3387,32 @@ const menuItemStyle = {
             </div>
           </div>
   
-          {/* ===== ПОДВАЛ ===== */}
           <div style={{
             textAlign: "center",
             width: "100%",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: "4px",
+            gap: "6px",
             marginTop: "auto",
             position: "relative",
-            zIndex: 2,
-            paddingBottom: "8px"
+            zIndex: 2
           }}>
             <p
-              className="powered-by-text"
-              style={{
-                fontSize: "9px",
-                letterSpacing: "3px",
-                textTransform: "uppercase",
-                margin: 0,
-                fontFamily: "sans-serif"
-              }}
-            >
-              Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
-            </p>
+  className="powered-by-text"
+  style={{
+    fontSize: "10px",
+    letterSpacing: "4px",
+    textTransform: "uppercase",
+    margin: 0,
+    fontFamily: "sans-serif"
+  }}
+>
+  Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
+ 
+</p>
             <span style={{
-              fontSize: "8px",
+              fontSize: "9px",
               color: "#4D88FF",
               opacity: 0.6,
               letterSpacing: "1px",

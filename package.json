@@ -5,10 +5,9 @@
   "dependencies": {
     "@react-oauth/google": "0.13.5",
     "@supabase/supabase-js": "2.110.0",
-    "@tonejs/midi": "2.0.28",
+    "@tonejs/midi": "^2.0.28",
     "package.json": "2.0.1",
     "react": "18.1.0",
-    "react-confetti": "^6.4.0",
     "react-dom": "18.1.0",
     "react-helmet-async": "3.0.0",
     "tone": "15.5.26"

@@ -20,11 +20,11 @@ function App() {
   const [instrument, setInstrument] = useState("guitar");
   const [showHelp, setShowHelp] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const [infoModal, setInfoModal] = useState({ visible: false, message: '' });;
+  const [infoModal, setInfoModal] = useState({ visible: false, message: '', title: '' });
   const [bpm, setBpm] = useState(120);
   
   const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
-  const [isTempoMasterVisible, setIsTempoMasterVisible] = useState(true);
+  const [isTempoMasterVisible, setIsTempoMasterVisible] = useState(false);
   const defaultFilters = {
     guitar: { cutoff: 8000, q: 1 },
     synth: { cutoff: 8000, q: 1 },
@@ -60,7 +60,7 @@ function App() {
   const [volumes, setVolumes] = useState(defaultVolumes);
   const [mute, setMute] = useState({ guitar: false, synth: false, drum: false, bass: false, chip: false });
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showFX, setShowFX] = useState(true);
+  const [showFX, setShowFX] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [activeStep, setActiveStep] = useState(null);
   const [currentPosition, setCurrentPosition] = useState({ bar: 1, beat: 1, seconds: 0 });
@@ -159,6 +159,7 @@ const translations = {
     reverb: "REVERB",
     reset: "Reset",
     resetAll: "RESET",
+    clearInstrument: "Clear Instrument",
     controlsHelp: "Controls Help",
     // Модальные окна
     infoTitle: "INFORMATION",
@@ -169,6 +170,8 @@ const translations = {
     dangerMessage: "Clear entire project? All notes will be permanently deleted.",
     cancel: "CANCEL",
     confirmReset: "YES, RESET ALL",
+    tutorialTitle: "Welcome to STRUNA! 🎸",
+tutorialMessage: "Click on the grid to add a note. Use mouse wheel to change pitch. Press Space to play. Start creating!",
     // Controls Help
     controls: {
       title: "CONTROLS GUIDE",
@@ -184,6 +187,7 @@ const translations = {
         s: "S — Stop",
         r: "R — Start / Stop recording",
         ctrlClick: "Ctrl + Click – Select multiple blocks",
+        ctrlA: "Ctrl + A — Select all blocks on current instrument",
         ctrlD: "Ctrl + D — Duplicate selected blocks",
         del: "Del / Backspace — Delete selected blocks"
       },
@@ -191,16 +195,15 @@ const translations = {
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-changelogTitle: "✨ What's New (v1.5.3.3-Beta)",
+changelogTitle: "✨ What's New (v1.5.3.4-Beta)",
 changelogText: [
   "• Liquid Glass design style",
-  "• 3D sound support with spatial positioning",
-  "• Added metronome",
-  "• Personal account with unified control menu (MY STRUNA)",
-  "• Favorites: save your projects and quick access from personal account",
-  "• Cloud update: use 'Save to Cloud'",
-  "• Autosave project for authorized users",
-  "• MIDI export: open your tracks in any sequencer or DAW"
+  "• MIDI export: open your tracks in any sequencer or DAW",
+  "• Welcome tutorial for new users (shows only once)",
+  "• Clear Instrument button – quickly delete all notes of the current instrument",
+  "• AI evolution: each click mutates existing notes (shift, transpose, crossover)",
+  "• Improved playhead dragging: smooth auto-scroll with edge acceleration and real-time position display",
+  "• Ctrl+A – select all blocks on the current instrument",
   
 ]
   },
@@ -273,6 +276,7 @@ changelogText: [
     reverb: "РЕВЕРБ",
     reset: "Сброс",
     resetAll: "СБРОС",
+    clearInstrument: "Очистить инструмент",
     controlsHelp: "ПОМОЩЬ",
     // Модальные окна
     infoTitle: "ИНФОРМАЦИЯ",
@@ -283,6 +287,8 @@ changelogText: [
     dangerMessage: "Очистить весь проект? Все ноты будут безвозвратно удалены.",
     cancel: "ОТМЕНА",
     confirmReset: "ДА, СБРОСИТЬ ВСЁ",
+    tutorialTitle: "Добро пожаловать в STRUNA! 🎸",
+tutorialMessage: "Кликни по сетке — появится нота. Колесико мыши меняет высоту. Нажмите Пробел для воспроизведения. Начинайте творить!",
     // Controls Help
     controls: {
       title: "РУКОВОДСТВО ПО УПРАВЛЕНИЮ",
@@ -298,6 +304,7 @@ changelogText: [
         s: "S — Остановить",
         r: "R — Начать / Остановить запись",
         ctrlClick: "Ctrl + Клик — выбрать несколько блоков",
+        ctrlA: "Ctrl + A — Выделить все блоки на текущем инструменте",
         ctrlD: "Ctrl + D — дублировать выбранные блоки",
         del: "Del / Backspace — удалить выбранные блоки"
       },
@@ -305,16 +312,15 @@ changelogText: [
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-changelogTitle: "✨ Что нового (v1.5.3.3-Beta)",
+changelogTitle: "✨ Что нового (v1.5.3.4-Beta)",
 changelogText: [
   "• Дизайн в стиле Liquid Glass",
-  "• Поддержка 3D-звука с пространственным позиционированием",
-  "• Добавлен метроном",
-  "• Личный кабинет с единым меню управления (МОЯ СТРУНА)",
-  "• Избранное: сохраняйте проекты и быстро загружайте их из личного кабинета",
-  "• Обновление проектов в облаке",
   "• MIDI-экспорт: ваши треки теперь можно открывать в любом секвенсоре",
-  
+  "• Приветственный туториал для новых пользователей (показывается один раз)",
+  "• Кнопка «Очистить инструмент» — быстрое удаление всех нот текущего инструмента",
+  "• Эволюционная AI-генерация: каждое нажатие мутирует существующие ноты (сдвиг, транспозиция, скрещивание)",
+  "• Улучшено перетаскивание плейхеда: плавный автоскролл с ускорением у краёв и отображение времени в реальном времени",
+  "• Ctrl+A – выделить все блоки на текущем инструменте",
 ]
   }
 };
@@ -1924,6 +1930,17 @@ useEffect(() => {
   isDataLoaded
 ]);
   
+useEffect(() => {
+  // Показываем туториал только если мы в режиме приложения и ещё не показывали
+  if (mode === "app" && !localStorage.getItem('struna_tutorial_shown')) {
+    setInfoModal({
+      visible: true,
+      title: t('tutorialTitle'),
+      message: t('tutorialMessage')
+    });
+  }
+}, [mode]);
+
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
     const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
@@ -2029,7 +2046,7 @@ useEffect(() => {
     const grid = scrollRef.current;
     const startClientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     
-    isPlayheadDraggingRef.current = true; // <- флаг, что перетаскиваем
+    isPlayheadDraggingRef.current = true;
   
     const onMove = (moveEvent) => {
       const currentClientX = moveEvent.type.includes('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
@@ -2038,26 +2055,45 @@ useEffect(() => {
       const xInGrid = xInView + grid.scrollLeft;
       const boundedX = Math.max(0, xInGrid);
       playheadXRef.current = boundedX;
+      
       if (loopStart !== 0 && loopEnd === 0) {
         setPreviewLoopEnd(boundedX);
       }
+      
       if (playheadRef.current) {
         playheadRef.current.style.transform = `translateX(${Math.round(boundedX)}px)`;
       }
-      const edgeThreshold = 50;
-      const scrollSpeed = 15;
-      if (xInView > rect.width - edgeThreshold) grid.scrollLeft += scrollSpeed;
-      else if (xInView < edgeThreshold) grid.scrollLeft -= scrollSpeed;
-      
-      const newTime = (boundedX / STEP_WIDTH) * (60 / bpm / 4);
+  
+      // Автоскролл с ускорением у краёв
+      autoScrollIfNeeded(currentClientX);
+  
+      // Обновляем время воспроизведения
+      const stepTime = 60 / bpm / 4;
+      const newTime = (boundedX / STEP_WIDTH) * stepTime;
       const now = Tone.now();
       startTimeRef.current = now - newTime;
       pauseOffsetRef.current = newTime;
       triggeredRef.current.clear();
+  
+      // ===== ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ В БЛОКЕ MASTER VOL =====
+      const secondsPerBeat = 60 / bpm;
+      const beats = newTime / secondsPerBeat;
+      const currentBar = Math.floor(beats / 4) + 1;
+      const currentBeat = (Math.floor(beats) % 4) + 1;
+      setCurrentPosition({
+        bar: currentBar,
+        beat: currentBeat,
+        seconds: newTime
+      });
     };
   
     const onUp = () => {
-      isPlayheadDraggingRef.current = false; // <- сбрасываем флаг
+      isPlayheadDraggingRef.current = false;
+      scrollSpeedRef.current = 0;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("touchmove", onMove);
@@ -2445,6 +2481,26 @@ const handleStop = () => {
     setProjectId(null);
     setIsFavorite(false);
   };
+
+  const clearCurrentInstrument = () => {
+    const totalBlocks = tracks[instrument]?.length || 0;
+    if (totalBlocks === 0) return; // нечего очищать
+  
+    setTracks(prev => ({
+      ...prev,
+      [instrument]: []
+    }));
+    setSelectedBlockIds(new Set()); // снимаем выделение
+    if (uiSoundsEnabled) uiSounds.playClick();
+  };
+
+  const handleCloseInfoModal = () => {
+    setInfoModal({ visible: false, message: '', title: '' });
+    // Если туториал ещё не был показан – запоминаем, что показали
+    if (!localStorage.getItem('struna_tutorial_shown')) {
+      localStorage.setItem('struna_tutorial_shown', 'true');
+    }
+  };
   
   const generateAIPattern = () => {
     const inst = instrument;
@@ -2460,178 +2516,319 @@ const handleStop = () => {
       });
     }
   
-    // Очищаем треки текущего инструмента
-    setTracks(prev => ({ ...prev, [inst]: [] }));
-  
     const now = Date.now();
-    const stepSize = 20;
-    // Длительность 20 секунд
-    const TARGET_DURATION_SEC = 20;
-    const stepDurationSec = 60 / bpm / 4;
-    let numSteps = Math.ceil(TARGET_DURATION_SEC / stepDurationSec);
-    numSteps = Math.min(numSteps, 256); // максимум 256 шагов
+    const stepSize = STEP_WIDTH;
+    const numSteps = Math.min(256, Math.ceil(20 / (60 / bpm / 4)));
   
-    const newBlocks = [];
+    // ОБЪЯВЛЯЕМ newBlocks
+    let newBlocks = [];
+  
+    // ========== ЭВОЛЮЦИЯ И ГЕНЕРАЦИЯ ДЛЯ CHIP (МАРИО 5% + 8-BIT TRACKER 95%) ==========
+    if (inst === 'chip') {
+      // ========== ПРОКАЧАННАЯ ПАСХАЛКА: SUPER MARIO OVERWORLD THEME ==========
+    if (Math.random() < 0.05) {
+      const melodyStr = 7;
+      const harmonyStr = 6;
+      const bassStr = 3;
+    
+      // Оригинальный ритмический рисунок темы Super Mario (World 1-1)
+      const marioMelody = [
+        // Такт 1: E E ~ E ~ C E ~ G
+        { step: 0,  fret: 16, length: 1 }, { step: 2,  fret: 16, length: 1 },
+        { step: 6,  fret: 16, length: 1 }, { step: 8,  fret: 12, length: 1 },
+        { step: 10, fret: 16, length: 1 }, { step: 14, fret: 19, length: 2 },
+        { step: 22, fret: 7,  length: 2 },
+        
+        // Такт 2: C ~ G ~ E ~ A B Bb A
+        { step: 32, fret: 12, length: 2 }, { step: 38, fret: 7,  length: 2 },
+        { step: 46, fret: 4,  length: 2 }, { step: 52, fret: 9,  length: 1 },
+        { step: 54, fret: 11, length: 1 }, { step: 56, fret: 10, length: 1 },
+        { step: 58, fret: 9,  length: 2 },
+        
+        // Такт 3: G E G A F G E C D B
+        { step: 60, fret: 7,  length: 1 }, { step: 62, fret: 11, length: 1 },
+        { step: 64, fret: 12, length: 1 }, { step: 66, fret: 9,  length: 1 },
+        { step: 68, fret: 10, length: 1 }, { step: 70, fret: 7,  length: 1 },
+        { step: 72, fret: 4,  length: 1 }, { step: 74, fret: 7,  length: 1 },
+        { step: 76, fret: 5,  length: 1 }, { step: 78, fret: 2,  length: 1 }
+      ];
+    
+      // Гармония (второй голос терцией ниже, как в оригинальном чиптюн-движке NES)
+      const harmonyNotes = marioMelody.map(n => ({
+        ...n,
+        fret: Math.max(0, n.fret - 4)
+      }));
+    
+      // Басовая партия, подчеркивающая ритм прыжков
+      const bassNotes = [
+        { step: 0,  fret: 4,  length: 4 },
+        { step: 16, fret: 12, length: 4 },
+        { step: 32, fret: 0,  length: 4 },
+        { step: 48, fret: 7,  length: 4 },
+        { step: 60, fret: 7,  length: 2 },
+        { step: 68, fret: 5,  length: 2 },
+        { step: 76, fret: 3,  length: 4 }
+      ];
+    
+      const addNotes = (notes, stringIdx) => {
+        notes.forEach((note, idx) => {
+          if (note.step >= numSteps) return;
+          const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
+          const x = note.step * stepSize;
+          const lengthPx = note.length * stepSize * 0.9;
+          newBlocks.push({
+            id: now + idx + Math.random() + stringIdx * 1000,
+            string: stringIdx,
+            x: x,
+            length: lengthPx,
+            fret: fret,
+            velocity: 0.9,
+            effect: null
+          });
+        });
+      };
+    
+      addNotes(marioMelody, melodyStr);
+      addNotes(harmonyNotes, harmonyStr);
+      addNotes(bassNotes, bassStr);
+    }
+      // 2. ПРОКАЧАННЫЙ РЕТРО-ТРЕКЕР (95%)
+      else {
+        // Минорная пентатоника + пара проходящих нот для "грязного" 8-битного звучания
+        const retroScale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]; 
+        const chordRoots = [0, 5, 7, 3]; // Тоника, Субдоминанта, Доминанта, Медианта
+        
+        let currentRoot = chordRoots[Math.floor(Math.random() * chordRoots.length)];
+        
+        for (let step = 0; step < numSteps; step++) {
+          // Меняем гармонию каждый такт (16 шагов)
+          if (step % 16 === 0 && Math.random() > 0.4) {
+            currentRoot = chordRoots[Math.floor(Math.random() * chordRoots.length)];
+          }
+
+          // В 8-бит музыке много микропауз для "дыхания" монофонии
+          if (Math.random() < 0.2) continue;
+
+          const x = step * stepSize;
+          let fret;
+          let lengthPx = stepSize; // Базово играем очень короткими нотами (стаккато)
+          
+          // Выбираем один из трех классических чиптюн-приемов для текущей ноты
+          const behavior = Math.random();
+          
+          if (behavior < 0.45) {
+            // ПРИЕМ 1: Быстрое трекерное арпеджио (аккорд раскидывается по 1 ноте)
+            // Имитация аккорда: Тоника -> Малая терция -> Квинта -> Септима
+            const arpeggioPattern = [currentRoot, currentRoot + 3, currentRoot + 7, currentRoot + 10];
+            fret = arpeggioPattern[step % 4];
+          } 
+          else if (behavior < 0.75) {
+            // ПРИЕМ 2: Жесткие октавные скачки (часто заменяли бас в NES-играх)
+            fret = currentRoot + (step % 2 === 0 ? 0 : 12);
+          } 
+          else {
+            // ПРИЕМ 3: Линейный мелодический пассаж по гамме
+            fret = retroScale[Math.floor(Math.random() * retroScale.length)];
+            // Иногда делаем ноту длиннее для акцента
+            if (Math.random() > 0.7) lengthPx = stepSize * 3;
+          }
+          
+          // Поднимаем все на октаву выше, чтобы звучало звонко, как Dendy
+          fret = Math.max(0, Math.min(MAX_FRET, fret + 12));
+          
+          // Раскидываем преимущественно на верхние струны (5, 6, 7)
+          const stringIdx = 5 + Math.floor(Math.random() * 3);
+
+          newBlocks.push({
+            id: now + step + Math.random(),
+            string: Math.min(strings.length - 1, stringIdx),
+            x: x,
+            length: lengthPx,
+            fret: fret,
+            velocity: 0.8 + Math.random() * 0.2,
+            effect: null
+          });
+        }
+      }
+
+      setTracks(prev => ({ ...prev, [inst]: newBlocks }));
+      
+      // Используем пиксельный звук UI для обратной связи
+      if (uiSoundsEnabled) uiSounds.playPixel(); 
+      return;
+    }
+  
+    // ==============================================================
+    // 1. Получаем текущие блоки для данного инструмента
+    // ==============================================================
+    const currentBlocks = tracks[inst] || [];
+  
+    // ==============================================================
+    // 2. Если блоки есть – применяем ЭВОЛЮЦИЮ С ПОПУЛЯЦИЕЙ
+    // ==============================================================
+    if (currentBlocks.length > 0 && inst !== 'chip') {
+      const POPULATION_SIZE = 10;
+      // Минорная пентатоника (для оценки приспособленности)
+      const SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
+  
+      // ---- 2.1. Функция приспособленности (Fitness) ----
+      const evaluateFitness = (blocks) => {
+        let score = 100;
+  
+        blocks.forEach((b, i) => {
+          // Штраф за выход из гаммы (чем дальше, тем больше штраф)
+          const closest = SCALE.reduce((a, val) => Math.abs(val - b.fret) < Math.abs(a - b.fret) ? val : a);
+          const deviation = Math.abs(b.fret - closest);
+          if (deviation > 0) score -= deviation * 3;
+  
+          // Штраф за резкие скачки (> 7 полутонов)
+          if (i > 0) {
+            const jump = Math.abs(b.fret - blocks[i-1].fret);
+            if (jump > 7) score -= (jump - 7) * 2;
+          }
+  
+          // Поощрение за попадание в сильные доли (0, 4, 8, 12, 16...)
+          const step = Math.round(b.x / stepSize) % 16;
+          if (step % 4 === 0) score += 2;
+        });
+  
+        return Math.max(0, score);
+      };
+  
+      // ---- 2.2. Функция создания мутанта (менее агрессивные мутации) ----
+      const createMutant = (baseBlocks) => {
+        let mutant = baseBlocks.map(b => ({ ...b }));
+  
+        mutant.forEach(block => {
+          // Мутация времени (x) – с вероятностью 20% (было 30%)
+          if (Math.random() < 0.2) {
+            const shift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 2) + 1);
+            let newX = Math.max(0, block.x + shift * stepSize);
+            newX = Math.round(newX / stepSize) * stepSize;
+            block.x = newX;
+          }
+          // Мутация высоты (fret) – с вероятностью 15% (было 25%)
+          if (Math.random() < 0.15) {
+            const fretShift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 2) + 1);
+            block.fret = Math.max(0, Math.min(MAX_FRET, block.fret + fretShift));
+          }
+          // Мутация длительности – с вероятностью 10% (было 20%)
+          if (Math.random() < 0.1) {
+            const lenShift = (Math.random() < 0.5 ? -1 : 1) * stepSize;
+            let newLen = Math.max(stepSize, block.length + lenShift);
+            newLen = Math.round(newLen / stepSize) * stepSize;
+            block.length = newLen;
+          }
+          // Мутация громкости – с вероятностью 10% (было 15%)
+          if (Math.random() < 0.1) {
+            block.velocity = Math.max(0.1, Math.min(1.5, (block.velocity || 1) + (Math.random() - 0.5) * 0.15));
+          }
+        });
+  
+        // Удаление случайных блоков – с вероятностью 10% (было 15%)
+        if (Math.random() < 0.1 && mutant.length > 2) {
+          const removeIdx = Math.floor(Math.random() * mutant.length);
+          mutant.splice(removeIdx, 1);
+        }
+  
+        // Добавление нового блока – с вероятностью 10% (было 20%)
+        if (Math.random() < 0.1 && mutant.length > 0) {
+          const srcIdx = Math.floor(Math.random() * mutant.length);
+          const src = mutant[srcIdx];
+          let newX = Math.min(numSteps * stepSize - src.length, src.x + (Math.random() - 0.5) * 4 * stepSize);
+          newX = Math.round(newX / stepSize) * stepSize;
+          newX = Math.max(0, newX);
+          let newFret = Math.max(0, Math.min(MAX_FRET, src.fret + (Math.random() - 0.5) * 4));
+          newFret = Math.round(newFret);
+          const newBlock = {
+            ...src,
+            id: Date.now() + Math.random(),
+            x: newX,
+            fret: newFret
+          };
+          if (newBlock.x + newBlock.length > numSteps * stepSize) newBlock.x = numSteps * stepSize - newBlock.length;
+          if (newBlock.x < 0) newBlock.x = 0;
+          mutant.push(newBlock);
+        }
+  
+        // Глобальная транспозиция – с вероятностью 5% (было 10%)
+        if (Math.random() < 0.05) {
+          const transpose = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 3) + 2); // ±2..4
+          mutant.forEach(block => {
+            block.fret = Math.max(0, Math.min(MAX_FRET, block.fret + transpose));
+          });
+        }
+  
+        // Сдвиг всего паттерна – с вероятностью 3% (было 8%)
+        if (Math.random() < 0.03) {
+          const shift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 3) + 2) * stepSize;
+          mutant.forEach(block => {
+            let newX = Math.max(0, block.x + shift);
+            newX = Math.round(newX / stepSize) * stepSize;
+            block.x = newX;
+          });
+          const maxX = numSteps * stepSize;
+          mutant.forEach(block => {
+            if (block.x + block.length > maxX) block.x = maxX - block.length;
+            if (block.x < 0) block.x = 0;
+          });
+          const filtered = mutant.filter(b => b.x < maxX && b.x + b.length > 0);
+          mutant.length = 0;
+          mutant.push(...filtered);
+        }
+  
+        // Кроссовер – с вероятностью 10% (было 12%)
+        if (Math.random() < 0.1 && mutant.length >= 2) {
+          const idx1 = Math.floor(Math.random() * mutant.length);
+          let idx2 = Math.floor(Math.random() * mutant.length);
+          while (idx2 === idx1) idx2 = Math.floor(Math.random() * mutant.length);
+          const b1 = mutant[idx1];
+          const b2 = mutant[idx2];
+          const tempFret = b1.fret;
+          const tempLength = b1.length;
+          b1.fret = b2.fret;
+          b1.length = b2.length;
+          b2.fret = tempFret;
+          b2.length = tempLength;
+        }
+  
+        return mutant;
+      };
+  
+      // ---- 2.3. Создаём популяцию ----
+      let population = [];
+      for (let i = 0; i < POPULATION_SIZE; i++) {
+        const mutantBlocks = createMutant(currentBlocks);
+        population.push({
+          blocks: mutantBlocks,
+          fitness: evaluateFitness(mutantBlocks)
+        });
+      }
+  
+      // ---- 2.4. Селекция: сортируем по убыванию fitness ----
+      population.sort((a, b) => b.fitness - a.fitness);
+  
+      // ---- 2.5. Берём лучшего (можно добавить элитизм: сохранять лучшего от предыдущей популяции) ----
+      newBlocks = population[0].blocks;
+  
+      // Опционально: добавить небольшой случайный элемент – взять одного из топ-3 с вероятностью 20%
+      // if (Math.random() < 0.2 && population.length > 2) {
+      //   const idx = 1 + Math.floor(Math.random() * 2);
+      //   newBlocks = population[idx].blocks;
+      // }
+  
+      setTracks(prev => ({ ...prev, [inst]: newBlocks }));
+      if (uiSoundsEnabled) uiSounds.playChirp();
+      return;
+    }
+  
+    // ==============================================================
+    // 3. Если блоков нет – генерируем НОВЫЙ СЛУЧАЙНЫЙ ПАТТЕРН (старая логика)
+    // ==============================================================
+    newBlocks = [];
     const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   
-   // ========== ПАСХАЛКА: SUPER MARIO ДЛЯ CHIP (расширенная аранжировка) ==========
-if (inst === 'chip' && Math.random() < 0.15) {
-  // Оригинальная главная тема Super Mario Bros (1985) – улучшенная многоголосная версия
-  // Используем несколько струн: 
-  // - струна 7 (e) для основной мелодии
-  // - струна 5 (D) для гармонии (терции/квинты)
-  // - струна 2 (A) для баса (низкие ноты)
-  
-  const melodyStr = 7;   // e (высокая)
-  const harmonyStr = 5;  // D (средняя)
-  const bassStr = 2;     // A (низкая)
-
-  // Основная мелодия (расширенная версия, полная тема)
-  // Формат: { step, fret, length } – step = шаг 1/16 такта, length = длительность в шагах
-  const melodyNotes = [
-    // --- Вступление (как в оригинале) ---
-    { step: 0,  fret: 12, length: 1 }, // E5
-    { step: 2,  fret: 12, length: 1 }, // E5
-    { step: 6,  fret: 12, length: 1 }, // E5
-    { step: 8,  fret: 8,  length: 1 }, // C5
-    { step: 10, fret: 12, length: 1 }, // E5
-    { step: 12, fret: 15, length: 2 }, // G5
-    { step: 20, fret: 3,  length: 2 }, // G4
-
-    // --- Основной мотив (Часть 1) ---
-    { step: 32, fret: 8,  length: 2 }, // C5
-    { step: 38, fret: 3,  length: 2 }, // G4
-    { step: 44, fret: 0,  length: 2 }, // E4
-
-    { step: 50, fret: 5,  length: 1 }, // A4
-    { step: 54, fret: 7,  length: 1 }, // B4
-    { step: 56, fret: 6,  length: 1 }, // Bb4
-    { step: 58, fret: 5,  length: 2 }, // A4
-    { step: 60, fret: 3,  length: 1 }, // G4
-
-    // --- Мотив с прыжком (Часть 2) ---
-    { step: 64, fret: 12, length: 1 }, // E5
-    { step: 66, fret: 15, length: 1 }, // G5
-    { step: 68, fret: 17, length: 2 }, // A5
-    { step: 72, fret: 13, length: 1 }, // F5
-    { step: 74, fret: 15, length: 1 }, // G5
-    { step: 76, fret: 12, length: 2 }, // E5
-
-    // --- Завершение (Часть 3) ---
-    { step: 80, fret: 8,  length: 1 }, // C5
-    { step: 82, fret: 10, length: 1 }, // D5
-    { step: 84, fret: 7,  length: 2 }, // B4
-
-    // --- Дополнительный кусок для большей полноты ---
-    { step: 92, fret: 5,  length: 2 }, // A4
-    { step: 96, fret: 3,  length: 2 }, // G4
-    { step: 100, fret: 8,  length: 2 }, // C5
-    { step: 104, fret: 7,  length: 2 }, // B4
-    { step: 108, fret: 5,  length: 2 }, // A4
-    { step: 112, fret: 3,  length: 2 }, // G4
-    { step: 116, fret: 0,  length: 4 }, // E4 (финальная)
-  ];
-
-  // Гармонические тоны (терции и квинты) – добавляем на тех же шагах, но на другой струне
-  const harmonyNotes = melodyNotes.map(n => {
-    // Для гармонии используем простые интервалы: терция (3 полутона) или кварта/квинта
-    // В зависимости от ноты мелодии, подбираем подходящую гармонию
-    let harmonyFret = n.fret;
-    // Для простоты добавим терцию (3 полутона) к большинству нот, но не к паузам
-    if (n.length > 0) {
-      harmonyFret = Math.min(MAX_FRET, n.fret + 3); // терция
-      // Если выходит за пределы, берём октаву ниже или квинту
-      if (harmonyFret > MAX_FRET) harmonyFret = n.fret - 3;
-      if (harmonyFret < 0) harmonyFret = n.fret + 5;
-    }
-    return { ...n, fret: harmonyFret };
-  });
-
-  // Басовая линия (на низкой струне) – идёт по основным тонам аккордов
-  // Обычно это тоника или доминанта, упрощённо повторяем основные ноты мелодии, но на октаву ниже
-  const bassNotes = melodyNotes.filter((_, i) => i % 2 === 0).map(n => {
-    let bassFret = Math.max(0, n.fret - 12); // опускаем на октаву
-    // Если басовая нота выходит за пределы струны, корректируем
-    if (bassFret < 0) bassFret = 0;
-    return { ...n, fret: bassFret, length: n.length * 2 }; // басовые ноты длиннее
-  });
-
-  // Добавляем все голоса в newBlocks
-  const addNotes = (notes, stringIdx) => {
-    notes.forEach((note, idx) => {
-      if (note.step >= numSteps) return;
-      const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
-      const x = note.step * stepSize;
-      const lengthPx = note.length * stepSize * 1.5;
-      const velocity = 0.85 + Math.random() * 0.15;
-      newBlocks.push({
-        id: now + idx + Math.random() + stringIdx * 1000,
-        string: stringIdx,
-        x: x,
-        length: lengthPx,
-        fret: fret,
-        velocity: velocity,
-        effect: null
-      });
-    });
-  };
-
-  // Добавляем основную мелодию
-  addNotes(melodyNotes, melodyStr);
-  // Добавляем гармонию (терции)
-  addNotes(harmonyNotes, harmonyStr);
-  // Добавляем бас
-  addNotes(bassNotes, bassStr);
-
-  setTracks(prev => ({ ...prev, [inst]: newBlocks }));
-  if (uiSoundsEnabled) uiSounds.playClick();
-  return; // выходим, не генерируем случайный паттерн
-}
-  
-    // -------------------------------------------------------------
-    // ПАТТЕРНЫ
-    // -------------------------------------------------------------
-    const drumPatterns = [
-      { steps: [0,4,8,12, 2,6,10,14] },  // Rock
-      { steps: [0,6,10,12, 2,7,11,14] }, // Funk
-      { steps: [0,4,8,12, 3,7,11,15] }, // Disco
-      { steps: [0,4,8,12, 1,5,9,13] }   // Electronic
-    ];
-  
-    const bassPatterns = [
-      { steps: [0,4,8,12], frets: [0,2,4,5] },
-      { steps: [0,3,6,10,12], frets: [0,3,5,7,5] },
-      { steps: [0,6,12], frets: [0,3,5] },
-      { steps: [0,4,8,12, 2,6,10,14], frets: [0,0,0,0, 2,2,2,2] }
-    ];
-  
-    // -------------------------------------------------------------
-    // МЕЛОДИЧЕСКАЯ ПЕНТАТОНИКА И ФУНКЦИИ
-    // -------------------------------------------------------------
-    // Минорная пентатоника (ля минор): 0,3,5,7,10,12,15,17,19,22
-    const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
-  
-    // Генерация короткого мотива (остинато) с плавными интервалами
-    const generateMotif = (length, startFret) => {
-      let motif = [];
-      let prev = startFret;
-      for (let i = 0; i < length; i++) {
-        let interval;
-        const r = Math.random();
-        if (r < 0.6) interval = [0, 2, 3, 4][Math.floor(Math.random() * 4)]; // малые интервалы
-        else if (r < 0.85) interval = 5; // чистая кварта
-        else interval = 7; // квинта
-        let direction = Math.random() > 0.5 ? 1 : -1;
-        let newFret = prev + direction * interval;
-        newFret = Math.min(22, Math.max(0, newFret));
-        let closest = pentatonicMinor.reduce((a, b) => Math.abs(b - newFret) < Math.abs(a - newFret) ? b : a);
-        motif.push(closest);
-        prev = closest;
-      }
-      return motif;
-    };
-  
-    // ГЕНЕРАЦИЯ ДЛЯ БАРАБАНОВ (Улучшенная многослойная)
+    // ---- 3.1. Барабаны ----
     if (inst === 'drum') {
       const KICK    = { fret: 0, string: 0 };
       const SNARE   = { fret: 4, string: 0 };
@@ -2639,7 +2836,6 @@ if (inst === 'chip' && Math.random() < 0.15) {
       const HIHAT_O = { fret: 12, string: 1 };
       const CRASH   = { fret: 16, string: 1 };
   
-      // Расширенная библиотека (10 вариантов для каждого элемента)
       const kickPatterns = [
         [0, 8], [0, 4, 8, 12], [0, 7, 10], [0, 8, 11], [0, 10],
         [0, 8, 10, 14], [0, 3, 8], [0, 4, 8, 12, 15], [0, 2, 8, 10], [0, 7, 8, 15]
@@ -2661,35 +2857,35 @@ if (inst === 'chip' && Math.random() < 0.15) {
       for (let step = 0; step < numSteps; step++) {
         const stepInBar = step % 16;
         const x = step * stepSize;
-  
-        // 1. Kick
         if (currentKick.includes(stepInBar)) {
           newBlocks.push({ id: now + step + Math.random(), string: KICK.string, x, length: stepSize, fret: KICK.fret, velocity: 0.85 + Math.random() * 0.15, effect: null });
         }
-        // 2. Snare
         if (currentSnare.includes(stepInBar)) {
           newBlocks.push({ id: now + step + Math.random() + 1000, string: SNARE.string, x, length: stepSize, fret: SNARE.fret, velocity: 0.8 + Math.random() * 0.2, effect: null });
         }
-        // 3. Hi-Hats
         if (currentHat.includes(stepInBar)) {
           const isOpen = Math.random() > 0.85 && stepInBar % 4 !== 0;
           const hat = isOpen ? HIHAT_O : HIHAT_C;
           newBlocks.push({ id: now + step + Math.random() + 2000, string: hat.string, x, length: stepSize, fret: hat.fret, velocity: 0.4 + Math.random() * 0.4, effect: null });
         }
-        // 4. Crash
         if (step % 32 === 0) {
           newBlocks.push({ id: now + step + Math.random() + 3000, string: CRASH.string, x, length: stepSize, fret: CRASH.fret, velocity: 1.0, effect: null });
         }
       }
     }
-    // -------------------------------------------------------------
-    // ГЕНЕРАЦИЯ ДЛЯ БАСА (с пентатоникой и повторяющимся мотивом)
-    // -------------------------------------------------------------
+  
+    // ---- 3.2. Бас ----
     else if (inst === 'bass') {
+      const bassPatterns = [
+        { steps: [0,4,8,12], frets: [0,2,4,5] },
+        { steps: [0,3,6,10,12], frets: [0,3,5,7,5] },
+        { steps: [0,6,12], frets: [0,3,5] },
+        { steps: [0,4,8,12, 2,6,10,14], frets: [0,0,0,0, 2,2,2,2] }
+      ];
+      const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
       const pattern = randomPick(bassPatterns);
       const baseSteps = pattern.steps;
       let baseFrets = pattern.frets;
-      // Транспонируем в пентатонику
       const trans = Math.floor(Math.random() * 7) - 3;
       let frets = baseFrets.map(f => Math.min(22, Math.max(0, f + trans)));
       frets = frets.map(f => pentatonicMinor.reduce((a, b) => Math.abs(b - f) < Math.abs(a - f) ? b : a));
@@ -2714,25 +2910,40 @@ if (inst === 'chip' && Math.random() < 0.15) {
         });
       }
     }
-    // -------------------------------------------------------------
-    // ГЕНЕРАЦИЯ ДЛЯ МЕЛОДИЧЕСКИХ ИНСТРУМЕНТОВ (гитара, синт, чип) – УЛУЧШЕННАЯ
-    // -------------------------------------------------------------
+  
+    // ---- 3.3. Мелодические инструменты (гитара, синт, чип) ----
     else {
-      // Создаём основной мотив (4-6 нот)
-      const motifLength = Math.floor(Math.random() * 3) + 4; // 4,5,6
+      const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
+      const generateMotif = (length, startFret) => {
+        let motif = [];
+        let prev = startFret;
+        for (let i = 0; i < length; i++) {
+          let interval;
+          const r = Math.random();
+          if (r < 0.6) interval = [0, 2, 3, 4][Math.floor(Math.random() * 4)];
+          else if (r < 0.85) interval = 5;
+          else interval = 7;
+          let direction = Math.random() > 0.5 ? 1 : -1;
+          let newFret = prev + direction * interval;
+          newFret = Math.min(22, Math.max(0, newFret));
+          let closest = pentatonicMinor.reduce((a, b) => Math.abs(b - newFret) < Math.abs(a - newFret) ? b : a);
+          motif.push(closest);
+          prev = closest;
+        }
+        return motif;
+      };
+  
+      const motifLength = Math.floor(Math.random() * 3) + 4;
       const startFret = pentatonicMinor[Math.floor(Math.random() * pentatonicMinor.length)];
       const motif = generateMotif(motifLength, startFret);
   
-      // Сколько раз повторить мотив, чтобы заполнить numSteps
-      const motifDurationSteps = 8; // базовый мотив длится 8 шагов (1/2 такта)
+      const motifDurationSteps = 8;
       const repetitions = Math.ceil(numSteps / motifDurationSteps);
   
-      // Строим полную последовательность нот, повторяя мотив с небольшими вариациями
       const fullMelody = [];
       for (let rep = 0; rep < repetitions; rep++) {
         for (let i = 0; i < motif.length; i++) {
           let note = motif[i];
-          // Вариация: иногда сдвиг на октаву (с сохранением в пентатонике)
           if (Math.random() < 0.2) {
             note += (Math.random() > 0.5 ? 12 : -12);
             note = Math.min(24, Math.max(0, note));
@@ -2742,7 +2953,6 @@ if (inst === 'chip' && Math.random() < 0.15) {
         }
       }
   
-      // Генерируем шаги для этих нот (равномерно, с лёгким сдвигом)
       const totalNotes = fullMelody.length;
       const stepInterval = numSteps / totalNotes;
       const steps = [];
@@ -2756,7 +2966,6 @@ if (inst === 'chip' && Math.random() < 0.15) {
       }
       steps.sort((a,b)=>a-b);
   
-      // Создаём блоки
       steps.forEach((step, idx) => {
         const fret = fullMelody[idx % fullMelody.length];
         let stringIdx;
@@ -2809,7 +3018,7 @@ const copySelectedBlocks = () => {
     });
   }
   copiedBlocksRef.current = blocksToCopy.sort((a, b) => a.block.x - b.block.x);
-  console.log("Скопировано:", copiedBlocksRef.current.length);
+  
 };
 
 const pasteBlocks = () => {
@@ -2845,7 +3054,7 @@ const pasteBlocks = () => {
     startEngine();
   }
   
-  console.log("Вставлено последовательно", nextClipboard);
+  
 };
 
 const deleteSelectedBlocks = () => {
@@ -2858,7 +3067,7 @@ const deleteSelectedBlocks = () => {
     return updated;
   });
   setSelectedBlockIds(new Set());
-  console.log("Selected blocks deleted");
+  
  };
   // Горячие клавиши с поддержкой русской раскладки и Chrome
  useEffect(() => {
@@ -2928,6 +3137,14 @@ const deleteSelectedBlocks = () => {
     copySelectedBlocks();
     pasteBlocks();
   }
+  return;
+}
+// 6. Ctrl+A – выделить все блоки текущего инструмента
+const isA = e.key === 'a' || e.key === 'ф' || e.code === 'KeyA';
+if ((e.ctrlKey || e.metaKey) && isA) {
+  e.preventDefault();
+  const allIds = tracks[instrument].map(b => b.id);
+  setSelectedBlockIds(new Set(allIds));
   return;
 }
   };
@@ -3475,7 +3692,7 @@ const menuItemStyle = {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
         <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.3-BETA</span>
+        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.4-BETA</span>
       </div>
     </div>
   </div>
@@ -4334,8 +4551,33 @@ const menuItemStyle = {
   </button>
 )}
 
-  {/* Reset с marginLeft: auto, чтобы прижать к правому краю */}
-  <button onClick={() => setShowResetConfirm(true)} className="reset-btn" style={{ marginLeft: "auto" }}>{t('resetAll')}</button>
+{/* Правая группа: очистка инструмента и СБРОС */}
+<div style={{ display: "flex", gap: "10px", marginLeft: "auto", alignItems: "center" }}>
+<button
+  onClick={clearCurrentInstrument}
+  className={`clear-instrument-btn ${tracks[instrument]?.length === 0 ? 'empty' : ''}`}
+  title={t('clearInstrument')}
+  style={{
+    border: `1px solid ${getInstrumentColor(instrument)}`,
+    color: getInstrumentColor(instrument),
+    borderRadius: "6px",
+    padding: "8px 16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "12px",
+    fontWeight: "bold",
+    letterSpacing: "0.5px",
+    "--inst-color": getInstrumentColor(instrument),
+  }}
+>
+  {t('clearInstrument')}
+</button>
+
+    <button onClick={() => setShowResetConfirm(true)} className="reset-btn">
+      {t('resetAll')}
+    </button>
+    </div>
 </div>
   
       {/* Сетка (scroll-container) */}
@@ -4509,16 +4751,41 @@ const menuItemStyle = {
   
     {/* Кнопки внизу: Помощь и Что нового */}
 <div style={{ display: "flex", gap: "10px", justifyContent: "center", margin: "20px 0" }}>
-  <button className="controls-help-btn" onClick={() => setShowHelp(true)}>
-    {t('controlsHelp')}
-  </button>
-  <button 
-    className="controls-help-btn" 
-    onClick={() => setShowChangelog(true)} 
-    style={{ borderColor: "#4DFF88", color: "#4DFF88" }}
+<button className="controls-help-btn" onClick={() => setShowHelp(true)}>
+  {t('controlsHelp')}
+</button>
+<button 
+  className="controls-help-btn" 
+  onClick={() => setShowChangelog(true)}
+>
+  {t('changelogBtn')}
+</button>
+</div>
+{/* ===== ПОДВАЛ С POWERED BY (как на превью) ===== */}
+<div style={{
+  textAlign: "center",
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "4px",
+  marginTop: "20px",
+  marginBottom: "10px",
+  position: "relative",
+  zIndex: 2
+}}>
+  <p
+    className="powered-by-text"
+    style={{
+      fontSize: "10px",
+      letterSpacing: "4px",
+      textTransform: "uppercase",
+      margin: 0,
+      fontFamily: "sans-serif"
+    }}
   >
-    {t('changelogBtn')}
-  </button>
+    Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
+  </p>
 </div>
 
 {/* Модальное окно "Помощь" */}
@@ -4539,6 +4806,7 @@ const menuItemStyle = {
           <div className="control-item"><span>{t('controls.keyboard.s').split(' — ')[0]}</span> — {t('controls.keyboard.s').split(' — ')[1]}</div>
           <div className="control-item"><span>{t('controls.keyboard.r').split(' — ')[0]}</span> — {t('controls.keyboard.r').split(' — ')[1]}</div>
           <div className="control-item"><span>{t('controls.keyboard.ctrlClick').split(' — ')[0]}</span> — {t('controls.keyboard.ctrlClick').split(' — ')[1]}</div>
+          <div className="control-item"><span>{t('controls.keyboard.ctrlA').split(' — ')[0]}</span> — {t('controls.keyboard.ctrlA').split(' — ')[1]}</div>
           <div className="control-item"><span>{t('controls.keyboard.ctrlD').split(' — ')[0]}</span> — {t('controls.keyboard.ctrlD').split(' — ')[1]}</div>
           <div className="control-item"><span>{t('controls.keyboard.del').split(' — ')[0]}</span> — {t('controls.keyboard.del').split(' — ')[1]}</div>
         </div>
@@ -4658,17 +4926,19 @@ const menuItemStyle = {
 )}
   
   {infoModal.visible && (
-        <div className="custom-modal-overlay" onClick={() => setInfoModal({ visible: false, message: '' })}>
-          <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="neon-icon">ℹ️</div>
-            <h2 style={{ color: 'var(--text-accent)', textShadow: '0 0 8px var(--text-accent)' }}>{t('infoTitle')}</h2>
-            <p>{infoModal.message}</p>
-            <div className="modal-buttons">
-            <button className="cancel-modal-btn" onClick={() => setInfoModal({ visible: false, message: '' })}>{t('infoOk')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+  <div className="custom-modal-overlay" onClick={handleCloseInfoModal}>
+    <div className="custom-modal info-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="neon-icon">ℹ️</div>
+      <h2 style={{ color: 'var(--text-accent)', textShadow: '0 0 8px var(--text-accent)' }}>
+        {infoModal.title || t('infoTitle')}
+      </h2>
+      <p>{infoModal.message}</p>
+      <div className="modal-buttons">
+        <button className="cancel-modal-btn" onClick={handleCloseInfoModal}>{t('infoOk')}</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

@@ -876,71 +876,388 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
 .custom-modal-overlay {
   position: fixed !important;
   top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.8) !important;
+  background: rgba(0, 0, 0, 0.6) !important;
   display: flex !important; justify-content: center; align-items: center;
-  z-index: 100000 !important; backdrop-filter: blur(10px);
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
+
 .custom-modal {
-  background: var(--modal-bg) !important;
-  border: 1px solid var(--modal-border) !important;
-  box-shadow: 0 0 50px rgba(0, 243, 255, 0.25) !important;
-  padding: 40px !important; border-radius: 25px !important; width: 450px !important;
+  background: rgba(18, 22, 41, 0.55) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  padding: 40px !important;
+  border-radius: 24px !important;
+  width: 450px !important;
+  max-width: 90vw !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
   text-align: center;
-  animation: modalSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .custom-modal h2 {
-  color: var(--modal-border) !important; font-family: 'Orbitron', sans-serif !important;
-  text-transform: uppercase; letter-spacing: 4px; margin-bottom: 30px; font-size: 22px;
-  text-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+  color: var(--text-bright) !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  font-size: 22px;
+  text-shadow: 0 0 20px rgba(77, 255, 136, 0.2);
 }
-.modal-content { text-align: left !important; margin-bottom: 35px !important; }
-.control-item { margin-bottom: 18px !important; color: var(--text-primary) !important; font-size: 15px !important; line-height: 1.4; border-left: 3px solid var(--modal-border) !important; padding-left: 15px; }
-.control-item span { color: var(--modal-border) !important; font-weight: bold !important; text-transform: uppercase; font-size: 13px; }
-.close-modal-btn { background: transparent !important; border: 1px solid var(--modal-border) !important; color: var(--modal-border) !important; padding: 12px 45px !important; border-radius: 50px !important; cursor: pointer !important; font-family: 'Orbitron', sans-serif !important; font-size: 13px !important; transition: all 0.3s ease !important; text-transform: uppercase; }
-.close-modal-btn:hover { background: var(--modal-border) !important; color: #000 !important; box-shadow: 0 0 25px var(--modal-border) !important; }
-@keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-.warning-overlay { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85) !important; display: flex !important; justify-content: center; align-items: center; z-index: 100000 !important; backdrop-filter: blur(12px) !important; }
-.warning-modal { background: var(--warning-bg) !important; border: 1px solid var(--warning-border) !important; box-shadow: 0 0 50px rgba(255, 51, 51, 0.3) !important; padding: 40px !important; border-radius: 25px !important; width: 420px !important; text-align: center !important; }
-.warning-icon { font-size: 44px; color: var(--warning-border); margin-bottom: 15px; text-shadow: 0 0 20px rgba(255, 51, 51, 0.6); }
-.warning-modal h2 { color: var(--warning-border) !important; font-family: 'Orbitron', sans-serif !important; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 15px rgba(255, 51, 51, 0.4); }
-.warning-modal p { color: var(--text-primary) !important; font-size: 15px; margin-bottom: 30px; }
-.modal-buttons { display: flex; justify-content: center; gap: 15px; }
-.cancel-modal-btn { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; color: #999 !important; padding: 12px 25px !important; border-radius: 50px !important; cursor: pointer; font-size: 11px; transition: all 0.3s; }
-.cancel-modal-btn:hover { background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; border-color: #fff !important; }
-.confirm-reset-btn { background: var(--warning-border) !important; border: 1px solid var(--warning-border) !important; color: #000 !important; padding: 12px 30px !important; border-radius: 50px !important; cursor: pointer; font-size: 11px; font-weight: bold; transition: all 0.3s; }
-.confirm-reset-btn:hover { box-shadow: 0 0 30px var(--warning-border) !important; transform: scale(1.05); }
+.modal-content {
+  text-align: left !important;
+  margin-bottom: 30px !important;
+}
 
-.info-modal { border-color: var(--text-accent) !important; box-shadow: 0 0 40px rgba(77, 136, 255, 0.4) !important; }
-.info-modal h2 { color: var(--text-accent) !important; text-shadow: 0 0 10px var(--text-accent); }
-.neon-icon { font-size: 48px; color: var(--text-accent); text-shadow: 0 0 8px var(--text-accent), 0 0 16px var(--text-accent); display: inline-block; margin-bottom: 10px; }
+.control-item {
+  margin-bottom: 14px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 14px !important;
+  line-height: 1.4;
+  border-left: 3px solid var(--text-accent) !important;
+  padding-left: 15px;
+}
 
-/* ==================== МОДАЛЬНЫЕ ОКНА В СВЕТЛОЙ ТЕМЕ ==================== */
-.app.light-theme .custom-modal-overlay { background: rgba(220, 225, 240, 0.75) !important; backdrop-filter: blur(16px) !important; -webkit-backdrop-filter: blur(16px) !important; }
-.app.light-theme .custom-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #0066ff !important; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1) !important; }
-.app.light-theme .custom-modal h2 { color: #0066ff !important; }
-.app.light-theme .custom-modal .control-item { color: #1a1a2e !important; }
-.app.light-theme .custom-modal .control-item span { color: #0066ff !important; }
-.app.light-theme .custom-modal .close-modal-btn { color: #0066ff !important; border-color: #0066ff !important; }
-.app.light-theme .custom-modal .close-modal-btn:hover { background: #0066ff !important; color: #ffffff !important; }
-.app.light-theme .custom-modal .neon-icon { color: #27ae60 !important; text-shadow: 0 0 8px #27ae60, 0 0 16px #27ae60 !important; }
-.app.light-theme .custom-modal h2[style*="color: '#4DFF88'"] { color: #27ae60 !important; }
+.control-item span {
+  color: var(--text-accent) !important;
+  font-weight: bold !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
 
-.app.light-theme .info-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #0066ff !important; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.1) !important; }
-.app.light-theme .info-modal h2 { color: #0066ff !important; text-shadow: 0 0 8px #0066ff !important; }
-.app.light-theme .info-modal p { color: #1a1a2e !important; }
-.app.light-theme .info-modal .cancel-modal-btn { color: #0066ff !important; border-color: #0066ff !important; }
-.app.light-theme .info-modal .cancel-modal-btn:hover { background: #0066ff !important; color: #ffffff !important; }
-.app.light-theme .info-modal .neon-icon { color: #0066ff !important; text-shadow: 0 0 8px #0066ff, 0 0 16px #0066ff !important; }
+.close-modal-btn {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: var(--text-primary) !important;
+  padding: 12px 40px !important;
+  border-radius: 50px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
 
-.app.light-theme .warning-modal { background: rgba(255, 255, 255, 0.92) !important; border-color: #cc3333 !important; }
-.app.light-theme .warning-modal h2 { color: #cc3333 !important; }
-.app.light-theme .warning-modal p { color: #1a1a2e !important; }
-.app.light-theme .warning-modal .cancel-modal-btn { color: #555566 !important; border-color: #c0c0d0 !important; }
-.app.light-theme .warning-modal .cancel-modal-btn:hover { background: #e8e8f0 !important; }
-.app.light-theme .warning-modal .confirm-reset-btn { background: #cc3333 !important; border-color: #cc3333 !important; color: #ffffff !important; }
-.app.light-theme .warning-modal .confirm-reset-btn:hover { background: #b32b2b !important; }
+.close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--text-accent) !important;
+  box-shadow: 0 0 25px rgba(77, 136, 255, 0.2) !important;
+}
 
+/* ===== ВАРНИНГ (ОПАСНАЯ ЗОНА) ===== */
+.warning-overlay {
+  position: fixed !important;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.7) !important;
+  display: flex !important; justify-content: center; align-items: center;
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.warning-modal {
+  background: rgba(18, 22, 41, 0.6) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 77, 77, 0.2) !important;
+  border-top: 1px solid rgba(255, 77, 77, 0.3) !important;
+  box-shadow: 0 24px 60px rgba(255, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  padding: 40px !important;
+  border-radius: 24px !important;
+  width: 420px !important;
+  max-width: 90vw !important;
+  text-align: center !important;
+}
+
+.warning-icon {
+  font-size: 44px;
+  color: var(--warning-border);
+  margin-bottom: 15px;
+  text-shadow: 0 0 30px rgba(255, 51, 51, 0.4);
+}
+
+.warning-modal h2 {
+  color: var(--warning-border) !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  font-size: 24px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.3);
+}
+
+.warning-modal p {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 15px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.cancel-modal-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  padding: 12px 25px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+.cancel-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.confirm-reset-btn {
+  background: var(--warning-border) !important;
+  border: 1px solid var(--warning-border) !important;
+  color: #fff !important;
+  padding: 12px 30px !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+.confirm-reset-btn:hover {
+  box-shadow: 0 0 30px rgba(255, 51, 51, 0.4) !important;
+  transform: scale(1.03);
+}
+
+/* ===== INFO MODAL ===== */
+.info-modal {
+  border-color: rgba(77, 136, 255, 0.2) !important;
+  border-top-color: rgba(77, 136, 255, 0.3) !important;
+}
+
+.info-modal h2 {
+  color: var(--text-accent) !important;
+  text-shadow: 0 0 20px rgba(77, 136, 255, 0.2) !important;
+}
+
+.info-modal .neon-icon {
+  font-size: 48px;
+  display: inline-block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px var(--text-accent));
+}
+
+.info-modal p {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 15px;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+/* ===== CHANGELOG MODAL ===== */
+.changelog-modal .neon-icon {
+  font-size: 48px;
+  display: inline-block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px #4DFF88);
+}
+
+.changelog-title {
+  color: #4DFF88 !important;
+  text-shadow: 0 0 20px rgba(77, 255, 136, 0.2) !important;
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================================ */
+/* ===== СВЕТЛАЯ ТЕМА ДЛЯ МОДАЛЬНЫХ ОКОН ===== */
+/* ============================================================ */
+
+.app.light-theme .custom-modal-overlay {
+  background: rgba(200, 210, 230, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.app.light-theme .custom-modal {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.app.light-theme .custom-modal h2 {
+  color: #1a1a2e !important;
+  text-shadow: 0 0 20px rgba(0, 102, 255, 0.1) !important;
+}
+
+.app.light-theme .custom-modal .control-item {
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .custom-modal .control-item span {
+  color: #0066ff !important;
+}
+
+.app.light-theme .close-modal-btn {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .close-modal-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: #0066ff !important;
+  box-shadow: 0 0 25px rgba(0, 102, 255, 0.15) !important;
+}
+
+/* Светлая тема — Warning */
+.app.light-theme .warning-overlay {
+  background: rgba(200, 210, 230, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.app.light-theme .warning-modal {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(204, 51, 51, 0.2) !important;
+  border-top: 1px solid rgba(204, 51, 51, 0.3) !important;
+  box-shadow: 0 24px 60px rgba(204, 51, 51, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.app.light-theme .warning-modal h2 {
+  color: #cc3333 !important;
+  text-shadow: 0 0 20px rgba(204, 51, 51, 0.15) !important;
+}
+
+.app.light-theme .warning-modal p {
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .cancel-modal-btn {
+  color: #555566 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.app.light-theme .cancel-modal-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #1a1a2e !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+.app.light-theme .confirm-reset-btn {
+  background: #cc3333 !important;
+  border-color: #cc3333 !important;
+  color: #ffffff !important;
+}
+
+.app.light-theme .confirm-reset-btn:hover {
+  box-shadow: 0 0 30px rgba(204, 51, 51, 0.3) !important;
+}
+
+/* Светлая тема — Info Modal */
+.app.light-theme .info-modal {
+  border-color: rgba(0, 102, 255, 0.15) !important;
+  border-top-color: rgba(0, 102, 255, 0.25) !important;
+}
+
+.app.light-theme .info-modal h2 {
+  color: #0066ff !important;
+  text-shadow: 0 0 20px rgba(0, 102, 255, 0.15) !important;
+}
+
+.app.light-theme .info-modal p {
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .info-modal .neon-icon {
+  filter: drop-shadow(0 0 10px #0066ff);
+}
+
+/* Светлая тема — Changelog */
+.app.light-theme .changelog-modal .neon-icon {
+  filter: drop-shadow(0 0 10px #27ae60);
+}
+
+.app.light-theme .changelog-title {
+  color: #27ae60 !important;
+  text-shadow: 0 0 20px rgba(39, 174, 96, 0.15) !important;
+}
+
+.app.light-theme .changelog-modal div[style*="color: var(--text-secondary)"] {
+  color: #1a1a2e !important;
+}
+
+/* Светлая тема — Favorites */
+.app.light-theme .favorite-item {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.app.light-theme .favorite-item:hover {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.app.light-theme .fav-name-input {
+  color: #1a1a2e !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.app.light-theme .fav-name-input:hover,
+.app.light-theme .fav-name-input:focus {
+  border-bottom-color: #0066ff !important;
+}
+
+.app.light-theme .fav-load-btn {
+  background: rgba(0, 102, 255, 0.08) !important;
+  border-color: rgba(0, 102, 255, 0.15) !important;
+  color: #0066ff !important;
+}
+
+.app.light-theme .fav-load-btn:hover {
+  background: rgba(0, 102, 255, 0.18) !important;
+  border-color: #0066ff !important;
+}
+
+.app.light-theme .fav-delete-btn {
+  color: #cc3333 !important;
+  border-color: rgba(204, 51, 51, 0.15) !important;
+}
+
+.app.light-theme .fav-delete-btn:hover {
+  background: rgba(204, 51, 51, 0.12) !important;
+  border-color: #cc3333 !important;
+}
 /* ==================== ВСПОМОГАТЕЛЬНЫЕ ЭФФЕКТЫ ==================== */
 .btn-flash { background: var(--text-bright) !important; color: #0a0e1a !important; box-shadow: 0 0 12px var(--text-bright) !important; transform: scale(0.95); transition: all 0.05s linear !important; }
 .btn-flash-red { background: #FF4D4D !important; color: #0a0e1a !important; box-shadow: 0 0 12px #FF4D4D !important; transform: scale(0.95); transition: all 0.05s linear !important; }
@@ -1020,17 +1337,36 @@ body:has(.landing) {
 .record-square-btn,
 .reset-btn,
 .ai-btn,
+.clear-instrument-btn,
+.controls-help-btn,
 div[style*="background: var(--bg-card)"] button,
 div[style*="background-color: var(--bg-card)"] button {
   background: rgba(255, 255, 255, 0.06) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
   transition: all 0.25s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: var(--text-primary) !important;
 }
 
+/* Для кнопки "Очистить инструмент" – цветная обводка и текст переопределяют общие стили */
+.clear-instrument-btn {
+  border-color: var(--inst-color, #4D88FF) !important;
+  color: var(--inst-color, #4D88FF) !important;
+}
+
+/* Для "Что нового" – зелёный акцент (опционально) */
+.controls-help-btn.changelog-btn {
+  border-color: #4DFF88 !important;
+  color: #4DFF88 !important;
+}
+.app.light-theme .controls-help-btn.changelog-btn {
+  border-color: #27ae60 !important;
+  color: #27ae60 !important;
+}
+
+/* Hover-эффекты для всех кнопок */
 .save-btn:hover,
 .load-btn:hover,
 .share-btn:hover,
@@ -1041,6 +1377,8 @@ div[style*="background-color: var(--bg-card)"] button {
 .record-square-btn:hover,
 .reset-btn:hover,
 .ai-btn:hover,
+.clear-instrument-btn:hover,
+.controls-help-btn:hover,
 div[style*="background: var(--bg-card)"] button:hover,
 div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(255, 255, 255, 0.12) !important;
@@ -1082,6 +1420,8 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 .app.light-theme .record-square-btn,
 .app.light-theme .reset-btn,
 .app.light-theme .ai-btn,
+.app.light-theme .clear-instrument-btn,
+.app.light-theme .controls-help-btn,
 .app.light-theme div[style*="background: var(--bg-card)"] button,
 .app.light-theme div[style*="background-color: var(--bg-card)"] button {
   background: rgba(255, 255, 255, 0.5) !important;
@@ -1099,6 +1439,8 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 .app.light-theme .record-square-btn:hover,
 .app.light-theme .reset-btn:hover,
 .app.light-theme .ai-btn:hover,
+.app.light-theme .clear-instrument-btn:hover,
+.app.light-theme .controls-help-btn:hover,
 .app.light-theme div[style*="background: var(--bg-card)"] button:hover,
 .app.light-theme div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(255, 255, 255, 0.7) !important;
@@ -1673,6 +2015,9 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   border-color: #cc3333;
   box-shadow: 0 0 16px rgba(204, 51, 51, 0.2);
 }
+
+
+
 /* Анимация вращения для индикатора автосохранения */
 .fav-status-spinner {
   display: inline-block;
@@ -1788,4 +2133,80 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 .theme-switch input:active + .slider::before {
   width: 26px;
   transition: width 0.15s ease;
+}
+
+.clear-instrument-btn {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* Эффект дыхания только если есть ноты (класс .empty отсутствует) */
+.clear-instrument-btn:not(.empty):hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 25px var(--inst-color, #4D88FF), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Состояние "пусто" — почти невидимая, без ховера */
+.clear-instrument-btn.empty {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.clear-instrument-btn.empty:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Светлая тема */
+.app.light-theme .clear-instrument-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.app.light-theme .clear-instrument-btn:not(.empty):hover {
+  box-shadow: 0 0 25px var(--inst-color, #0066ff), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.app.light-theme .clear-instrument-btn.empty:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* ===== АКТИВНАЯ КНОПКА «ОЧИСТИТЬ ИНСТРУМЕНТ» ПРИ НАВЕДЕНИИ ===== */
+.clear-instrument-btn:hover:not(.empty) {
+  background: var(--inst-color, #4D88FF) !important;
+  color: #ffffff !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 0 25px var(--inst-color, #4D88FF), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  border-color: var(--inst-color, #4D88FF) !important;
+}
+
+/* Лёгкое увеличение и тень при наведении */
+.clear-instrument-btn:not(.empty) {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* При пустом инструменте – никаких эффектов */
+.clear-instrument-btn.empty:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ===== СВЕТЛАЯ ТЕМА – переопределяем фон при наведении ===== */
+.app.light-theme .clear-instrument-btn:hover:not(.empty) {
+  background: var(--inst-color, #0066ff) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 25px var(--inst-color, #0066ff), 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  border-color: var(--inst-color, #0066ff) !important;
+}
+
+/* В светлой теме при пустом инструменте – тоже без эффектов */
+.app.light-theme .clear-instrument-btn.empty:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+  transform: none !important;
 }

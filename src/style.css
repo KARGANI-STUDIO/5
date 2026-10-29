@@ -1099,6 +1099,7 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   display: flex;
   justify-content: center;
   gap: 15px;
+  width: 100%; /* 👈 Добавили */
 }
 
 .cancel-modal-btn {
@@ -1107,13 +1108,21 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   -webkit-backdrop-filter: blur(8px) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: rgba(255, 255, 255, 0.6) !important;
-  padding: 12px 25px !important;
   border-radius: 50px !important;
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
+  
+  /* 👇 Новые свойства для выравнивания */
+  flex: 1;
+  max-width: 180px;
+  height: 44px;
+  padding: 0 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cancel-modal-btn:hover {
@@ -1126,13 +1135,21 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   background: var(--warning-border) !important;
   border: 1px solid var(--warning-border) !important;
   color: #fff !important;
-  padding: 12px 30px !important;
   border-radius: 50px !important;
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
+  
+  /* 👇 Новые свойства для выравнивания */
+  flex: 1;
+  max-width: 180px;
+  height: 44px;
+  padding: 0 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .confirm-reset-btn:hover {

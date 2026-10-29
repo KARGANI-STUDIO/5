@@ -34,6 +34,14 @@ html, body {
   --warning-bg: #0d0d0d;
   --warning-border: #ff3333;
   --scroll-thumb: #1e2a50;
+
+  /* 🎨 Цвета свечения фона (тёмная тема — по умолчанию, палитра "Neon") */
+  --bg-glow1-a: rgba(180, 60, 255, 0.5);
+  --bg-glow1-b: rgba(255, 0, 128, 0.35);
+  --bg-glow1-c: rgba(0, 200, 255, 0.25);
+  --bg-glow2-a: rgba(255, 200, 0, 0.2);
+  --bg-glow2-b: rgba(255, 100, 200, 0.15);
+  --bg-glow2-c: rgba(0, 200, 255, 0.1);
 }
 
 .app.light-theme {
@@ -57,6 +65,14 @@ html, body {
   --warning-bg: #ffffff;
   --warning-border: #cc3333;
   --scroll-thumb: #99aaff;
+
+  /* 🎨 Цвета свечения фона (светлая тема — по умолчанию, палитра "Neon") */
+  --bg-glow1-a: rgba(0, 122, 255, 0.45);
+  --bg-glow1-b: rgba(175, 82, 222, 0.35);
+  --bg-glow1-c: rgba(255, 45, 85, 0.25);
+  --bg-glow2-a: rgba(255, 200, 0, 0.35);
+  --bg-glow2-b: rgba(255, 100, 200, 0.25);
+  --bg-glow2-c: rgba(0, 200, 255, 0.15);
 }
 
 /* ==================== ОБЩИЕ СТИЛИ ПРИЛОЖЕНИЯ ==================== */
@@ -76,7 +92,7 @@ html, body {
   top: 20%;
   left: 50%;
   transform: translateX(-50%);
-  background: radial-gradient(circle at 30% 40%, rgba(180, 60, 255, 0.5) 0%, rgba(255, 0, 128, 0.35) 30%, rgba(0, 200, 255, 0.25) 60%, transparent 80%) !important;
+  background: radial-gradient(circle at 30% 40%, var(--bg-glow1-a) 0%, var(--bg-glow1-b) 30%, var(--bg-glow1-c) 60%, transparent 80%) !important;
   width: 800px !important;
   height: 800px !important;
   filter: blur(100px) !important;
@@ -92,7 +108,7 @@ html, body {
   right: 5%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle at 60% 70%, rgba(255, 200, 0, 0.2) 0%, rgba(255, 100, 200, 0.15) 40%, rgba(0, 200, 255, 0.1) 70%, transparent 90%);
+  background: radial-gradient(circle at 60% 70%, var(--bg-glow2-a) 0%, var(--bg-glow2-b) 40%, var(--bg-glow2-c) 70%, transparent 90%);
   border-radius: 50%;
   filter: blur(80px);
   z-index: 0;
@@ -117,13 +133,13 @@ html, body {
   color: #1a1a2e !important;
 }
 .app.light-theme::before {
-  background: radial-gradient(circle at 40% 30%, rgba(0, 122, 255, 0.45) 0%, rgba(175, 82, 222, 0.35) 35%, rgba(255, 45, 85, 0.25) 65%, transparent 85%) !important;
+  background: radial-gradient(circle at 40% 30%, var(--bg-glow1-a) 0%, var(--bg-glow1-b) 35%, var(--bg-glow1-c) 65%, transparent 85%) !important;
   filter: blur(90px) !important;
   animation: floatLightMain 14s ease-in-out infinite alternate !important;
   opacity: 0.9 !important;
 }
 .app.light-theme::after {
-  background: radial-gradient(circle at 60% 70%, rgba(255, 200, 0, 0.35) 0%, rgba(255, 100, 200, 0.25) 40%, rgba(0, 200, 255, 0.15) 70%, transparent 90%) !important;
+  background: radial-gradient(circle at 60% 70%, var(--bg-glow2-a) 0%, var(--bg-glow2-b) 40%, var(--bg-glow2-c) 70%, transparent 90%) !important;
   filter: blur(80px) !important;
   animation: floatLightSecond 18s ease-in-out infinite alternate !important;
   opacity: 0.8 !important;
@@ -163,7 +179,7 @@ html, body {
 .scroll-x { overflow-x: auto; overflow-y: hidden; position: relative; z-index: 1; }
 .sequencer-scroll { scroll-behavior: smooth; }
 
-/* ==================== ВЕРХНИЕ КНОПКИ (GOOGLE, ТЕМА, ЯЗЫК) ==================== */
+/* ==================== ВЕРХНИЕ КНОПКИ ==================== */
 .top-btn {
   width: 50px;
   height: 50px;
@@ -253,23 +269,6 @@ html, body {
 }
 .stop-btn:active { transform: scale(0.9); box-shadow: 0 0 5px rgba(255, 77, 77, 0.6); }
 .stop-btn:active svg { transform: scale(0.8); }
-
-.record-btn {
-  background-color: var(--btn-bg) !important;
-  border: 1px solid #ff4d4d !important;
-  color: #ff4d4d !important;
-  border-radius: 8px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-}
-.record-btn:hover { background-color: var(--btn-hover) !important; filter: brightness(1.2); transform: translateY(-1px); }
-.record-btn.recording { background-color: rgba(255, 77, 77, 0.1) !important; animation: pulse-red 1.5s infinite ease-in-out; }
 
 .record-square-btn {
   width: 55px;
@@ -367,7 +366,7 @@ html, body {
 }
 .reset-btn:active { transform: scale(0.95); }
 
-/* ==================== СТЕКЛЯННЫЕ КАРТОЧКИ И КОНТЕЙНЕРЫ ==================== */
+/* ==================== СТЕКЛЯННЫЕ КАРТОЧКИ ==================== */
 .app .instrument-selector,
 .app .scroll-container,
 .app div[style*="background: #0a0e1a"],
@@ -548,11 +547,11 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   100% { box-shadow: 0 0 4px var(--text-bright), inset 0 0 2px var(--text-bright); }
 }
 
-/* ==================== ПРЕВЬЮ И АНИМАЦИЯ ВОЛН ==================== */
-.preview { margin-top: 40px; width: 380px; display: flex; flex-direction: column; gap: 12px;}
+/* ==================== ПРЕВЬЮ (БЕЗ ВОЛН) ==================== */
+.preview { margin-top: 40px; width: 420px; display: flex; flex-direction: column; gap: 16px;}
 
 .preview-track {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 2px;
   text-align: center;
@@ -565,7 +564,11 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
-  padding: 12px 20px !important;
+  padding: 16px 20px !important;
+  display: flex;                 /* Включаем флекс для идеального центрирования */
+  align-items: center;           /* Центрируем по вертикали */
+  justify-content: center;       /* Центрируем по горизонтали */
+  
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 .preview-track:hover {
@@ -588,59 +591,6 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
 .preview-track.bass   { color: #BD00FF; }
 .preview-track.chip   { color: #4DFF88; }
 .preview-track.demo-active { filter: brightness(1.4) drop-shadow(0 0 12px currentColor); transform: scale(1.02); transition: all 0.1s ease; }
-
-.preview-track .wave {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 5px;
-  height: 24px;
-  margin-top: 8px;
-}
-.preview-track .wave span {
-  width: 4px;
-  background: currentColor;
-  border-radius: 2px;
-  animation: waveBreathing 1s infinite ease-in-out;
-  transition: all 0.2s;
-}
-.preview-track .wave span:nth-child(1) { animation-delay: 0s; }
-.preview-track .wave span:nth-child(2) { animation-delay: 0.12s; }
-.preview-track .wave span:nth-child(3) { animation-delay: 0.24s; }
-.preview-track .wave span:nth-child(4) { animation-delay: 0.36s; }
-.preview-track .wave span:nth-child(5) { animation-delay: 0.48s; }
-
-@keyframes waveBreathing {
-  0%, 100% { height: 5px; opacity: 0.6; }
-  50% { height: 16px; opacity: 1; }
-}
-
-.preview-track:hover .wave span {
-  animation-duration: 0.4s;
-  filter: drop-shadow(0 0 3px currentColor);
-}
-.preview-track:hover .wave span:nth-child(1) { animation-delay: 0s; }
-.preview-track:hover .wave span:nth-child(2) { animation-delay: 0.05s; }
-.preview-track:hover .wave span:nth-child(3) { animation-delay: 0.10s; }
-.preview-track:hover .wave span:nth-child(4) { animation-delay: 0.15s; }
-.preview-track:hover .wave span:nth-child(5) { animation-delay: 0.20s; }
-
-.bg-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 40px; pointer-events: none; z-index: 0; }
-.bg-wave svg { width: 100%; height: 100%; display: block; }
-.bg-wave path { fill: none; stroke: currentColor; stroke-width: 1.8; filter: drop-shadow(0 0 5px currentColor); animation: autoTransformWave 6s ease-in-out infinite; }
-.preview-track.guitar .bg-wave path { animation-delay: 0s; }
-.preview-track.synth  .bg-wave path { animation-delay: 0.8s; }
-.preview-track.drum   .bg-wave path { animation-delay: 1.6s; }
-.preview-track.bass   .bg-wave path { animation-delay: 2.4s; }
-.preview-track.chip   .bg-wave path { animation-delay: 3.2s; }
-@keyframes autoTransformWave {
-  0% { d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20"); opacity: 0.5; }
-  25% { d: path("M0,20 Q5,26 10,32 Q15,20 20,8 Q25,20 30,32 Q35,20 40,8 Q45,20 50,32 Q55,20 60,8 Q65,20 70,32 Q75,20 80,8 Q85,20 90,32 Q95,20 100,8 Q105,20 110,32 Q115,20 120,8 Q125,20 130,32 Q135,20 140,8 Q145,20 150,32 Q155,20 160,8 Q165,20 170,32 Q175,20 180,8 Q185,20 190,32 Q195,26 200,20"); opacity: 0.8; }
-  50% { d: path("M0,20 Q5,32 10,32 Q15,32 20,20 Q25,8 30,8 Q35,8 40,20 Q45,32 50,32 Q55,32 60,20 Q65,8 70,8 Q75,8 80,20 Q85,32 90,32 Q95,32 100,20 Q105,8 110,8 Q115,8 120,20 Q125,32 130,32 Q135,32 140,20 Q145,8 150,8 Q155,8 160,20 Q165,32 170,32 Q175,32 180,20 Q185,8 190,8 Q195,8 200,20"); opacity: 0.8; }
-  75% { d: path("M0,20 Q5,5 10,5 Q15,5 20,20 Q25,35 30,35 Q35,35 40,20 Q45,5 50,5 Q55,5 60,20 Q65,35 70,35 Q75,35 80,20 Q85,5 90,5 Q95,5 100,20 Q105,35 110,35 Q115,35 120,20 Q125,5 130,5 Q135,5 140,20 Q145,35 150,35 Q155,35 160,20 Q165,5 170,5 Q175,5 180,20 Q185,35 190,35 Q195,35 200,20"); opacity: 0.5; }
-  100% { d: path("M0,20 Q5,12.5 10,5 Q15,20 20,35 Q25,20 30,5 Q35,20 40,35 Q45,20 50,5 Q55,20 60,35 Q65,20 70,5 Q75,20 80,35 Q85,20 90,5 Q95,20 100,35 Q105,20 110,5 Q115,20 120,35 Q125,20 130,5 Q135,20 140,35 Q145,20 150,5 Q155,20 160,35 Q165,20 170,5 Q175,20 180,35 Q185,20 190,5 Q195,12.5 200,20"); opacity: 0.5; }
-}
-.preview-track:hover .bg-wave path { animation-duration: 1.5s; opacity: 0.9; filter: drop-shadow(0 0 6px currentColor); }
 
 /* ==================== ЛЕНДИНГ ==================== */
 .landing {
@@ -733,30 +683,96 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
 .flicker-char { display: inline-block; animation: burnout 2.5s infinite steps(1); }
 @keyframes burnout { 0%, 100%, 95%, 99% { opacity: 1; } 96%, 97% { opacity: 0; } 98% { opacity: 0.2; } }
 
+/* ==================== КНОПКА СТАРТ (LIQUID GLASS) ==================== */
 .start-btn {
-  padding: 15px 40px;
+  padding: 16px 45px;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2);
-  background-size: 300% auto;
-  border: none;
+  color: var(--text-primary) !important;
+  
+  /* Стеклянный эффект */
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  
+  /* Тонкие рамки для объема */
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+  
+  /* Тени и внутренний блик */
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.05) !important;
+    
   border-radius: 60px;
-  color: white;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(255, 0, 128, 0.5), 0 0 30px rgba(0, 255, 255, 0.3);
-  animation: btnPulse 2s ease-in-out infinite, gradientShift 4s linear infinite;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
   position: relative;
   z-index: 2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  /* Мягкая пульсация */
+  animation: glassPulse 3s ease-in-out infinite;
 }
-.start-btn:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 0, 128, 0.8), 0 0 50px rgba(0, 255, 255, 0.5); animation: none; }
-@keyframes btnPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 255, 255, 0.2); }
-  50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(255, 0, 128, 0.7), 0 0 45px rgba(0, 255, 255, 0.5); }
+
+/* Эффект при наведении */
+.start-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  border-top-color: rgba(255, 255, 255, 0.5) !important;
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 30px var(--text-accent) !important; /* Свечение в цвет темы */
+  animation: none; /* Отключаем пульсацию при наведении */
 }
-@keyframes gradientShift { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+
+.start-btn:active {
+  transform: translateY(1px) scale(0.98) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Анимация мягкого свечения */
+@keyframes glassPulse {
+  0%, 100% { 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.05); 
+  }
+  50% { 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 25px var(--text-accent); 
+  }
+}
+/* Кнопка старт в светлой теме (Liquid Glass) */
+.app.light-theme .start-btn {
+  /* Более прозрачный фон, чтобы просвечивал цветной градиент фона */
+  background: rgba(255, 255, 255, 0.35) !important; 
+  
+  /* Тонкие рамки для эффекта стекла */
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-top: 1px solid rgba(255, 255, 255, 1) !important;
+  
+  /* Убираем жесткую белую тень, делаем мягкую темную */
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.08), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(0, 0, 0, 0.02) !important;
+    
+  color: #1a1a2e !important; /* Темный текст для контраста */
+}
+
+.app.light-theme .start-btn:hover {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 1) !important;
+  
+  /* При наведении добавляем свечение цвета акцента (как в темной теме) */
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.12), 
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 30px var(--text-accent) !important;
+}
 
 /* ==================== НЕОНОВЫЙ ЛОГОТИП ==================== */
 .logo {
@@ -863,14 +879,92 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
 }
 .app.light-theme .controls-help-btn:hover { background: #ffffff !important; border-color: #0066ff !important; color: #0066ff !important; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15) !important; }
-.app.light-theme .controls-help-btn[style*="borderColor: #4DFF88"] { border-color: #27ae60 !important; color: #27ae60 !important; }
-.app.light-theme .controls-help-btn[style*="borderColor: #4DFF88"]:hover { border-color: #27ae60 !important; color: #27ae60 !important; background: #ffffff !important; box-shadow: 0 4px 12px rgba(39, 174, 96, 0.15) !important; }
 
-/* ==================== КНОПКИ ЭФФЕКТОВ ==================== */
-.effect-btn { background: var(--btn-bg) !important; color: var(--text-accent) !important; }
-.effect-btn:hover { background: var(--btn-hover) !important; }
-.effect-btn-remove { background: var(--btn-bg) !important; color: #FFB84D !important; }
-.effect-btn-remove:hover { background: var(--btn-hover) !important; }
+/* ==================== КНОПКИ ЭФФЕКТОВ (LIQUID GLASS) ==================== */
+
+/* Квадратные кнопки эффектов */
+.effect-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.effect-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--text-accent) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2), 
+    0 0 15px var(--text-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.effect-btn:active {
+  transform: translateY(1px) scale(0.95) !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Кнопка удаления (крестик) */
+.effect-btn-remove {
+  color: #ff4d4d !important;
+}
+.effect-btn-remove:hover {
+  border-color: #ff4d4d !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2), 
+    0 0 15px rgba(255, 77, 77, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Компактные кнопки SUB и Reverse */
+.pill-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 8px 10px !important;
+  width: 100%;
+  max-width: 95px !important;
+  height: 44px !important;
+  display: flex;
+  flex-direction: column !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px !important;
+  font-size: 9px !important;
+  font-weight: bold;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Активные состояния SUB и REVERSE */
+.active-sub {
+  background: rgba(189, 0, 255, 0.15) !important;
+  border-color: #bd00ff !important;
+  box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important;
+}
+.active-rev {
+  background: rgba(255, 184, 77, 0.15) !important;
+  border-color: #FFB84D !important;
+  box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important;
+}
 
 /* ==================== МОДАЛЬНЫЕ ОКНА ==================== */
 .custom-modal-overlay {
@@ -1217,47 +1311,6 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
   color: #1a1a2e !important;
 }
 
-/* Светлая тема — Favorites */
-.app.light-theme .favorite-item {
-  background: rgba(255, 255, 255, 0.6) !important;
-  border-color: rgba(0, 0, 0, 0.06) !important;
-}
-
-.app.light-theme .favorite-item:hover {
-  background: rgba(255, 255, 255, 0.8) !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
-}
-
-.app.light-theme .fav-name-input {
-  color: #1a1a2e !important;
-  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-.app.light-theme .fav-name-input:hover,
-.app.light-theme .fav-name-input:focus {
-  border-bottom-color: #0066ff !important;
-}
-
-.app.light-theme .fav-load-btn {
-  background: rgba(0, 102, 255, 0.08) !important;
-  border-color: rgba(0, 102, 255, 0.15) !important;
-  color: #0066ff !important;
-}
-
-.app.light-theme .fav-load-btn:hover {
-  background: rgba(0, 102, 255, 0.18) !important;
-  border-color: #0066ff !important;
-}
-
-.app.light-theme .fav-delete-btn {
-  color: #cc3333 !important;
-  border-color: rgba(204, 51, 51, 0.15) !important;
-}
-
-.app.light-theme .fav-delete-btn:hover {
-  background: rgba(204, 51, 51, 0.12) !important;
-  border-color: #cc3333 !important;
-}
 /* ==================== ВСПОМОГАТЕЛЬНЫЕ ЭФФЕКТЫ ==================== */
 .btn-flash { background: var(--text-bright) !important; color: #0a0e1a !important; box-shadow: 0 0 12px var(--text-bright) !important; transform: scale(0.95); transition: all 0.05s linear !important; }
 .btn-flash-red { background: #FF4D4D !important; color: #0a0e1a !important; box-shadow: 0 0 12px #FF4D4D !important; transform: scale(0.95); transition: all 0.05s linear !important; }
@@ -1275,6 +1328,7 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
 .app.light-theme .ai-btn { background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(189, 0, 255, 0.2) !important; color: rgba(189, 0, 255, 0.6) !important; }
 .app.light-theme .ai-btn:hover { background: rgba(189, 0, 255, 0.15) !important; border-color: #bd00ff !important; color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.3) !important; }
 .app.light-theme .ai-btn:active { background: rgba(189, 0, 255, 0.3) !important; }
+
 /* Если на странице есть блок превью (и он не скрыт), полностью отключаем скролл у окна */
 html:has(.landing), 
 body:has(.landing) {
@@ -1287,35 +1341,21 @@ body:has(.landing) {
   box-shadow: 0 0 12px currentColor;
   transform: scale(1.02);
 }
+
 /* ===== Аппаратное ускорение и изоляция для контейнера сетки ===== */
 .scroll-container {
   contain: layout style paint;
-  will-change: scroll-position, transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  will-change: scroll-position;
 }
 
-/* Содержимое контейнера */
-.scroll-container > div {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Сами блоки (ноты) */
 .block {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  transition: none !important; /* перекрывает все inline-стили */
+  transition: none !important;
 }
-
-/* По желанию: лёгкий hover-эффект без transition: all */
 .block:hover {
   transform: scale(1.02);
   filter: brightness(1.2);
 }
-/* Аппаратное ускорение для плейхеда */
+
 .playhead-grabber {
   will-change: transform;
   transform: translateZ(0);
@@ -1326,6 +1366,7 @@ body:has(.landing) {
   transform: translateZ(0);
   backface-visibility: hidden;
 }
+
 /* ===== ЕДИНЫЙ СТИЛЬ «LIQUID GLASS» ДЛЯ ВСЕХ КНОПОК ===== */
 .save-btn,
 .load-btn,
@@ -1350,13 +1391,11 @@ div[style*="background-color: var(--bg-card)"] button {
   color: var(--text-primary) !important;
 }
 
-/* Для кнопки "Очистить инструмент" – цветная обводка и текст переопределяют общие стили */
 .clear-instrument-btn {
   border-color: var(--inst-color, #4D88FF) !important;
   color: var(--inst-color, #4D88FF) !important;
 }
 
-/* Для "Что нового" – зелёный акцент (опционально) */
 .controls-help-btn.changelog-btn {
   border-color: #4DFF88 !important;
   color: #4DFF88 !important;
@@ -1366,7 +1405,6 @@ div[style*="background-color: var(--bg-card)"] button {
   color: #27ae60 !important;
 }
 
-/* Hover-эффекты для всех кнопок */
 .save-btn:hover,
 .load-btn:hover,
 .share-btn:hover,
@@ -1463,99 +1501,29 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   border-color: #cc3333 !important;
   box-shadow: 0 0 15px rgba(204, 51, 51, 0.2) !important;
 }
-/* ===== ИНДИВИДУАЛЬНЫЕ ЦВЕТА ДЛЯ КНОПОК ИНСТРУМЕНТОВ (поверх стеклянного стиля) ===== */
 
-/* GUITAR */
-.inst-btn.guitar-btn.active,
-.inst-btn.guitar-btn.fx-active {
-  border-color: #FFB84D !important;
-  box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  color: #FFB84D !important;
-}
-.inst-btn.guitar-btn:hover {
-  border-color: rgba(255, 184, 77, 0.5) !important;
-  box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important;
-  color: #FFB84D !important;
-}
+/* ===== ИНДИВИДУАЛЬНЫЕ ЦВЕТА ДЛЯ КНОПОК ИНСТРУМЕНТОВ ===== */
+.inst-btn.guitar-btn.active, .inst-btn.guitar-btn.fx-active { border-color: #FFB84D !important; box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #FFB84D !important; }
+.inst-btn.guitar-btn:hover { border-color: rgba(255, 184, 77, 0.5) !important; box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important; color: #FFB84D !important; }
 
-/* SYNTH */
-.inst-btn.synth-btn.active,
-.inst-btn.synth-btn.fx-active {
-  border-color: #4DC3FF !important;
-  box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  color: #4DC3FF !important;
-}
-.inst-btn.synth-btn:hover {
-  border-color: rgba(77, 195, 255, 0.5) !important;
-  box-shadow: 0 0 15px rgba(77, 195, 255, 0.3) !important;
-  color: #4DC3FF !important;
-}
+.inst-btn.synth-btn.active, .inst-btn.synth-btn.fx-active { border-color: #4DC3FF !important; box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #4DC3FF !important; }
+.inst-btn.synth-btn:hover { border-color: rgba(77, 195, 255, 0.5) !important; box-shadow: 0 0 15px rgba(77, 195, 255, 0.3) !important; color: #4DC3FF !important; }
 
-/* DRUM */
-.inst-btn.drum-btn.active,
-.inst-btn.drum-btn.fx-active {
-  border-color: #FF4D4D !important;
-  box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  color: #FF4D4D !important;
-}
-.inst-btn.drum-btn:hover {
-  border-color: rgba(255, 77, 77, 0.5) !important;
-  box-shadow: 0 0 15px rgba(255, 77, 77, 0.3) !important;
-  color: #FF4D4D !important;
-}
+.inst-btn.drum-btn.active, .inst-btn.drum-btn.fx-active { border-color: #FF4D4D !important; box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #FF4D4D !important; }
+.inst-btn.drum-btn:hover { border-color: rgba(255, 77, 77, 0.5) !important; box-shadow: 0 0 15px rgba(255, 77, 77, 0.3) !important; color: #FF4D4D !important; }
 
-/* BASS */
-.inst-btn.bass-btn.active,
-.inst-btn.bass-btn.fx-active {
-  border-color: #BD00FF !important;
-  box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  color: #BD00FF !important;
-}
-.inst-btn.bass-btn:hover {
-  border-color: rgba(189, 0, 255, 0.5) !important;
-  box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important;
-  color: #BD00FF !important;
-}
+.inst-btn.bass-btn.active, .inst-btn.bass-btn.fx-active { border-color: #BD00FF !important; box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #BD00FF !important; }
+.inst-btn.bass-btn:hover { border-color: rgba(189, 0, 255, 0.5) !important; box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important; color: #BD00FF !important; }
 
-/* CHIP */
-.inst-btn.chip-btn.active,
-.inst-btn.chip-btn.fx-active {
-  border-color: #4DFF88 !important;
-  box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  color: #4DFF88 !important;
-}
-.inst-btn.chip-btn:hover {
-  border-color: rgba(77, 255, 136, 0.5) !important;
-  box-shadow: 0 0 15px rgba(77, 255, 136, 0.3) !important;
-  color: #4DFF88 !important;
-}
+.inst-btn.chip-btn.active, .inst-btn.chip-btn.fx-active { border-color: #4DFF88 !important; box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #4DFF88 !important; }
+.inst-btn.chip-btn:hover { border-color: rgba(77, 255, 136, 0.5) !important; box-shadow: 0 0 15px rgba(77, 255, 136, 0.3) !important; color: #4DFF88 !important; }
 
-/* ===== СВЕТЛАЯ ТЕМА (цвета остаются теми же, но фон чуть плотнее) ===== */
-.app.light-theme .inst-btn.guitar-btn.active,
-.app.light-theme .inst-btn.guitar-btn.fx-active {
-  border-color: #FFB84D !important;
-  box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-.app.light-theme .inst-btn.synth-btn.active,
-.app.light-theme .inst-btn.synth-btn.fx-active {
-  border-color: #4DC3FF !important;
-  box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-.app.light-theme .inst-btn.drum-btn.active,
-.app.light-theme .inst-btn.drum-btn.fx-active {
-  border-color: #FF4D4D !important;
-  box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-.app.light-theme .inst-btn.bass-btn.active,
-.app.light-theme .inst-btn.bass-btn.fx-active {
-  border-color: #BD00FF !important;
-  box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
-.app.light-theme .inst-btn.chip-btn.active,
-.app.light-theme .inst-btn.chip-btn.fx-active {
-  border-color: #4DFF88 !important;
-  box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-}
+.app.light-theme .inst-btn.guitar-btn.active, .app.light-theme .inst-btn.guitar-btn.fx-active { border-color: #FFB84D !important; box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.synth-btn.active, .app.light-theme .inst-btn.synth-btn.fx-active { border-color: #4DC3FF !important; box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.drum-btn.active, .app.light-theme .inst-btn.drum-btn.fx-active { border-color: #FF4D4D !important; box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.bass-btn.active, .app.light-theme .inst-btn.bass-btn.fx-active { border-color: #BD00FF !important; box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.chip-btn.active, .app.light-theme .inst-btn.chip-btn.fx-active { border-color: #4DFF88 !important; box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+
 /* ===== СТЕКЛЯННЫЙ SELECT (метроном) ===== */
 .glass-select {
   appearance: none;
@@ -1586,7 +1554,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 0 0 2px rgba(77, 136, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
-/* ===== ОПЦИИ В ВЫПАДАЮЩЕМ СПИСКЕ ===== */
 .glass-select option {
   background: rgba(20, 25, 45, 0.85) !important;
   backdrop-filter: blur(16px) !important;
@@ -1607,7 +1574,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   color: var(--text-bright) !important;
 }
 
-/* ===== СВЕТЛАЯ ТЕМА ===== */
 .app.light-theme .glass-select {
   background: rgba(255, 255, 255, 0.5) !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
@@ -1631,6 +1597,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   background: rgba(0, 0, 0, 0.08) !important;
   color: #0066ff !important;
 }
+
 /* ========================================================= */
 /* ===== ВЫПАДАЮЩЕЕ МЕНЮ «МОЯ СТРУНА» (LIQUID GLASS) ===== */
 /* ========================================================= */
@@ -1662,12 +1629,12 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   top: calc(100% + 12px);
   right: 0;
   min-width: 270px;
-  background: rgba(18, 22, 41, 0.55); /* Глубокий темный полупрозрачный фон */
+  background: rgba(18, 22, 41, 0.55);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.2); /* Блик на верхней грани */
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 12px 0;
   z-index: 9999;
@@ -1717,7 +1684,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 .liquid-glass-menu .menu-item:hover {
   background: rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  transform: translateX(4px); /* Плавное смещение текста вправо при наведении */
+  transform: translateX(4px);
 }
 
 .liquid-glass-menu .divider {
@@ -1735,7 +1702,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   color: #ff6666;
 }
 
-/* Кастомный чекбокс автосохранения */
 .autosave-item {
   justify-content: space-between;
 }
@@ -1748,14 +1714,10 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   transition: all 0.2s ease;
 }
 .custom-checkbox.checked {
-  background: #d4b5e6; /* Нежный сиренево-белый цвет как на скриншоте */
+  background: #d4b5e6;
   border-color: transparent;
   box-shadow: 0 0 8px rgba(212, 181, 230, 0.6);
 }
-
-/* ========================================================= */
-/* СВЕТЛАЯ ТЕМА ДЛЯ МЕНЮ LIQUID GLASS                        */
-/* ========================================================= */
 
 .app.light-theme .user-profile-btn {
   background: rgba(255, 255, 255, 0.5);
@@ -1803,6 +1765,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   background: #0066ff;
   box-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
 }
+
 /* ===== КНОПКА ИЗБРАННОГО (СЕРДЕЧКО) ===== */
 .favorite-btn {
   display: inline-flex;
@@ -1819,7 +1782,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   cursor: pointer;
   transition: all 0.25s ease !important;
   color: var(--text-primary) !important;
-  font-size: 22px; /* чтобы сердечко было хорошо видно */
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -1843,7 +1806,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   pointer-events: none;
 }
 
-/* ===== СВЕТЛАЯ ТЕМА ===== */
 .app.light-theme .favorite-btn {
   background: rgba(255, 255, 255, 0.5) !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
@@ -1863,11 +1825,11 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 0 20px rgba(230, 57, 86, 0.2), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
   color: #e63956 !important;
 }
+
 /* ========================================================= */
 /* ==== ИЗБРАННОЕ (Favorites) — СТИЛЬ LIQUID GLASS ======== */
 /* ========================================================= */
 
-/* Каждый элемент списка */
 .favorite-item {
   display: flex;
   align-items: center;
@@ -1890,7 +1852,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   transform: translateY(-2px);
 }
 
-/* Поле ввода названия проекта */
 .fav-name-input {
   background: transparent;
   border: none;
@@ -1910,7 +1871,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   border-bottom-color: var(--text-accent);
 }
 
-/* Дата создания */
 .fav-date {
   font-size: 11px;
   color: var(--text-secondary);
@@ -1919,7 +1879,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   letter-spacing: 0.3px;
 }
 
-/* Кнопка «Загрузить» */
 .fav-load-btn {
   background: rgba(77, 136, 255, 0.12);
   backdrop-filter: blur(8px);
@@ -1944,7 +1903,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   transform: translateY(-1px);
 }
 
-/* Кнопка корзины (удалить) */
 .fav-delete-btn {
   background: transparent;
   backdrop-filter: blur(8px);
@@ -1970,7 +1928,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   transform: scale(1.08);
 }
 
-/* ===== СВЕТЛАЯ ТЕМА ===== */
 .app.light-theme .favorite-item {
   background: rgba(255, 255, 255, 0.5);
   border-color: rgba(0, 0, 0, 0.06);
@@ -2016,9 +1973,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 0 16px rgba(204, 51, 51, 0.2);
 }
 
-
-
-/* Анимация вращения для индикатора автосохранения */
 .fav-status-spinner {
   display: inline-block;
   animation: spin 0.8s linear infinite;
@@ -2026,8 +1980,9 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 /* ========================================================= */
-/* ==== АНИМИРОВАННЫЙ ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ (ТЁМНАЯ/СВЕТЛАЯ) ==== */
+/* ==== АНИМИРОВАННЫЙ ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ ==================== */
 /* ========================================================= */
 
 .theme-toggle-item {
@@ -2041,7 +1996,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   color: var(--text-primary);
 }
 
-/* Основа переключателя */
 .theme-switch {
   position: relative;
   display: inline-block;
@@ -2057,7 +2011,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   height: 0;
 }
 
-/* Ползунок (трек) */
 .theme-switch .slider {
   position: absolute;
   inset: 0;
@@ -2070,7 +2023,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
-/* Круглая ручка */
 .theme-switch .slider::before {
   content: "";
   position: absolute;
@@ -2084,7 +2036,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Иконки внутри переключателя (солнце/луна) */
 .theme-switch .slider::after {
   content: "🌙";
   position: absolute;
@@ -2097,7 +2048,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   line-height: 1;
 }
 
-/* Активное состояние (светлая тема) */
 .theme-switch input:checked + .slider {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(8px);
@@ -2118,7 +2068,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   left: 4px;
 }
 
-/* Hover-эффект */
 .theme-switch:hover .slider {
   border-color: rgba(255, 255, 255, 0.25);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -2129,7 +2078,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-/* Анимация клика */
 .theme-switch input:active + .slider::before {
   width: 26px;
   transition: width 0.15s ease;
@@ -2143,13 +2091,11 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   cursor: pointer;
 }
 
-/* Эффект дыхания только если есть ноты (класс .empty отсутствует) */
 .clear-instrument-btn:not(.empty):hover {
   transform: scale(1.04);
   box-shadow: 0 0 25px var(--inst-color, #4D88FF), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* Состояние "пусто" — почти невидимая, без ховера */
 .clear-instrument-btn.empty {
   opacity: 0.3;
   cursor: default;
@@ -2160,7 +2106,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* Светлая тема */
 .app.light-theme .clear-instrument-btn {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
@@ -2173,7 +2118,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
-/* ===== АКТИВНАЯ КНОПКА «ОЧИСТИТЬ ИНСТРУМЕНТ» ПРИ НАВЕДЕНИИ ===== */
 .clear-instrument-btn:hover:not(.empty) {
   background: var(--inst-color, #4D88FF) !important;
   color: #ffffff !important;
@@ -2182,12 +2126,10 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   border-color: var(--inst-color, #4D88FF) !important;
 }
 
-/* Лёгкое увеличение и тень при наведении */
 .clear-instrument-btn:not(.empty) {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* При пустом инструменте – никаких эффектов */
 .clear-instrument-btn.empty:hover {
   transform: none !important;
   box-shadow: none !important;
@@ -2195,7 +2137,6 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   color: var(--text-secondary) !important;
 }
 
-/* ===== СВЕТЛАЯ ТЕМА – переопределяем фон при наведении ===== */
 .app.light-theme .clear-instrument-btn:hover:not(.empty) {
   background: var(--inst-color, #0066ff) !important;
   color: #ffffff !important;
@@ -2203,10 +2144,340 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   border-color: var(--inst-color, #0066ff) !important;
 }
 
-/* В светлой теме при пустом инструменте – тоже без эффектов */
 .app.light-theme .clear-instrument-btn.empty:hover {
   background: rgba(255, 255, 255, 0.5) !important;
   color: var(--text-secondary) !important;
   box-shadow: none !important;
   transform: none !important;
+}
+/* ========================================================= */
+/* ===== ДОБАВЛЯЕМ ЭФФЕКТ ЖИДКОГО СТЕКЛА И СВЕЧЕНИЯ ======== */
+/* ========================================================= */
+
+/* Делаем текст поверх блика */
+.preview-track span {
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+/* Сам пробегающий блик */
+.preview-track::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+
+/* Двигаем блик при наведении */
+.preview-track:hover::before {
+  left: 150%;
+}
+
+/* Усиливаем свечение текста при наведении (использует цвет инструмента) */
+.preview-track:hover span {
+  text-shadow: 0 0 15px currentColor, 0 0 5px currentColor;
+}
+
+/* ===== АДАПТАЦИЯ ДЛЯ СВЕТЛОЙ ТЕМЫ ===== */
+/* В светлой теме делаем блик темным, чтобы его было видно на белом */
+.app.light-theme .preview-track::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.08),
+    transparent
+  );
+}
+
+/* Приглушаем цвета текста в светлой теме, чтобы не резали глаз */
+.app.light-theme .preview-track span {
+  filter: brightness(0.8);
+}
+
+/* При наведении в светлой теме возвращаем яркость и добавляем тень */
+.app.light-theme .preview-track:hover span {
+  filter: brightness(1);
+  text-shadow: 0 0 12px currentColor;
+}
+/* ===== ПЕРФ-ФИКСЫ: убираем дорогой backdrop-filter со скролла и тулбара ===== */
+.app .scroll-container,
+.app .instrument-selector {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* компенсируем прозрачность — фоны стали чуть плотнее */
+.app .scroll-container {
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+.app .instrument-selector {
+  background: rgba(20, 25, 45, 0.75) !important;
+}
+
+.app.light-theme .scroll-container,
+.app.light-theme .instrument-selector {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.app.light-theme .scroll-container {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+.app.light-theme .instrument-selector {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* кнопки тулбара: blur с них тоже снимаем */
+.inst-btn,
+.fx-toggle-btn {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ==================== СТИЛИ ДЛЯ SVG-ИКОНОК В КНОПКАХ ==================== */
+
+/* Базовый размер и цвет иконок */
+.effect-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--text-secondary); /* В обычном состоянии иконки серые */
+  transition: all 0.2s ease;
+}
+
+/* При наведении иконка загорается цветом акцента */
+.effect-btn:hover svg {
+  fill: var(--text-accent);
+  filter: drop-shadow(0 0 5px var(--text-accent));
+}
+
+/* Иконка удаления (крестик) */
+.effect-btn-remove svg {
+  fill: var(--text-secondary);
+}
+.effect-btn-remove:hover svg {
+  fill: #ff4d4d;
+  filter: drop-shadow(0 0 5px #ff4d4d);
+}
+
+/* Иконки внутри длинных кнопок (SUB и REVERSE) */
+.pill-btn svg {
+  fill: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.pill-btn:hover svg {
+  fill: var(--text-primary);
+}
+
+/* Когда SUB включен - иконка становится фиолетовой */
+.active-sub svg {
+  fill: #bd00ff !important;
+}
+
+/* Когда REVERSE включен - иконка становится оранжевой */
+.active-rev svg {
+  fill: #FFB84D !important;
+}
+
+/* Вспышка (при клике) */
+.btn-flash svg, .btn-flash-red svg {
+  fill: #0a0e1a !important;
+}
+
+/* ==================== ХЭЛЛОУИНСКИЕ ТЫКВЫ ==================== */
+.halloween-pumpkins-container {
+  position: absolute;
+  top: 10%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Чтобы не мешали кликать */
+  z-index: 10;
+  overflow: hidden;
+}
+
+.pumpkin-wrapper {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+}
+
+/* Левая широкая тыква */
+.pumpkin-left {
+  left: 10%;
+  top: 15%;
+  animation: floatLeft 5s ease-in-out infinite alternate;
+}
+
+/* Правая высокая тыква */
+.pumpkin-right {
+  right: 10%;
+  top: 25%;
+  width: 130px;
+  height: 170px;
+  animation: floatRight 6s ease-in-out infinite alternate;
+}
+
+.pumpkin-wrapper svg {
+  width: 100%;
+  height: 100%;
+  /* Свечение вокруг самой тыквы */
+  filter: drop-shadow(0 0 25px rgba(255, 120, 0, 0.6)); 
+}
+
+/* Свечение лиц (глаз и рта) */
+.face-glow {
+  fill: #FFEA00;
+  animation: facePulse 3s infinite alternate;
+}
+
+@keyframes floatLeft {
+  0% { transform: translateY(0) rotate(-5deg); }
+  100% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes floatRight {
+  0% { transform: translateY(-15px) rotate(3deg); }
+  100% { transform: translateY(10px) rotate(-3deg); }
+}
+
+@keyframes facePulse {
+  0% { filter: drop-shadow(0 0 5px #FFEA00); opacity: 0.9; }
+  100% { filter: drop-shadow(0 0 20px #FFB84D); opacity: 1; }
+}
+
+/* Адаптив для маленьких экранов */
+@media (max-width: 1024px) {
+  .pumpkin-left { left: 5%; width: 100px; height: 100px; }
+  .pumpkin-right { right: 5%; width: 90px; height: 120px; }
+}
+@media (max-width: 768px) {
+  .halloween-pumpkins-container { display: none; } /* Скрываем на телефонах, чтобы не мешать */
+}
+
+/* ==================== АНИМАЦИЯ ЛОГОТИПА В ПРИЛОЖЕНИИ ==================== */
+
+/* Базовая кнопка */
+.app-logo-btn {
+  position: relative; /* Нужно для блика */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden; /* Обрезаем блик по кругу */
+  
+  /* Легкое парение вверх-вниз */
+  animation: floatAppLogo 4s ease-in-out infinite;
+  
+  /* Плавные переходы для трансформации и подсветки */
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+}
+
+/* Сама картинка */
+.app-logo-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: contain;
+  
+  /* Пульсирующее неоновое свечение */
+  animation: pulseAppLogo 3s ease-in-out infinite;
+  transition: box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+/* ✨ ЭФФЕКТ БЛИКА (Пробегающая полоса света) */
+.app-logo-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%; 
+  left: -50%;
+  width: 200%; 
+  height: 200%;
+  background: linear-gradient(
+    45deg, 
+    transparent 40%, 
+    rgba(255, 255, 255, 0.8) 50%, 
+    transparent 60%
+  );
+  transform: rotate(45deg) translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 🖱️ ЭФФЕКТ ПРИ НАВЕДЕНИИ */
+.app-logo-btn:hover {
+  animation-play-state: paused; /* Останавливаем парение */
+  transform: scale(1.15); /* Увеличиваем */
+  
+  /* 💡 АКТИВНАЯ ПОДСВЕТКА ВОКРУГ КНОПКИ */
+  box-shadow: 
+    0 0 0 3px rgba(255, 255, 255, 0.2), /* Тонкое внутреннее белое кольцо */
+    0 0 20px 6px rgba(255, 0, 128, 0.8), /* Розовое свечение */
+    0 0 40px 12px rgba(0, 200, 255, 0.6); /* Голубое внешнее свечение */
+}
+
+/* Картинка при наведении (вибрирует и светится) */
+.app-logo-btn:hover .app-logo-img {
+  animation: 
+    hoverWobble 0.4s ease-in-out infinite alternate, /* Вибрация */
+    hoverGlow 0.2s infinite alternate; /* Резкое мерцание неона */
+}
+
+/* Запуск блика при наведении */
+.app-logo-btn:hover::after {
+  animation: shineLogo 0.8s ease-in-out forwards;
+}
+
+/* --- КЛЮЧЕВЫЕ КАДРЫ --- */
+
+/* Парение (в покое) */
+@keyframes floatAppLogo {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Пульсация свечения (в покое) */
+@keyframes pulseAppLogo {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 200, 255, 0.3);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.7), 0 0 35px rgba(0, 200, 255, 0.6);
+    filter: brightness(1.1);
+  }
+}
+
+/* Вибрация при наведении */
+@keyframes hoverWobble {
+  0% { transform: scale(1.1) rotate(-4deg); }
+  100% { transform: scale(1.15) rotate(4deg); }
+}
+
+/* Резкое неоновое мерцание при наведении */
+@keyframes hoverGlow {
+  0% { box-shadow: 0 0 20px rgba(255, 0, 128, 0.8), 0 0 40px rgba(0, 200, 255, 0.7); filter: brightness(1.2); }
+  100% { box-shadow: 0 0 30px rgba(255, 0, 128, 1), 0 0 60px rgba(0, 200, 255, 0.9); filter: brightness(1.4); }
+}
+
+/* Пробегающий блик */
+@keyframes shineLogo {
+  0% { transform: rotate(45deg) translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: rotate(45deg) translateX(100%); opacity: 0; }
 }

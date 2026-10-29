@@ -7,6 +7,163 @@ import { supabase } from './supabaseClient';
 import * as MidiModule from '@tonejs/midi';
 // Автоматически определяем правильный конструктор
 const Midi = MidiModule.Midi || MidiModule.default || MidiModule;
+
+// 🎨 Палитры свечения фона (dark = для тёмной темы, light = для светлой)
+const BG_PALETTES = [
+  {
+    name: 'Neon', icon: '🌈',
+    dark:  { g1a: 'rgba(180, 60, 255, 0.5)',  g1b: 'rgba(255, 0, 128, 0.35)',  g1c: 'rgba(0, 200, 255, 0.25)',  g2a: 'rgba(255, 200, 0, 0.2)',   g2b: 'rgba(255, 100, 200, 0.15)', g2c: 'rgba(0, 200, 255, 0.1)' },
+    light: { g1a: 'rgba(0, 122, 255, 0.45)',  g1b: 'rgba(175, 82, 222, 0.35)',  g1c: 'rgba(255, 45, 85, 0.25)',  g2a: 'rgba(255, 200, 0, 0.35)',  g2b: 'rgba(255, 100, 200, 0.25)', g2c: 'rgba(0, 200, 255, 0.15)' }
+  },
+  {
+    name: 'Sunset', icon: '🌅',
+    dark:  { g1a: 'rgba(255, 94, 0, 0.55)',   g1b: 'rgba(255, 45, 85, 0.4)',    g1c: 'rgba(255, 200, 0, 0.3)',   g2a: 'rgba(200, 50, 150, 0.25)', g2b: 'rgba(255, 94, 0, 0.2)',    g2c: 'rgba(255, 45, 85, 0.15)' },
+    light: { g1a: 'rgba(255, 140, 50, 0.45)', g1b: 'rgba(255, 80, 120, 0.35)', g1c: 'rgba(255, 220, 100, 0.3)', g2a: 'rgba(255, 100, 180, 0.3)', g2b: 'rgba(255, 140, 50, 0.2)', g2c: 'rgba(255, 80, 120, 0.15)' }
+  },
+  {
+    name: 'Ocean', icon: '🌊',
+    dark:  { g1a: 'rgba(0, 180, 255, 0.55)',  g1b: 'rgba(0, 255, 200, 0.4)',    g1c: 'rgba(100, 100, 255, 0.3)', g2a: 'rgba(0, 100, 200, 0.3)',  g2b: 'rgba(0, 255, 180, 0.2)',  g2c: 'rgba(50, 150, 255, 0.15)' },
+    light: { g1a: 'rgba(0, 150, 230, 0.45)', g1b: 'rgba(0, 220, 180, 0.35)', g1c: 'rgba(80, 80, 230, 0.3)',   g2a: 'rgba(0, 100, 200, 0.3)',  g2b: 'rgba(0, 220, 180, 0.2)',  g2c: 'rgba(50, 150, 255, 0.15)' }
+  },
+  {
+    name: 'Forest', icon: '🌿',
+    dark:  { g1a: 'rgba(0, 220, 130, 0.5)',   g1b: 'rgba(150, 255, 50, 0.35)',  g1c: 'rgba(0, 180, 200, 0.25)', g2a: 'rgba(200, 255, 100, 0.2)', g2b: 'rgba(0, 200, 150, 0.2)',  g2c: 'rgba(100, 255, 50, 0.15)' },
+    light: { g1a: 'rgba(0, 180, 110, 0.45)', g1b: 'rgba(130, 220, 50, 0.35)', g1c: 'rgba(0, 160, 180, 0.25)', g2a: 'rgba(180, 230, 80, 0.3)',  g2b: 'rgba(0, 180, 140, 0.2)',  g2c: 'rgba(90, 220, 50, 0.15)' }
+  },
+  {
+    name: 'Fire', icon: '🔥',
+    dark:  { g1a: 'rgba(255, 50, 0, 0.55)',   g1b: 'rgba(255, 150, 0, 0.4)',    g1c: 'rgba(255, 220, 0, 0.3)',  g2a: 'rgba(200, 30, 0, 0.3)',   g2b: 'rgba(255, 100, 0, 0.25)', g2c: 'rgba(255, 200, 50, 0.15)' },
+    light: { g1a: 'rgba(255, 80, 30, 0.45)', g1b: 'rgba(255, 170, 30, 0.35)', g1c: 'rgba(255, 220, 0, 0.3)',   g2a: 'rgba(220, 50, 20, 0.3)',   g2b: 'rgba(255, 120, 20, 0.25)', g2c: 'rgba(255, 210, 60, 0.15)' }
+  },
+  {
+    name: 'Aurora', icon: '🌌',
+    dark:  { g1a: 'rgba(100, 255, 200, 0.5)', g1b: 'rgba(150, 100, 255, 0.4)',  g1c: 'rgba(255, 100, 200, 0.3)', g2a: 'rgba(50, 200, 255, 0.25)', g2b: 'rgba(200, 100, 255, 0.2)', g2c: 'rgba(100, 255, 180, 0.15)' },
+    light: { g1a: 'rgba(80, 220, 180, 0.45)', g1b: 'rgba(130, 80, 230, 0.35)', g1c: 'rgba(230, 80, 180, 0.3)',  g2a: 'rgba(50, 180, 230, 0.3)',  g2b: 'rgba(180, 80, 230, 0.25)', g2c: 'rgba(80, 220, 180, 0.15)' }
+  },
+  {
+    name: 'Candy', icon: '🍬',
+    dark:  { g1a: 'rgba(255, 100, 200, 0.55)', g1b: 'rgba(200, 100, 255, 0.4)', g1c: 'rgba(100, 200, 255, 0.3)', g2a: 'rgba(255, 150, 100, 0.25)', g2b: 'rgba(255, 100, 200, 0.2)', g2c: 'rgba(150, 100, 255, 0.15)' },
+    light: { g1a: 'rgba(230, 80, 180, 0.45)', g1b: 'rgba(180, 80, 230, 0.35)', g1c: 'rgba(80, 180, 230, 0.3)',  g2a: 'rgba(230, 130, 80, 0.3)',  g2b: 'rgba(230, 80, 180, 0.2)',  g2c: 'rgba(130, 80, 230, 0.15)' }
+  },
+  {
+    name: 'Cyberpunk', icon: '⚡',
+    dark:  { g1a: 'rgba(255, 0, 200, 0.55)',   g1b: 'rgba(255, 255, 0, 0.4)',   g1c: 'rgba(0, 255, 255, 0.3)',  g2a: 'rgba(0, 255, 200, 0.25)', g2b: 'rgba(255, 0, 150, 0.2)',  g2c: 'rgba(255, 255, 0, 0.15)' },
+    light: { g1a: 'rgba(220, 0, 180, 0.45)', g1b: 'rgba(220, 200, 0, 0.35)', g1c: 'rgba(0, 200, 200, 0.3)',   g2a: 'rgba(0, 200, 160, 0.3)',  g2b: 'rgba(220, 0, 130, 0.2)',  g2c: 'rgba(220, 200, 0, 0.15)' }
+  },
+  {
+    name: 'Silver', icon: '🌫️',
+    dark:  { g1a: 'rgba(180, 180, 220, 0.4)', g1b: 'rgba(120, 120, 180, 0.3)',  g1c: 'rgba(200, 200, 255, 0.2)', g2a: 'rgba(150, 150, 200, 0.2)', g2b: 'rgba(200, 200, 240, 0.15)', g2c: 'rgba(100, 100, 160, 0.1)' },
+    light: { g1a: 'rgba(140, 140, 190, 0.35)', g1b: 'rgba(100, 100, 150, 0.25)', g1c: 'rgba(180, 180, 220, 0.2)', g2a: 'rgba(130, 130, 170, 0.2)', g2b: 'rgba(180, 180, 210, 0.15)', g2c: 'rgba(90, 90, 140, 0.1)' }
+  }
+];
+
+const NoteBlock = React.memo(({
+  block: b,
+  instName,
+  instrument,
+  isSelected,
+  isActive,
+  getColor,
+  handleSelectBlock,
+  handleGroupDragStart,
+  startDrag,
+  startResize,
+  handleTouchStart,
+  handleTouchMove,
+  handleTouchEnd,
+  isDraggingRef,
+  setTracks,
+  setSelectedBlockIds
+}) => {
+  const isActiveInstrument = instName === instrument;
+  
+  return (
+    <div
+      className={`block ${isActive ? 'playing' : ''}`}
+      data-id={b.id}
+      onMouseDown={(e) => {
+        handleSelectBlock(e, b, instName);
+        if (isActiveInstrument) {
+          isDraggingRef.current = true;
+          if (isSelected) {
+            handleGroupDragStart(e, b); // ✅ Тянем как группу
+          } else {
+            startDrag(b, e); // ✅ Тянем как одиночную
+          }
+        }
+      }}
+      onDoubleClick={() => {
+        if (!isActiveInstrument) return;
+        setTracks(prev => ({
+          ...prev,
+          [instrument]: prev[instrument].map(it => it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it)
+        }));
+      }}
+      onTouchStart={(e) => {
+        handleSelectBlock(e, b, instName);
+        if (isActiveInstrument) handleTouchStart(e, b, false);
+      }}
+      onTouchMove={(e) => {
+        if (isActiveInstrument) handleTouchMove(e);
+      }}
+      onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (!isActiveInstrument) return;
+        setTracks(prev => ({ ...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id) }));
+        setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
+      }}
+      style={{
+        position: "absolute",
+        left: b.x,
+        width: b.length,
+        height: 45,
+        backgroundColor: isActiveInstrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.2)",
+        boxShadow: isActiveInstrument ? `0 4px 0 rgba(0,0,0,0.5), 0 0 8px ${getColor(b.fret)}` : "none",
+        opacity: isActiveInstrument ? (b.velocity || 1) : 0.5,
+        border: isActiveInstrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
+        outline: isSelected ? "2px solid cyan" : "none",
+        outlineOffset: "2px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontWeight: "bold",
+        cursor: isActiveInstrument ? "grab" : "default",
+        zIndex: isActiveInstrument ? 10 : 5,
+        borderRadius: 8,
+        pointerEvents: "auto",
+        touchAction: "none",
+        transition: "none"
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <span>{b.fret}</span>
+        {b.effect === 'click' && <span style={{ fontSize: "10px" }}>🔊</span>}
+        {b.effect === 'pop' && <span style={{ fontSize: "10px" }}>🎯</span>}
+        {b.effect === 'pixel' && <span style={{ fontSize: "10px" }}>🕹️</span>}
+        {b.effect === 'boom' && <span style={{ fontSize: "10px" }}>💥</span>}
+        {b.effect === 'chirp' && <span style={{ fontSize: "10px" }}>🐤</span>}
+      </div>
+      {isActiveInstrument && (
+        <div
+          onMouseDown={(e) => startResize(b, e)}
+          onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
+          style={{ position: "absolute", right: 0, top: 0, width: 15, height: "100%", cursor: "ew-resize", background: "rgba(0,0,0,0.1)", borderRadius: "0 6px 6px 0" }}
+        />
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  // Функция сравнения: если всё совпадает, React НЕ перерисовывает нотку
+  return (
+    prev.block === next.block &&
+    prev.isSelected === next.isSelected &&
+    prev.isActive === next.isActive &&
+    prev.instrument === next.instrument &&
+    prev.instName === next.instName
+  );
+});
 function App() {
   const [user, setUser] = useState(() => {
     // При загрузке страницы проверяем, есть ли сохраненный юзер в памяти браузера
@@ -18,10 +175,22 @@ function App() {
   const [tracks, setTracks] = useState({ guitar: [], synth: [], drum: [], bass: [], chip: [] });
   const MAX_FRET = 60;
   const [instrument, setInstrument] = useState("guitar");
+  // 🔄 Состояние для инверсии струн
+  const [isReversed, setIsReversed] = useState(() => {
+    return localStorage.getItem('struna_reverse_strings') === 'true';
+  });
+
+  const toggleReverseStrings = () => {
+    const newVal = !isReversed;
+    setIsReversed(newVal);
+    localStorage.setItem('struna_reverse_strings', String(newVal));
+    if (uiSoundsEnabled) uiSounds.playClick();
+  };
   const [showHelp, setShowHelp] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [infoModal, setInfoModal] = useState({ visible: false, message: '', title: '' });
   const [bpm, setBpm] = useState(120);
+  const [currentAITonality, setCurrentAITonality] = useState(null); // Память для AI
   
   const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
   const [isTempoMasterVisible, setIsTempoMasterVisible] = useState(false);
@@ -91,7 +260,7 @@ function App() {
 // Переводы для двух фраз
 const translations = {
   en: {
-    tagline: "LIQUID GLASS",
+    tagline: "UNBOUND SOUND",
     startBtn: "START CREATING",
     desktopOnly: "Desktop Version Only",
     // Верхняя панель (старые ключи, оставляем для совместимости)
@@ -102,6 +271,7 @@ const translations = {
     // Новые ключи для меню "МОЯ СТРУНА"
     myStruna: "MY STRUNA",
     theme: "Theme",
+    bgPalette: "Background Color",
     saveProject: "💾 Save Project",
     loadProject: "📂 Load Project",
     driveSaveProject: "▲ Drive Save",
@@ -139,6 +309,7 @@ const translations = {
     removeAllEffects: "REMOVE ALL EFFECTS",
     subOn: "SUB ON",
     subOff: "SUB OFF",
+    reverseStrings: "Reverse Strings",
     // 3D SOUND
     "3dOn": "ON",
     "3dOff": "OFF",
@@ -195,20 +366,18 @@ tutorialMessage: "Click on the grid to add a note. Use mouse wheel to change pit
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "What's New",
-changelogTitle: "✨ What's New (v1.5.3.4-Beta)",
+changelogTitle: "✨ What's New (v2.0)",
 changelogText: [
-  "• Liquid Glass design style",
-  "• MIDI export: open your tracks in any sequencer or DAW",
-  "• Welcome tutorial for new users (shows only once)",
-  "• Clear Instrument button – quickly delete all notes of the current instrument",
-  "• AI evolution: each click mutates existing notes (shift, transpose, crossover)",
-  "• Improved playhead dragging: smooth auto-scroll with edge acceleration and real-time position display",
-  "• Ctrl+A – select all blocks on the current instrument",
-  
+  "• Brand new GEN engine: Instantly generate complete tracks in 12 unique music styles.",
+  "• Completely new Liquid Glass design with smooth animations.",
+  "• Dynamic background palettes and seamless light/dark themes.",
+  "• Revamped audio engine and major global performance boost.",
+  "• Perfect seamless loops and rock-solid metronome.",
+  "• String inversion feature and improved grid controls."
 ]
   },
   ru: {
-    tagline: "ЖИДКОЕ СТЕКЛО",
+    tagline: "ЗВУК БЕЗ ГРАНИЦ",
     startBtn: "НАЧАТЬ ТВОРИТЬ",
     desktopOnly: "Только для ПК",
     // Верхняя панель (старые ключи, оставляем для совместимости)
@@ -219,6 +388,7 @@ changelogText: [
     // Новые ключи для меню "МОЯ СТРУНА"
     myStruna: "МОЯ СТРУНА",
     theme: "Тема",
+    bgPalette: "Цвет фона",
     saveProject: "💾 Сохранить проект",
     loadProject: "📂 Загрузить проект",
     driveSaveProject: "▲ Сохранить на диск",
@@ -256,6 +426,7 @@ changelogText: [
     removeAllEffects: "УДАЛИТЬ ВСЕ ЭФФЕКТЫ",
     subOn: "САБ ВКЛ",
     subOff: "САБ ВЫКЛ",
+    reverseStrings: "Инверсия струн",
     // 3D SOUND
     "3dOn": "ВКЛ",
     "3dOff": "ВЫКЛ",
@@ -312,15 +483,14 @@ tutorialMessage: "Кликни по сетке — появится нота. К
     },
     // Кнопка "Что нового" и список новинок (ОБНОВЛЕНО)
     changelogBtn: "Что нового",
-changelogTitle: "✨ Что нового (v1.5.3.4-Beta)",
+changelogTitle: "✨ Что нового (v2.0)",
 changelogText: [
-  "• Дизайн в стиле Liquid Glass",
-  "• MIDI-экспорт: ваши треки теперь можно открывать в любом секвенсоре",
-  "• Приветственный туториал для новых пользователей (показывается один раз)",
-  "• Кнопка «Очистить инструмент» — быстрое удаление всех нот текущего инструмента",
-  "• Эволюционная AI-генерация: каждое нажатие мутирует существующие ноты (сдвиг, транспозиция, скрещивание)",
-  "• Улучшено перетаскивание плейхеда: плавный автоскролл с ускорением у краёв и отображение времени в реальном времени",
-  "• Ctrl+A – выделить все блоки на текущем инструменте",
+  "• Новый GEN-движок: генерация полноценных битов в 12 разных стилях.",
+  "• Новый дизайн в стиле Liquid Glass и плавные анимации.",
+  "• Динамические палитры фона и бесшовная смена тем.",
+  "• Обновлённый аудиодвижок и глобальная оптимизация.",
+  "• Идеальный луп и ровный метроном для бесшовного ритма.",
+  "• Инверсия струн и улучшенное управление сеткой."
 ]
   }
 };
@@ -358,6 +528,23 @@ const [subMode, setSubMode] = useState(() => {
     return saved === "light" ? "light" : "dark";
   });
   
+  const [bgPaletteIndex, setBgPaletteIndex] = useState(() => {
+    const saved = localStorage.getItem('struna_bg_palette');
+    const idx = saved !== null ? parseInt(saved, 10) : 0;
+    return Number.isInteger(idx) && idx >= 0 && idx < BG_PALETTES.length ? idx : 0;
+  });
+
+  const randomizeBgPalette = () => {
+    if (BG_PALETTES.length <= 1) return;
+    let newIndex;
+    do {
+      newIndex = Math.floor(Math.random() * BG_PALETTES.length);
+    } while (newIndex === bgPaletteIndex);
+    setBgPaletteIndex(newIndex);
+    localStorage.setItem('struna_bg_palette', String(newIndex));
+    if (uiSoundsEnabled) uiSounds.playChirp();
+  };
+
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
     setTheme(newTheme);
@@ -457,6 +644,39 @@ const [subMode, setSubMode] = useState(() => {
   const loopStartRef = useRef(0);
   const loopEndRef = useRef(0);
   window.__currentFxVolume = fxVolume;
+  const maxEndPXRef = useRef(0);
+  const scheduledIdsRef = useRef([]);
+  const vuBarRefs = useRef([]);
+    // Ссылки для хранения актуальных данных без пересоздания слушателей
+    const selectedBlockIdsRef = useRef(selectedBlockIds);
+    const tracksRef = useRef(tracks);
+    const instrumentRef = useRef(instrument);
+    const funcsRef = useRef({});
+  
+    // Синхронизируем данные при каждом их изменении
+    useEffect(() => {
+      selectedBlockIdsRef.current = selectedBlockIds;
+      tracksRef.current = tracks;
+      instrumentRef.current = instrument;
+      // Сохраняем ссылки на функции, чтобы внутри обработчика они были свежими
+      funcsRef.current = {
+        handleTogglePlay,
+        handleStop,
+        handleRecord,
+        copySelectedBlocks,
+        pasteBlocks,
+        deleteSelectedBlocks
+      };
+    });
+  const secondsRef = useRef(null);
+  const barBeatRef = useRef(null);
+  const waveCircleRef = useRef(null);
+  const masterDisplayModeRef = useRef(masterDisplayMode);
+  
+    // Чтобы цикл анимации знал, какой режим сейчас включен (VU или WAVE)
+    useEffect(() => {
+      masterDisplayModeRef.current = masterDisplayMode;
+    }, [masterDisplayMode]);
   const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
   const meterRef = useRef(null);
   const copiedBlocksRef = useRef([]);
@@ -686,7 +906,7 @@ const uiSounds = {
     }
     return synth;
   },
-  playEffect: (effectName, velocity = 1) => {
+  playEffect: (effectName, velocity = 1, time = Tone.now() + 0.01) => {
     if (!uiSoundsEnabled) return;
     const synth = uiSounds.getSynth(effectName);
     if (!synth) return;
@@ -702,8 +922,7 @@ const uiSounds = {
     }
     // Генерируем уникальный микро-сдвиг (0 .. 0.005 секунды)
     const shift = (performance.now() % 100) * 0.0001;
-    const time = Tone.now() + 0.01 + shift;
-    synth.triggerAttackRelease(freq, duration, time, velocity);
+    synth.triggerAttackRelease(freq, duration, time + shift, velocity);
   },
   playClick: () => { if (uiSoundsEnabled) uiSounds.playEffect('click', 1); },
   playPop: () => { if (uiSoundsEnabled) uiSounds.playEffect('pop', 1); },
@@ -817,16 +1036,20 @@ const autoScrollIfNeeded = (clientX) => {
     
       const deltaX = e.clientX - dragStartInfo.startX;
       const deltaY = e.clientY - dragStartInfo.startY;
+      let stringDelta = Math.round(deltaY / 60);
+      if (isReversed) stringDelta = -stringDelta;
     
-      const currentInst = instrument;
-      const newTracks = { ...tracks };
+      const currentInst = instrumentRef.current;
+      const newTracks = { ...tracksRef.current };
       newTracks[currentInst] = newTracks[currentInst].map(b => {
         if (dragStartInfo.initialBlocks.has(b.id)) {
           const initial = dragStartInfo.initialBlocks.get(b.id);
           let newX = initial.x + deltaX;
           newX = Math.round(newX / STEP_WIDTH) * STEP_WIDTH;
           newX = Math.max(0, newX);
-          let newString = initial.string + Math.round(deltaY / 60);
+          
+          let newString = initial.string + stringDelta; // ✅ ИСПОЛЬЗУЕМ stringDelta С РЕВЕРСОМ
+          
           newString = Math.max(0, Math.min(strings.length - 1, newString));
           return { ...b, x: newX, string: newString };
         }
@@ -847,42 +1070,42 @@ const autoScrollIfNeeded = (clientX) => {
     
       autoScrollIfNeeded(e.clientX);
     };
-  useEffect(() => {
-    const handleMove = (e) => {
-      if (!isDraggingRef.current) return;
-      if (isGroupDragging) handleGroupDragMove(e);
-         autoScrollIfNeeded(e.clientX);
-    };
-  
-    const handleUp = () => {
-      isDraggingRef.current = false;
-      scrollSpeedRef.current = 0;
-      setIsGroupDragging(false);
+
+    useEffect(() => {
+      const handleMove = (e) => {
+        if (!isDraggingRef.current) return;
+        if (isGroupDragging) handleGroupDragMove(e);
+        autoScrollIfNeeded(e.clientX);
+      };
     
-      // ДОБАВЬТЕ ЭТОТ БЛОК
-      if (dragFrameRef.current) {
-        cancelAnimationFrame(dragFrameRef.current);
-        dragFrameRef.current = null;
-      }
-      if (pendingTracksRef.current) {
-        setTracks(pendingTracksRef.current);
-        pendingTracksRef.current = null;
-      }
+      const handleUp = () => {
+        isDraggingRef.current = false;
+        scrollSpeedRef.current = 0;
+        setIsGroupDragging(false);
+      
+        if (dragFrameRef.current) {
+          cancelAnimationFrame(dragFrameRef.current);
+          dragFrameRef.current = null;
+        }
+        if (pendingTracksRef.current) {
+          setTracks(pendingTracksRef.current);
+          pendingTracksRef.current = null;
+        }
+      
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      };
     
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-  
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-  },[isGroupDragging, dragStartInfo, instrument, tracks, selectedBlockIds]);
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleUp);
+    
+      return () => {
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleUp);
+      };
+    }, [isGroupDragging, dragStartInfo, isReversed]); // ✅ Добавили isReversed
   
   useEffect(() => {
     const grid = scrollRef.current;
@@ -923,13 +1146,12 @@ const autoScrollIfNeeded = (clientX) => {
         const blockId = Number(targetBlock.dataset.id);
         
         // РЕДАКТИРОВАНИЕ: Меняем параметры только если этот блок сейчас ВЫДЕЛЕН
-        if (selectedBlockIds.has(blockId)) {
-          e.preventDefault(); // Блокируем скролл сетки, так как редактируем ноту
-          
+        if (selectedBlockIdsRef.current.has(blockId)) {
+          e.preventDefault(); 
           setTracks(prev => {
             return {
               ...prev,
-              [instrument]: prev[instrument].map((it) => {
+              [instrumentRef.current]: prev[instrumentRef.current].map((it) => {
                 if (it.id === blockId) {
                   if (e.altKey) {
                     // Alt + Колесо = Изменение громкости (velocity)
@@ -979,24 +1201,30 @@ const autoScrollIfNeeded = (clientX) => {
       grid.removeEventListener("wheel", handleWheel);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, [instrument, selectedBlockIds]);
+  }, [mode]);
+
   const getColor = (fret) => {
     const colors = ["#FF4D4D", "#FF7A4D", "#FFB84D", "#FFD84D", "#E6FF4D", "#A8FF4D", "#4DFF88", "#4DFFD2", "#4DC3FF", "#4D88FF", "#7A4DFF", "#C84DFF", "#FF4DA6"];
     return colors[fret % colors.length];
   };
   // --- AUDIO INIT ---
 useEffect(() => {
-  // 1. Мастер-компрессор (идёт в самый конец цепи)
-  const masterCompressor = new Tone.Compressor({
-    threshold: -12,
-    ratio: 3,
-    attack: 0.01,
-    release: 0.2,
-    knee: 5
-  }).toDestination();
+  // ===== НАСТРОЙКА НОВОГО ДВИЖКА TONE.TRANSPORT =====
+  Tone.getTransport().bpm.value = bpm;
+  Tone.context.lookAhead = 0.2; // Увеличиваем буфер (защита от треска при лагах ПК)
+  Tone.getTransport().PPQ = 192; // Высокая точность (Pulses Per Quarter)
 
-  // 2. Лимитер для защиты от перегрузки
-  const limiter = new Tone.Limiter(-3).connect(masterCompressor);
+    // 1. Мастер-компрессор (идёт в самый конец цепи)
+    const masterCompressor = new Tone.Compressor({
+      threshold: -18, // ✅ Снизили порог, чтобы лучше ловить пики
+      ratio: 4,       // ✅ Увеличили степень сжатия
+      attack: 0.01,
+      release: 0.2,
+      knee: 10
+    }).toDestination();
+  
+    // 2. Лимитер для защиты от перегрузки (кирпичная стена)
+    const limiter = new Tone.Limiter(-1).connect(masterCompressor); // ✅ Подняли до -1 dB
 
   // 3. Мастер-гейн (общая громкость)
   const master = new Tone.Gain(1.0).connect(limiter);
@@ -1063,7 +1291,7 @@ useEffect(() => {
     // ----- 3D-паннер вместо обычного -----
     const pos = defaultPositions[type];
     const panner3D = new Tone.Panner3D({
-      panningModel: "HRTF",
+      panningModel: "equalpower",
       positionX: pos.x,
       positionY: pos.y,
       positionZ: pos.z
@@ -1108,9 +1336,12 @@ useEffect(() => {
         harmonicity: 2,
         modulationIndex: 10,
         oscillator: { type: "triangle" },
-        envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
-        modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
-      }).connect(filter);
+        envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 0.8 }, // ✅ Уменьшили release с 1.5 до 0.8
+        modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.5 }
+      });
+      synthsRef.current[type].maxPolyphony = 16; // ✅ Ограничили полифонию
+      synthsRef.current[type].connect(filter);
+    
     } else if (type === "drum") {
       const membranePool = [];
       const noisePool = [];
@@ -1127,11 +1358,13 @@ useEffect(() => {
         }).connect(filter));
       }
       synthsRef.current[type] = { membranePool, noisePool };
+
     } else if (type === "chip") {
       const chipSynth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "square" },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
+        envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.1 } // ✅ Оставили коротким
       });
+      chipSynth.maxPolyphony = 8; // ✅ Ограничили полифонию для чипа
       const bitCrusher = new Tone.BitCrusher(8);
       if (bitCrusher.frequency) bitCrusher.frequency.value = 8000;
       chipSynth.connect(bitCrusher);
@@ -1140,13 +1373,37 @@ useEffect(() => {
     } else {
       synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: "sawtooth" },
-        envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
-      }).connect(filter);
+        envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 1.0 } // ✅ Уменьшили release с 2.0 до 1.0
+      });
+      synthsRef.current[type].maxPolyphony = 16; // ✅ Ограничили полифонию
+      synthsRef.current[type].connect(filter);
     }
   });
 
+    // ===== НОВЫЙ МЕТРОНОМ НА БАЗЕ TRANSPORT =====
+    const metroLoop = new Tone.Loop((time) => {
+      if (!metroOnRef.current || !metroSynthRef.current) return;
+      
+      // Вычисляем, какая это доля (чтобы выделить первую)
+      const ticks = Tone.getTransport().getTicksAtTime(time);
+      const beatIndex = Math.floor(ticks / Tone.getTransport().PPQ);
+      const isFirstBeat = beatIndex % 4 === 0;
+      
+      const freq = isFirstBeat ? 'A5' : 'A4';
+      const velocity = isFirstBeat ? 0.8 : 0.4;
+      
+      if (metroSoundRef.current === 'noise') {
+        metroSynthRef.current.triggerAttackRelease('16n', time, metroVolumeRef.current * velocity);
+      } else {
+        metroSynthRef.current.triggerAttackRelease(freq, '16n', time, metroVolumeRef.current * velocity);
+      }
+    }, "4n"); // Играть каждую четверть
+  
+    metroLoop.start(0); // Запускаем цикл
+
   // Cleanup function (очистка при размонтировании компонента)
   return () => {
+    metroLoop.dispose();
     if (window.__fxMasterGain) {
       window.__fxMasterGain.dispose();
       Object.values(effectSynths).forEach(synth => synth?.dispose());
@@ -1277,13 +1534,17 @@ useEffect(() => {
       }
     });
   }, [volumes]);
+
   useEffect(() => {
+    Tone.getTransport().bpm.value = bpm; // Обновляем темп Транспорта
     if (isPlaying) {
-      // Перезапускаем движок с новым темпом
+      // Перезапускаем визуальный движок (звук перестроится сам)
       cancelAnimationFrame(animationRef.current);
+      syncNotesToTransport(); 
       startEngine();
     }
   }, [bpm]);
+
   useEffect(() => {
     if (window.__fxMasterGain) {
       window.__fxMasterGain.gain.rampTo(fxVolume, 0.05);
@@ -1294,10 +1555,12 @@ useEffect(() => {
       masterGainRef.current.gain.value = masterGainValue;
     }
   }, [masterGainValue]);
+
   useEffect(() => {
     loopStartRef.current = loopStart;
     loopEndRef.current = loopEnd;
   }, [loopStart, loopEnd]);
+
   useEffect(() => {
     const appDiv = document.querySelector('.app');
     if (appDiv) {
@@ -1305,6 +1568,21 @@ useEffect(() => {
       else appDiv.classList.remove('light-theme');
     }
   }, [theme]);
+
+// 🎨 Применяем цветовую палитру фона
+useEffect(() => {
+  const appEl = document.querySelector('.app');
+  if (!appEl) return;
+  const palette = BG_PALETTES[bgPaletteIndex] || BG_PALETTES[0];
+  const c = theme === 'light' ? palette.light : palette.dark;
+  appEl.style.setProperty('--bg-glow1-a', c.g1a);
+  appEl.style.setProperty('--bg-glow1-b', c.g1b);
+  appEl.style.setProperty('--bg-glow1-c', c.g1c);
+  appEl.style.setProperty('--bg-glow2-a', c.g2a);
+  appEl.style.setProperty('--bg-glow2-b', c.g2b);
+  appEl.style.setProperty('--bg-glow2-c', c.g2c);
+}, [bgPaletteIndex, theme, mode]); // mode — чтобы палитра переприменялась при смене landing ↔ app
+
   useEffect(() => {
     // Обновляем все инструменты при изменении позиций или режима 3D
     Object.entries(pannerRefs.current).forEach(([type, panner]) => {
@@ -1348,29 +1626,7 @@ useEffect(() => {
   setIsDataLoaded(true);
 }, [user, autosaveEnabled]);
 
-// ===== АВТОСОХРАНЕНИЕ (ВТОРОЙ) =====
-useEffect(() => {
-  // Если данные ещё не загружены, пользователь не залогинен или автосохранение выключено – пропускаем
-  if (!isDataLoaded || !user?.email || !autosaveEnabled) return;
 
-  const key = `struna_autosave_${user.email}`;
-  const data = {
-    tracks,
-    bpm,
-    filters,
-    fx,
-    volumes,
-    positions3D,
-    loopActive,
-    loopStart,
-    loopEnd
-  };
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Автосохранение не удалось:', e);
-  }
-}, [isDataLoaded, user, tracks, bpm, filters, fx, volumes, positions3D, loopActive, loopStart, loopEnd, autosaveEnabled]);
 
 // Сохраняем состояние автокнопки в localStorage при изменении
 useEffect(() => {
@@ -1889,47 +2145,41 @@ useEffect(() => {
   }
 }, [user]);
 
+// ===== АВТОСОХРАНЕНИЕ (дебаунс 800ms + индикатор) =====
 useEffect(() => {
-  if (!autosaveEnabled || !user?.email || !isDataLoaded) return;
+  if (!isDataLoaded || !user?.email || !autosaveEnabled) return;
 
-  // Очищаем предыдущие таймеры
-  if (statusTimerRef.current) {
-    clearTimeout(statusTimerRef.current);
-    clearTimeout(statusTimerRef.currentSaved);
-  }
-
-  setAutosaveStatus('saving');
-
-  const timer1 = setTimeout(() => {
-    setAutosaveStatus('saved');
-  }, 2000);
-
-  const timer2 = setTimeout(() => {
-    setAutosaveStatus('idle');
-  }, 2500);
-
-  statusTimerRef.current = timer1;
-  statusTimerRef.currentSaved = timer2;
-
-  return () => {
-    clearTimeout(timer1);
-    clearTimeout(timer2);
+  const key = `struna_autosave_${user.email}`;
+  const data = {
+    tracks, bpm, filters, fx, volumes, positions3D,
+    loopActive, loopStart, loopEnd
   };
-}, [
-  tracks,
-  bpm,
-  filters,
-  fx,
-  volumes,
-  positions3D,
-  loopActive,
-  loopStart,
-  loopEnd,
-  autosaveEnabled,
-  user,
-  isDataLoaded
-]);
+
+  const saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+      setAutosaveStatus('saved');
+      if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+      statusTimerRef.current = setTimeout(() => setAutosaveStatus('idle'), 1500);
+    } catch (e) {
+      console.warn('Автосохранение не удалось:', e);
+    }
+  }, 800);
+
+  return () => clearTimeout(saveTimer);
+}, [isDataLoaded, user, tracks, bpm, filters, fx, volumes, positions3D, loopActive, loopStart, loopEnd, autosaveEnabled]);
   
+  // Обновляем звуки при изменении нот (с задержкой, чтобы не лагало при перетаскивании)
+  useEffect(() => {
+    if (!isPlaying) return;
+    
+    const timer = setTimeout(() => {
+      syncNotesToTransport();
+    }, 150); // Ждем 150мс после последнего изменения
+
+    return () => clearTimeout(timer);
+  }, [tracks, loopActive, loopStart, loopEnd, isPlaying]);
+
 useEffect(() => {
   // Показываем туториал только если мы в режиме приложения и ещё не показывали
   if (mode === "app" && !localStorage.getItem('struna_tutorial_shown')) {
@@ -1994,7 +2244,8 @@ useEffect(() => {
       const rect = scrollRef.current.getBoundingClientRect();
       const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
       const relativeY = currentY - rect.top;
-      let newString = Math.floor(relativeY / 60);
+      let visualString = Math.floor(relativeY / 60);
+      let newString = isReversed ? strings.length - 1 - visualString : visualString;
       newString = Math.max(0, Math.min(strings.length - 1, newString));
   
       setTracks(prev => ({
@@ -2067,13 +2318,13 @@ useEffect(() => {
       // Автоскролл с ускорением у краёв
       autoScrollIfNeeded(currentClientX);
   
-      // Обновляем время воспроизведения
-      const stepTime = 60 / bpm / 4;
-      const newTime = (boundedX / STEP_WIDTH) * stepTime;
-      const now = Tone.now();
-      startTimeRef.current = now - newTime;
-      pauseOffsetRef.current = newTime;
-      triggeredRef.current.clear();
+            // Обновляем время воспроизведения
+            const stepTime = 60 / bpm / 4;
+            const newTime = (boundedX / STEP_WIDTH) * stepTime;
+            
+            // Ставим время в Транспорте!
+            Tone.getTransport().seconds = newTime;
+            triggeredRef.current.clear();
   
       // ===== ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ В БЛОКЕ MASTER VOL =====
       const secondsPerBeat = 60 / bpm;
@@ -2106,6 +2357,103 @@ useEffect(() => {
     window.addEventListener("touchend", onUp);
   };
 
+    // ===== ФУНКЦИЯ РАСПИСАНИЯ НОТ =====
+    const syncNotesToTransport = () => {
+      const transport = Tone.getTransport();
+      
+       // Очищаем ТОЛЬКО старые ноты, не трогая метроном!
+       if (scheduledIdsRef.current) {
+        scheduledIdsRef.current.forEach(id => transport.clear(id));
+        scheduledIdsRef.current = [];
+      }
+  
+      const stepTime = 60 / bpm / 4;
+  
+      Object.entries(tracks).forEach(([type, blocks]) => {
+        // ✅ 1. Сортируем блоки по времени (слева направо)
+        const sortedBlocks = [...blocks].sort((a, b) => a.x - b.x);
+        let lastBassTime = -1; // ✅ Защита для MonoSynth
+  
+        sortedBlocks.forEach((b) => {
+          const startStep = Math.floor(b.x / STEP_WIDTH);
+          const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
+          let startTime = startStep * stepTime;
+          const duration = durationSteps * stepTime;
+  
+          // ✅ 2. Если это БАС и время совпадает с предыдущей нотой — сдвигаем на 10мс
+          if (type === "bass") {
+            if (startTime <= lastBassTime) {
+              startTime = lastBassTime + 0.01; // Сдвиг на 10 миллисекунд
+            }
+            lastBassTime = startTime;
+          }
+  
+                  // Планируем звук и СОХРАНЯЕМ его ID
+        const noteId = transport.schedule((time) => {
+          const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
+          const synth = synthsRef.current[type];
+          const velocity = Math.min(1, Math.max(0, b.velocity ?? 1));
+
+          if (!synth) return;
+
+          // ✅ Универсальный микросдвиг для ВСЕХ инструментов (защита от одновременных нот)
+          const microShift = (Math.abs(b.id) % 100) * 0.00005; 
+          const triggerTime = time + microShift;
+
+          if (type === "drum") {
+            const pools = synth;
+            if (!pools || !pools.membranePool) return;
+            
+            if (typeof pools.currentIndex !== 'number') pools.currentIndex = 0;
+            const index = pools.currentIndex;
+            pools.currentIndex = (pools.currentIndex + 1) % pools.membranePool.length;
+            
+            const membraneSynth = pools.membranePool[index];
+            const noiseSynth = pools.noisePool[index];
+            if (!membraneSynth || !noiseSynth) return;
+            
+            const drumIdx = (b.fret % 20) + (b.string % 3) * 20;
+            const typeIdx = drumIdx % 20;
+            
+            noiseSynth.noise.type = "white";
+            noiseSynth.envelope.decay = 0.2;
+            membraneSynth.pitchDecay = 0.05;
+            
+            const velocityAdjusted = Math.min(1, velocity * 1.2);
+            const timeShift = (Math.abs(b.id) % 1000) * 0.0001;
+            const drumTriggerTime = triggerTime + timeShift;
+
+            if (typeIdx >= 0 && typeIdx <= 7) {
+              const pitchMap = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3"];
+              membraneSynth.triggerAttackRelease(pitchMap[typeIdx], duration, drumTriggerTime, velocityAdjusted);
+            } else {
+              switch (typeIdx) {
+                case 8: noiseSynth.envelope.decay = 0.12; noiseSynth.triggerAttackRelease(duration, drumTriggerTime, velocityAdjusted); break;
+                case 9: noiseSynth.envelope.decay = 0.18; noiseSynth.triggerAttackRelease(duration, drumTriggerTime, velocityAdjusted); break;
+                case 10: noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(duration, drumTriggerTime, velocityAdjusted); break;
+                case 11: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.15; noiseSynth.triggerAttackRelease(duration, drumTriggerTime, velocityAdjusted); break;
+                default: membraneSynth.triggerAttackRelease("C2", duration, drumTriggerTime, velocityAdjusted);
+              }
+            }
+          } else if (type === "bass") {
+            // ✅ ИСПОЛЬЗУЕМ triggerTime ВМЕСТО time
+            synth.triggerAttackRelease(freq, duration, triggerTime, velocity);
+          } else {
+            // ✅ ИСПОЛЬЗУЕМ triggerTime ВМЕСТО time
+            synth.triggerAttackRelease(freq, duration, triggerTime, velocity);
+          }
+
+          // Спецэффекты
+          if (b.effect && uiSoundsEnabled) {
+            uiSounds.playEffect(b.effect, velocity);
+          }
+         }, startTime);
+
+          scheduledIdsRef.current.push(noteId);
+        });
+      });
+    };
+
   const startEngine = () => {
     const lastStartTimeMap = new Map();
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -2115,134 +2463,34 @@ useEffect(() => {
     const loop = () => {
       const now = Tone.now();
       const stepTime = 60 / bpm / 4;
-      let elapsed = now - startTimeRef.current;
-      const allBlocks = Object.values(tracks).flat();
+      // БЕРЕМ ВРЕМЯ ИЗ ТРАНСПОРТА
+      let elapsed = Tone.getTransport().seconds;
+      
+      // (УДАЛЕНО: const allBlocks = Object.values(tracks).flat();)
   
       // Глобальная логика окончания трека (если есть блоки и луп выключен)
-      if (allBlocks.length > 0) {
-        const lastBlockEndPX = Math.max(...allBlocks.map(b => b.x + b.length));
+      if (maxEndPXRef.current > 0) { 
+        const lastBlockEndPX = maxEndPXRef.current; 
         const globalLoopEndTime = (lastBlockEndPX / STEP_WIDTH) * stepTime;
   
-        // Обновляем позицию (текущий такт/доля) только каждый второй кадр
-        if (frameCount % 2 === 0) {
-          const elapsedSeconds = elapsed;
-          const secondsPerBeat = 60 / bpm;
-          const beats = elapsedSeconds / secondsPerBeat;
-          const currentBar = Math.floor(beats / 4) + 1;
-          const currentBeat = (Math.floor(beats) % 4) + 1;
-          setCurrentPosition({
-            bar: currentBar,
-            beat: currentBeat,
-            seconds: elapsedSeconds
-          });
-        }
-  
-        // Сброс трека, если конец и луп не активен
-        if (!loopActive && elapsed >= globalLoopEndTime) {
-          startTimeRef.current = now;
-          pauseOffsetRef.current = 0;
-          elapsed = 0;
-          triggeredRef.current.clear();
-        }
-      }
-  
-      // Логика лупа
-      if (loopActive && loopStartRef.current !== 0 && loopEndRef.current !== 0 && loopEndRef.current > loopStartRef.current) {
-        const loopStartTime = (loopStartRef.current / STEP_WIDTH) * stepTime;
-        const loopEndTime = (loopEndRef.current / STEP_WIDTH) * stepTime;
-        const delta = loopEndTime - loopStartTime;
-        if (elapsed >= loopEndTime && delta > 0) {
-          startTimeRef.current += delta;
-          elapsed = loopStartTime;
-          triggeredRef.current.clear();
-        }
-      }
-  // ========== МЕТРОНОМ ==========
-if (metroOnRef.current && metroSynthRef.current) {
-  const beatDuration = 60 / bpm;
-  const currentBeatIndex = Math.floor(elapsed / beatDuration);
-  const metroKey = `metro_${currentBeatIndex}`;
-  if (elapsed >= currentBeatIndex * beatDuration && !triggeredRef.current.has(metroKey)) {
-    const isFirstBeat = currentBeatIndex % 4 === 0;
-    const freq = isFirstBeat ? 'A5' : 'A4';
-    const velocity = isFirstBeat ? 0.8 : 0.4;
-
-    // Для шума вызываем без частоты
-    if (metroSoundRef.current === 'noise') {
-      metroSynthRef.current.triggerAttackRelease('16n', now + 0.01, metroVolumeRef.current * velocity);
-    } else {
-      metroSynthRef.current.triggerAttackRelease(freq, '16n', now + 0.01, metroVolumeRef.current * velocity);
-    }
-
-    triggeredRef.current.add(metroKey);
-  }
-}
-
-      // ========== ОБРАБОТКА НОТ (критично для звука – каждый кадр) ==========
-      Object.entries(tracks).forEach(([type, blocks]) => {
-        if (!filtersRef.current[type]) return;
-        blocks.forEach((b) => {
-          const startStep = Math.floor(b.x / STEP_WIDTH);
-          const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
-          const startTime = startStep * stepTime;
-          const duration = durationSteps * stepTime;
-          const key = `${type}_${b.id}_${startStep}`;
-          if (elapsed >= startTime && elapsed <= startTime + duration && !triggeredRef.current.has(key)) {
-            const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
-            const synth = synthsRef.current[type];
-            const velocity = Math.min(1, Math.max(0, b.velocity ?? 1));
-  
-            if (type === "drum") {
-              const pools = synth;
-              if (!pools || !pools.membranePool) return;
-              const durationSec = duration;
-              const velocityAdjusted = Math.min(1, velocity * 1.2);
-              const timeShift = (Math.abs(b.id) % 1000) * 0.0001;
-              const startTime = now + 0.01 + timeShift;
-              if (typeof pools.currentIndex !== 'number') pools.currentIndex = 0;
-              const index = pools.currentIndex;
-              pools.currentIndex = (pools.currentIndex + 1) % pools.membranePool.length;
-              const membraneSynth = pools.membranePool[index];
-              const noiseSynth = pools.noisePool[index];
-              if (!membraneSynth || !noiseSynth) return;
-              const drumIdx = (b.fret % 20) + (b.string % 3) * 20;
-              const typeIdx = drumIdx % 20;
-              noiseSynth.noise.type = "white";
-              noiseSynth.envelope.decay = 0.2;
-              membraneSynth.pitchDecay = 0.05;
-              if (typeIdx >= 0 && typeIdx <= 7) {
-                const pitchMap = ["C2", "D2", "E2", "F2", "G2", "A2", "B2", "C3"];
-                membraneSynth.triggerAttackRelease(pitchMap[typeIdx], durationSec, startTime, velocityAdjusted);
-              } else {
-                switch (typeIdx) {
-                  case 8: noiseSynth.envelope.decay = 0.12; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 9: noiseSynth.envelope.decay = 0.18; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 10: noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 11: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.15; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 12: noiseSynth.envelope.decay = 0.05; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 13: noiseSynth.envelope.decay = 0.04; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 14: noiseSynth.envelope.decay = 0.06; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted); break;
-                  case 15: noiseSynth.envelope.decay = 0.08; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.9); break;
-                  case 16: noiseSynth.envelope.decay = 0.10; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.85); break;
-                  case 17: noiseSynth.noise.type = "brown"; noiseSynth.envelope.decay = 0.30; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.7); break;
-                  case 18: noiseSynth.noise.type = "white"; noiseSynth.envelope.decay = 0.02; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.6); break;
-                  case 19: noiseSynth.noise.type = "pink"; noiseSynth.envelope.decay = 0.25; noiseSynth.triggerAttackRelease(durationSec, startTime, velocityAdjusted * 0.8); break;
-                  default: membraneSynth.triggerAttackRelease("C2", durationSec, startTime, velocityAdjusted);
+                // Обновляем позицию (текущий такт/доля) только каждый второй кадр
+                if (frameCount % 2 === 0) {
+                  const secondsPerBeat = 60 / bpm;
+                  const beats = elapsed / secondsPerBeat;
+                  const currentBar = Math.floor(beats / 4) + 1;
+                  const currentBeat = (Math.floor(beats) % 4) + 1;
+                  
+                  // ПРЯМОЕ ОБНОВЛЕНИЕ DOM (без setState)
+                  if (secondsRef.current) {
+                    secondsRef.current.textContent = `${elapsed.toFixed(1)}s`;
+                  }
+                  if (barBeatRef.current) {
+                    barBeatRef.current.textContent = `(${currentBar}.${currentBeat})`;
+                  }
                 }
               }
-            } else if (type === "bass") {
-              synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
-            } else {
-              synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
-            }
-            triggeredRef.current.add(key);
-            if (b.effect && uiSoundsEnabled) {
-              uiSounds.playEffect(b.effect, velocity);
-            }
-          }
-        });
-      });
   
+      
       // ========== ВИЗУАЛЬНЫЕ ОБНОВЛЕНИЯ (обновляем реже) ==========
       const x = (elapsed / stepTime) * STEP_WIDTH;
       playheadXRef.current = x;
@@ -2265,14 +2513,34 @@ if (!isPlayheadDraggingRef.current && playheadRef.current) {
         scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
       }
   
-      // VU-метр и амплитуда – только каждый второй кадр
-      if (frameCount % 2 === 0 && meterRef.current) {
-        const level = meterRef.current.getValue();
-        let normalized = (level + 60) / 60;
-        normalized = Math.min(1, Math.max(0, normalized));
-        setMasterVolume(normalized);
-        setWaveAmp(5 + normalized * 30);
-      }
+            // VU-метр и амплитуда – только каждый второй кадр
+            if (frameCount % 2 === 0 && meterRef.current) {
+              const level = meterRef.current.getValue();
+              let normalized = (level + 60) / 60;
+              normalized = Math.min(1, Math.max(0, normalized));
+      
+              // ПРЯМОЕ ОБНОВЛЕНИЕ DOM (без setState)
+              if (masterDisplayModeRef.current === "vu") {
+                vuBarRefs.current.forEach((bar, idx) => {
+                  if (!bar) return;
+                  const intensity = idx / 20;
+                  const isActive = normalized > intensity;
+                  let color = "var(--text-bright)";
+                  if (intensity > 0.7) color = "#FFB84D";
+                  if (intensity > 0.9) color = "var(--warning-border)";
+                  
+                  bar.style.backgroundColor = isActive ? color : "rgba(var(--bg-card-rgb), 0.2)";
+                });
+              } 
+              else if (masterDisplayModeRef.current === "wave" && waveCircleRef.current) {
+                const color = normalized < 0.33 ? "rgba(77,255,136,0.4)" : normalized < 0.66 ? "rgba(255,184,77,0.4)" : "rgba(255,77,77,0.4)";
+                const border = normalized < 0.33 ? "var(--text-bright)" : normalized < 0.66 ? "#FFB84D" : "var(--warning-border)";
+                
+                waveCircleRef.current.style.transform = `scale(${0.4 + normalized * 0.8})`;
+                waveCircleRef.current.style.background = `radial-gradient(circle, ${color}, transparent)`;
+                waveCircleRef.current.style.borderColor = border;
+              }
+            }
   
       // Увеличиваем счётчик кадров
       frameCount++;
@@ -2283,35 +2551,61 @@ if (!isPlayheadDraggingRef.current && playheadRef.current) {
     loop();
   };
 
+  // ===== ФУНКЦИЯ СБРОСА ВИЗУАЛЬНЫХ ЭЛЕМЕНТОВ =====
+  const resetVisuals = () => {
+    // 1. Сбрасываем VU-метр (полоски громкости)
+    if (vuBarRefs.current) {
+      vuBarRefs.current.forEach(bar => {
+        if (bar) bar.style.backgroundColor = "rgba(var(--bg-card-rgb), 0.2)";
+      });
+    }
+    // 2. Сбрасываем таймер
+    if (secondsRef.current) secondsRef.current.textContent = "0.0s";
+    if (barBeatRef.current) barBeatRef.current.textContent = "(1.1)";
+    // 3. Сбрасываем круг WAVE
+    if (waveCircleRef.current) {
+      waveCircleRef.current.style.transform = "scale(0.4)";
+      waveCircleRef.current.style.background = `radial-gradient(circle, rgba(77,255,136,0.4), transparent)`;
+      waveCircleRef.current.style.borderColor = "var(--text-bright)";
+    }
+  };
+
   const handleTogglePlay = async () => {
     if (Tone.context.state !== 'running') {
       await Tone.start();
       console.log("Audio Context started!");
     }
     
-    // Подсчитываем общее количество блоков (нот) на сетке
     const totalBlocks = Object.values(tracks).flat().length;
-    
-    // Если пытаемся запустить воспроизведение, а блоков нет – показываем предупреждение
     if (!isPlaying && totalBlocks === 0) {
-      setInfoModal({
-        visible: true,
-        message: t('infoNoNotes')
-      });
+      setInfoModal({ visible: true, message: t('infoNoNotes') });
       return;
     }
     
+    const transport = Tone.getTransport();
+
     if (isPlaying) {
-      // Остановка воспроизведения
-      const now = Tone.now();
+      // ПАУЗА
+      transport.pause();
       cancelAnimationFrame(animationRef.current);
-      pauseOffsetRef.current = now - startTimeRef.current; 
       setIsPlaying(false);
       
       setMasterVolume(0);
-      if (window.__sidechain?.kickLoop) {
-        window.__sidechain.kickLoop.stop();
+      
+      // ===== ГАСИМ VU-МЕТР И WAVE ПРИ ПАУЗЕ =====
+      if (vuBarRefs.current) {
+        vuBarRefs.current.forEach(bar => {
+          if (bar) bar.style.backgroundColor = "rgba(var(--bg-card-rgb), 0.2)";
+        });
       }
+      if (waveCircleRef.current) {
+        waveCircleRef.current.style.transform = "scale(0.4)";
+        waveCircleRef.current.style.background = `radial-gradient(circle, rgba(77,255,136,0.4), transparent)`;
+        waveCircleRef.current.style.borderColor = "var(--text-bright)";
+      }
+      // ==========================================
+
+      if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
       Object.values(synthsRef.current).forEach(s => { 
         try { 
           if (s.releaseAll) s.releaseAll(); 
@@ -2319,43 +2613,57 @@ if (!isPlayheadDraggingRef.current && playheadRef.current) {
         } catch(e) {} 
       });
     } else {
-      // Запуск воспроизведения (блоки есть)
+      // СТАРТ (или продолжение после паузы)
       await Tone.start();
-      const now = Tone.now();
-      startTimeRef.current = now - pauseOffsetRef.current;
-      triggeredRef.current.clear();
+      // Добавьте эту строку перед transport.start():
+      syncNotesToTransport();
+      transport.start(); // Запускаем виртуальные часы
       setIsPlaying(true);
       
       if (window.__sidechain?.kickLoop) {
         window.__sidechain.kickLoop.start(0);
       }
-      startEngine();
+      startEngine(); // Запускаем визуал
     }
   };
 
-const handleStop = () => {
-  cancelAnimationFrame(animationRef.current);
-  pauseOffsetRef.current = 0;
-  startTimeRef.current = Tone.now();
-  triggeredRef.current.clear();
-  setIsPlaying(false);
-  
-  // Сбрасываем VU-метр
-  setMasterVolume(0);
-  
-  // Останавливаем sidechain-лупер
-  if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
-  
-  if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
-  if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-  
-  Object.values(synthsRef.current).forEach(s => { 
-    try { 
-      if (s.releaseAll) s.releaseAll(); 
-      else if (s.triggerRelease) s.triggerRelease(); 
-    } catch(e) {} 
-  });
-};
+  const handleStop = () => {
+    const transport = Tone.getTransport();
+    transport.stop();      // Останавливаем часы
+    transport.position = 0; // Сбрасываем на начало
+    
+    cancelAnimationFrame(animationRef.current);
+    triggeredRef.current.clear();
+    setIsPlaying(false);
+    
+    setMasterVolume(0);
+    setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
+    
+    // ===== СБРОС ВРЕМЕНИ И VU-МЕТРА =====
+    if (secondsRef.current) secondsRef.current.textContent = "0.0s";
+    if (barBeatRef.current) barBeatRef.current.textContent = "(1.1)";
+    if (vuBarRefs.current) {
+      vuBarRefs.current.forEach(bar => {
+        if (bar) bar.style.backgroundColor = "rgba(var(--bg-card-rgb), 0.2)";
+      });
+    }
+    if (waveCircleRef.current) {
+      waveCircleRef.current.style.transform = "scale(0.4)";
+    }
+    // ====================================
+
+    if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
+    
+    if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+    
+    Object.values(synthsRef.current).forEach(s => { 
+      try { 
+        if (s.releaseAll) s.releaseAll(); 
+        else if (s.triggerRelease) s.triggerRelease(); 
+      } catch(e) {} 
+    });
+  };
 
   const handleRecord = async () => {
     if (!isRecording) {
@@ -2375,10 +2683,18 @@ const handleStop = () => {
   };
 
   const stopSound = () => {
-    // 1. Останавливаем анимацию
+    // ===== ДОБАВЛЕНО: Останавливаем сам Транспорт и сбрасываем его на 0 =====
+    const transport = Tone.getTransport();
+    transport.stop();
+    transport.position = 0;
+    // ========================================================================
+
     cancelAnimationFrame(animationRef.current);
     
-    // 2. Мгновенно глушим все синтезаторы
+    // ===== ДОБАВЛЕНО: Останавливаем sidechain (пульсацию баса) =====
+    if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
+    // ===============================================================
+    
     Object.values(synthsRef.current).forEach(s => { 
       try { 
         if (s.releaseAll) s.releaseAll(); 
@@ -2386,7 +2702,6 @@ const handleStop = () => {
       } catch(e) {} 
     });
 
-    // 3. Агрессивное глушение мастер-шины
     if (masterGainRef.current) {
       masterGainRef.current.gain.rampTo(0, 0.01); 
       setTimeout(() => {
@@ -2396,44 +2711,61 @@ const handleStop = () => {
       }, 100);
     }
 
-    // 4. Сброс состояния
     pauseOffsetRef.current = 0;
     triggeredRef.current.clear();
     setIsPlaying(false);
+    setMasterVolume(0);
+    
+    // ===== СБРОС ВРЕМЕНИ =====
+    setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
+    if (secondsRef.current) secondsRef.current.textContent = "0.0s";
+    if (barBeatRef.current) barBeatRef.current.textContent = "(1.1)";
+    // ========================
     
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
   };
 
   const handleResetAll = () => {
-    // Останавливаем воспроизведение
     if (isPlaying) {
       cancelAnimationFrame(animationRef.current);
       setIsPlaying(false);
     }
-    // Останавливаем sidechain-лупер
     if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
-    // Глушим синтезаторы
+    
     Object.values(synthsRef.current).forEach(s => {
       try { s.releaseAll?.(); s.triggerRelease?.(); } catch(e) {}
     });
-    // Сбрасываем состояние времени
+    
     pauseOffsetRef.current = 0;
     startTimeRef.current = Tone.now();
     triggeredRef.current.clear();
+    
     if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-    // Очищаем треки
+    
     setTracks({ guitar: [], synth: [], drum: [], bass: [], chip: [] });
-    // Сбрасываем все настройки до заводских
     setFilters(defaultFilters);
     setFx(defaultFx);
     setVolumes(defaultVolumes);
     setBpm(120);
-    // Снимаем выделение блоков
     setSelectedBlockIds(new Set());
     setMasterVolume(0);
+    
+    // ===== СБРОС ВРЕМЕНИ И VU-МЕТРА =====
     setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
+    if (secondsRef.current) secondsRef.current.textContent = "0.0s";
+    if (barBeatRef.current) barBeatRef.current.textContent = "(1.1)";
+    if (vuBarRefs.current) {
+      vuBarRefs.current.forEach(bar => {
+        if (bar) bar.style.backgroundColor = "rgba(var(--bg-card-rgb), 0.2)";
+      });
+    }
+    if (waveCircleRef.current) {
+      waveCircleRef.current.style.transform = "scale(0.4)";
+    }
+    // ====================================
+
     setLoopStart(0);
     setLoopEnd(0);
     setPreviewLoopEnd(0);
@@ -2442,55 +2774,73 @@ const handleStop = () => {
     loopStartRef.current = 0;
     loopEndRef.current = 0;
   
-    // ===== СБРОС SUB-РЕЖИМА (Bass) =====
     if (subMode) {
-      setSubMode(false);
-      localStorage.setItem("struna_sub_mode", "false");
-      
-      if (synthsRef.current.bass) {
-        const oldSynth = synthsRef.current.bass;
-        const filterNode = filtersRef.current.bass;
-        const sidechainComp = window.__sidechain?.bassSidechainComp;
-  
-        const normalSynth = new Tone.MonoSynth({
-          oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
-          envelope: { attack: 0.03, decay: 0.4, sustain: 0.8, release: 0.6 }
-        });
-  
-        if (sidechainComp) {
-          normalSynth.connect(sidechainComp);
-          sidechainComp.connect(filterNode);
-        } else {
-          normalSynth.connect(filterNode);
-        }
-  
-        oldSynth.dispose();
-        synthsRef.current.bass = normalSynth;
-      }
+      // ... (ваш код сброса сабвуфера)
     }
-    // Сброс 3D-позиций
+    
     setPositions3D(defaultPositions);
-  
-    // ===== СБРОС ГЛОБАЛЬНОЙ ГРОМКОСТИ (MASTER VOL) =====
     setMasterGainValue(1.0);
     if (masterGainRef.current) {
       masterGainRef.current.gain.value = 1.0;
     }
   
-    // ===== НОВОЕ: СБРАСЫВАЕМ ID ПРОЕКТА И СТАТУС ИЗБРАННОГО =====
     setProjectId(null);
     setIsFavorite(false);
   };
 
   const clearCurrentInstrument = () => {
     const totalBlocks = tracks[instrument]?.length || 0;
-    if (totalBlocks === 0) return; // нечего очищать
+    if (totalBlocks === 0) return; 
+  
+    if (isPlaying) {
+      cancelAnimationFrame(animationRef.current); 
+      const transport = Tone.getTransport();
+      transport.stop();
+      transport.position = 0;
+      setIsPlaying(false);
+      setMasterVolume(0);
+      if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
+      Object.values(synthsRef.current).forEach(s => {
+        try { s.releaseAll?.(); s.triggerRelease?.(); } catch(e) {}
+      });
+    }
+  
+    if (playheadRef.current) {
+      playheadRef.current.style.transform = "translateX(0px)";
+    }
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+    playheadXRef.current = 0;
+    
+    // ===== СБРОС ВРЕМЕНИ И VU-МЕТРА =====
+    setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
+    if (secondsRef.current) secondsRef.current.textContent = "0.0s";
+    if (barBeatRef.current) barBeatRef.current.textContent = "(1.1)";
+    if (vuBarRefs.current) {
+      vuBarRefs.current.forEach(bar => {
+        if (bar) bar.style.backgroundColor = "rgba(var(--bg-card-rgb), 0.2)";
+      });
+    }
+    // ====================================
+  
+    setLoopStart(0);
+    setLoopEnd(0);
+    setPreviewLoopEnd(0); 
+    setLoopActive(false);
+    Tone.getTransport().loop = false;
   
     setTracks(prev => ({
       ...prev,
       [instrument]: []
     }));
-    setSelectedBlockIds(new Set()); // снимаем выделение
+    setSelectedBlockIds(new Set()); 
+  
+    if (triggeredRef.current) triggeredRef.current.clear();
+  
+    pauseOffsetRef.current = 0;
+    startTimeRef.current = Tone.now();
+  
     if (uiSoundsEnabled) uiSounds.playClick();
   };
 
@@ -2506,10 +2856,12 @@ const handleStop = () => {
     const inst = instrument;
     if (!inst) return;
   
-    // Останавливаем текущее воспроизведение
+    // Останавливаем воспроизведение при генерации
     if (isPlaying) {
       cancelAnimationFrame(animationRef.current);
       setIsPlaying(false);
+      Tone.getTransport().stop();      // Полностью останавливаем часы
+      Tone.getTransport().position = 0; // Сбрасываем на начало
       if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
       Object.values(synthsRef.current).forEach(s => {
         try { s.releaseAll?.(); s.triggerRelease?.(); } catch(e) {}
@@ -2519,476 +2871,448 @@ const handleStop = () => {
     const now = Date.now();
     const stepSize = STEP_WIDTH;
     const numSteps = Math.min(256, Math.ceil(20 / (60 / bpm / 4)));
-  
-    // ОБЪЯВЛЯЕМ newBlocks
-    let newBlocks = [];
-  
-    // ========== ЭВОЛЮЦИЯ И ГЕНЕРАЦИЯ ДЛЯ CHIP (МАРИО 5% + 8-BIT TRACKER 95%) ==========
-    if (inst === 'chip') {
-      // ========== ПРОКАЧАННАЯ ПАСХАЛКА: SUPER MARIO OVERWORLD THEME ==========
-    if (Math.random() < 0.05) {
-      const melodyStr = 7;
-      const harmonyStr = 6;
-      const bassStr = 3;
+    const stepsPerBar = 16;
+    const numBars = Math.ceil(numSteps / stepsPerBar);
     
-      // Оригинальный ритмический рисунок темы Super Mario (World 1-1)
-      const marioMelody = [
-        // Такт 1: E E ~ E ~ C E ~ G
-        { step: 0,  fret: 16, length: 1 }, { step: 2,  fret: 16, length: 1 },
-        { step: 6,  fret: 16, length: 1 }, { step: 8,  fret: 12, length: 1 },
-        { step: 10, fret: 16, length: 1 }, { step: 14, fret: 19, length: 2 },
-        { step: 22, fret: 7,  length: 2 },
+    // 🎼 1. ОПРЕДЕЛЯЕМ ТОНАЛЬНОСТЬ
+    // Если тональности нет (первый запуск) - выбираем случайную
+    const rootKey = currentAITonality !== null ? currentAITonality : Math.floor(Math.random() * 12);
+    if (currentAITonality === null) setCurrentAITonality(rootKey);
+
+    const progressions = [[0, 5, 3, 4], [0, 3, 4, 0], [0, 7, 5, 3]];
+    const progression = progressions[Math.floor(Math.random() * progressions.length)];
+    const minorScale = [0, 2, 3, 5, 7, 8, 10]; 
+    
+    const getChordTones = (degree) => [
+      minorScale[degree % 7],
+      minorScale[(degree + 2) % 7],
+      minorScale[(degree + 4) % 7]
+    ];
+
+    const getNoteFret = (targetNote, preferredString) => {
+      const openStringsMidi = [28, 33, 40, 45, 50, 55, 59, 64];
+      let bestFret = 0;
+      let bestString = preferredString || 0;
+      let minDiff = 999;
+      
+      for (let s = Math.max(0, bestString - 2); s <= Math.min(7, bestString + 2); s += 1) {
+        // ✅ Добавили Math.round, чтобы лад всегда был целым числом
+        const fret = Math.round(targetNote - openStringsMidi[s]); 
         
-        // Такт 2: C ~ G ~ E ~ A B Bb A
-        { step: 32, fret: 12, length: 2 }, { step: 38, fret: 7,  length: 2 },
-        { step: 46, fret: 4,  length: 2 }, { step: 52, fret: 9,  length: 1 },
-        { step: 54, fret: 11, length: 1 }, { step: 56, fret: 10, length: 1 },
-        { step: 58, fret: 9,  length: 2 },
-        
-        // Такт 3: G E G A F G E C D B
-        { step: 60, fret: 7,  length: 1 }, { step: 62, fret: 11, length: 1 },
-        { step: 64, fret: 12, length: 1 }, { step: 66, fret: 9,  length: 1 },
-        { step: 68, fret: 10, length: 1 }, { step: 70, fret: 7,  length: 1 },
-        { step: 72, fret: 4,  length: 1 }, { step: 74, fret: 7,  length: 1 },
-        { step: 76, fret: 5,  length: 1 }, { step: 78, fret: 2,  length: 1 }
-      ];
-    
-      // Гармония (второй голос терцией ниже, как в оригинальном чиптюн-движке NES)
-      const harmonyNotes = marioMelody.map(n => ({
-        ...n,
-        fret: Math.max(0, n.fret - 4)
-      }));
-    
-      // Басовая партия, подчеркивающая ритм прыжков
-      const bassNotes = [
-        { step: 0,  fret: 4,  length: 4 },
-        { step: 16, fret: 12, length: 4 },
-        { step: 32, fret: 0,  length: 4 },
-        { step: 48, fret: 7,  length: 4 },
-        { step: 60, fret: 7,  length: 2 },
-        { step: 68, fret: 5,  length: 2 },
-        { step: 76, fret: 3,  length: 4 }
-      ];
-    
-      const addNotes = (notes, stringIdx) => {
-        notes.forEach((note, idx) => {
-          if (note.step >= numSteps) return;
-          const fret = Math.min(MAX_FRET, Math.max(0, note.fret));
-          const x = note.step * stepSize;
-          const lengthPx = note.length * stepSize * 0.9;
-          newBlocks.push({
-            id: now + idx + Math.random() + stringIdx * 1000,
-            string: stringIdx,
-            x: x,
-            length: lengthPx,
-            fret: fret,
-            velocity: 0.9,
-            effect: null
-          });
-        });
-      };
-    
-      addNotes(marioMelody, melodyStr);
-      addNotes(harmonyNotes, harmonyStr);
-      addNotes(bassNotes, bassStr);
-    }
-      // 2. ПРОКАЧАННЫЙ РЕТРО-ТРЕКЕР (95%)
-      else {
-        // Минорная пентатоника + пара проходящих нот для "грязного" 8-битного звучания
-        const retroScale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]; 
-        const chordRoots = [0, 5, 7, 3]; // Тоника, Субдоминанта, Доминанта, Медианта
-        
-        let currentRoot = chordRoots[Math.floor(Math.random() * chordRoots.length)];
-        
-        for (let step = 0; step < numSteps; step++) {
-          // Меняем гармонию каждый такт (16 шагов)
-          if (step % 16 === 0 && Math.random() > 0.4) {
-            currentRoot = chordRoots[Math.floor(Math.random() * chordRoots.length)];
+        if (fret >= 0 && fret <= MAX_FRET) {
+          const diff = Math.abs(fret - 5);
+          if (diff < minDiff) {
+            minDiff = diff;
+            bestFret = fret;
+            bestString = s;
           }
-
-          // В 8-бит музыке много микропауз для "дыхания" монофонии
-          if (Math.random() < 0.2) continue;
-
-          const x = step * stepSize;
-          let fret;
-          let lengthPx = stepSize; // Базово играем очень короткими нотами (стаккато)
-          
-          // Выбираем один из трех классических чиптюн-приемов для текущей ноты
-          const behavior = Math.random();
-          
-          if (behavior < 0.45) {
-            // ПРИЕМ 1: Быстрое трекерное арпеджио (аккорд раскидывается по 1 ноте)
-            // Имитация аккорда: Тоника -> Малая терция -> Квинта -> Септима
-            const arpeggioPattern = [currentRoot, currentRoot + 3, currentRoot + 7, currentRoot + 10];
-            fret = arpeggioPattern[step % 4];
-          } 
-          else if (behavior < 0.75) {
-            // ПРИЕМ 2: Жесткие октавные скачки (часто заменяли бас в NES-играх)
-            fret = currentRoot + (step % 2 === 0 ? 0 : 12);
-          } 
-          else {
-            // ПРИЕМ 3: Линейный мелодический пассаж по гамме
-            fret = retroScale[Math.floor(Math.random() * retroScale.length)];
-            // Иногда делаем ноту длиннее для акцента
-            if (Math.random() > 0.7) lengthPx = stepSize * 3;
-          }
-          
-          // Поднимаем все на октаву выше, чтобы звучало звонко, как Dendy
-          fret = Math.max(0, Math.min(MAX_FRET, fret + 12));
-          
-          // Раскидываем преимущественно на верхние струны (5, 6, 7)
-          const stringIdx = 5 + Math.floor(Math.random() * 3);
-
-          newBlocks.push({
-            id: now + step + Math.random(),
-            string: Math.min(strings.length - 1, stringIdx),
-            x: x,
-            length: lengthPx,
-            fret: fret,
-            velocity: 0.8 + Math.random() * 0.2,
-            effect: null
-          });
         }
       }
+      return { string: bestString, fret: bestFret };
+    };
 
-      setTracks(prev => ({ ...prev, [inst]: newBlocks }));
-      
-      // Используем пиксельный звук UI для обратной связи
-      if (uiSoundsEnabled) uiSounds.playPixel(); 
-      return;
-    }
-  
-    // ==============================================================
-    // 1. Получаем текущие блоки для данного инструмента
-    // ==============================================================
+    // Вспомогательные генераторы
+    const generateDrums = () => {
+      const blocks = [];
+      for (let bar = 0; bar < numBars; bar++) {
+        const barStart = bar * stepsPerBar;
+        blocks.push({ id: now + barStart + Math.random(), string: 0, x: (barStart) * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+        if (Math.random() > 0.3) blocks.push({ id: now + barStart + 8 + Math.random(), string: 0, x: (barStart + 8) * stepSize, length: stepSize, fret: 0, velocity: 0.9, effect: null });
+        blocks.push({ id: now + barStart + 4 + Math.random(), string: 0, x: (barStart + 4) * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+        blocks.push({ id: now + barStart + 12 + Math.random(), string: 0, x: (barStart + 12) * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+        for (let i = 0; i < 16; i++) {
+          if (i % 2 === 0 || Math.random() > 0.4) {
+            const isAccent = i % 4 === 0;
+            blocks.push({ id: now + barStart + i + Math.random(), string: 1, x: (barStart + i) * stepSize, length: stepSize, fret: 8, velocity: isAccent ? 0.7 : 0.3 + Math.random() * 0.2, effect: null });
+          }
+        }
+      }
+      return blocks;
+    };
+
+    const generateBass = () => {
+      const blocks = [];
+      for (let bar = 0; bar < numBars; bar++) {
+        const barStart = bar * stepsPerBar;
+        const chordDegree = progression[bar % progression.length];
+        const chordTones = getChordTones(chordDegree);
+        const rootNoteMidi = 36 + rootKey + chordTones[0]; 
+        const mappedRoot = getNoteFret(rootNoteMidi, 0);
+
+        blocks.push({ id: now + barStart + Math.random(), string: mappedRoot.string, x: barStart * stepSize, length: stepSize * 4, fret: mappedRoot.fret, velocity: 0.9, effect: null });
+        if (Math.random() > 0.5) blocks.push({ id: now + barStart + 8 + Math.random(), string: mappedRoot.string, x: (barStart + 8) * stepSize, length: stepSize * 2, fret: mappedRoot.fret, velocity: 0.8, effect: null });
+        if (Math.random() > 0.7) {
+          const fifthNoteMidi = 36 + rootKey + chordTones[2];
+          const mappedFifth = getNoteFret(fifthNoteMidi, mappedRoot.string);
+          blocks.push({ id: now + barStart + 10 + Math.random(), string: mappedFifth.string, x: (barStart + 10) * stepSize, length: stepSize, fret: mappedFifth.fret, velocity: 0.7, effect: null });
+        }
+      }
+      return blocks;
+    };
+
+    const generateMelody = (melodyInst) => {
+      const blocks = [];
+      const motifSteps = [0, 4, 8, 12];
+      for (let bar = 0; bar < numBars; bar++) {
+        const barStart = bar * stepsPerBar;
+        const chordDegree = progression[bar % progression.length];
+        const chordTones = getChordTones(chordDegree);
+        
+        let currentMotif = (bar % 2 === 0) 
+          ? [chordTones[0], chordTones[1], chordTones[2], chordTones[0] + 12]
+          : [chordTones[1], chordTones[2], chordTones[1], chordTones[2] + 12];
+
+        for (let i = 0; i < 4; i++) {
+          if (Math.random() > 0.8 && i !== 0) continue;
+          const stepInBar = motifSteps[i];
+          const targetMidi = 48 + rootKey + currentMotif[i];
+          let prefString = melodyInst === 'guitar' ? 3 : 5; 
+          const mapped = getNoteFret(targetMidi, prefString);
+          const length = (Math.random() > 0.7) ? stepSize * 2 : stepSize;
+          
+          blocks.push({ id: now + barStart + i + Math.random(), string: mapped.string, x: (barStart + stepInBar) * stepSize, length: length, fret: mapped.fret, velocity: 0.7 + Math.random() * 0.3, effect: null });
+
+          if (Math.random() > 0.6 && i < 3) {
+            const nextStep = stepInBar + 2;
+            const nextMidi = 48 + rootKey + currentMotif[i] + (Math.random() > 0.5 ? 1 : -1);
+            const mappedNext = getNoteFret(nextMidi, mapped.string);
+            blocks.push({ id: now + barStart + i + 10 + Math.random(), string: mappedNext.string, x: (barStart + nextStep) * stepSize, length: stepSize, fret: mappedNext.fret, velocity: 0.5 + Math.random() * 0.2, effect: null });
+          }
+        }
+      }
+      return blocks;
+    };
+
+    // 🔄 2. ЭВОЛЮЦИЯ (Если блоки уже есть)
     const currentBlocks = tracks[inst] || [];
-  
-    // ==============================================================
-    // 2. Если блоки есть – применяем ЭВОЛЮЦИЮ С ПОПУЛЯЦИЕЙ
-    // ==============================================================
-    if (currentBlocks.length > 0 && inst !== 'chip') {
-      const POPULATION_SIZE = 10;
-      // Минорная пентатоника (для оценки приспособленности)
+    if (currentBlocks.length > 0) {
+      const POPULATION_SIZE = 15;
       const SCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
-  
-      // ---- 2.1. Функция приспособленности (Fitness) ----
+
       const evaluateFitness = (blocks) => {
         let score = 100;
-  
         blocks.forEach((b, i) => {
-          // Штраф за выход из гаммы (чем дальше, тем больше штраф)
           const closest = SCALE.reduce((a, val) => Math.abs(val - b.fret) < Math.abs(a - b.fret) ? val : a);
           const deviation = Math.abs(b.fret - closest);
-          if (deviation > 0) score -= deviation * 3;
-  
-          // Штраф за резкие скачки (> 7 полутонов)
+          if (deviation > 0) score -= deviation * 4;
           if (i > 0) {
             const jump = Math.abs(b.fret - blocks[i-1].fret);
-            if (jump > 7) score -= (jump - 7) * 2;
+            if (jump > 7) score -= (jump - 7) * 3;
           }
-  
-          // Поощрение за попадание в сильные доли (0, 4, 8, 12, 16...)
           const step = Math.round(b.x / stepSize) % 16;
-          if (step % 4 === 0) score += 2;
+          if (step % 4 === 0) score += 5;
         });
-  
         return Math.max(0, score);
       };
-  
-      // ---- 2.2. Функция создания мутанта (менее агрессивные мутации) ----
+
       const createMutant = (baseBlocks) => {
         let mutant = baseBlocks.map(b => ({ ...b }));
-  
         mutant.forEach(block => {
-          // Мутация времени (x) – с вероятностью 20% (было 30%)
-          if (Math.random() < 0.2) {
-            const shift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 2) + 1);
-            let newX = Math.max(0, block.x + shift * stepSize);
-            newX = Math.round(newX / stepSize) * stepSize;
-            block.x = newX;
-          }
-          // Мутация высоты (fret) – с вероятностью 15% (было 25%)
-          if (Math.random() < 0.15) {
-            const fretShift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 2) + 1);
-            block.fret = Math.max(0, Math.min(MAX_FRET, block.fret + fretShift));
-          }
-          // Мутация длительности – с вероятностью 10% (было 20%)
-          if (Math.random() < 0.1) {
-            const lenShift = (Math.random() < 0.5 ? -1 : 1) * stepSize;
-            let newLen = Math.max(stepSize, block.length + lenShift);
-            newLen = Math.round(newLen / stepSize) * stepSize;
-            block.length = newLen;
-          }
-          // Мутация громкости – с вероятностью 10% (было 15%)
-          if (Math.random() < 0.1) {
-            block.velocity = Math.max(0.1, Math.min(1.5, (block.velocity || 1) + (Math.random() - 0.5) * 0.15));
-          }
+          if (Math.random() < 0.2) block.x = Math.max(0, Math.round((block.x + (Math.random() < 0.5 ? -1 : 1) * stepSize) / stepSize) * stepSize);
+          if (Math.random() < 0.3) block.fret = Math.max(0, Math.min(MAX_FRET, block.fret + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.7 ? 1 : 2)));
+          if (Math.random() < 0.1) block.length = Math.max(stepSize, Math.round((block.length + (Math.random() < 0.5 ? -1 : 1) * stepSize) / stepSize) * stepSize);
         });
-  
-        // Удаление случайных блоков – с вероятностью 10% (было 15%)
-        if (Math.random() < 0.1 && mutant.length > 2) {
-          const removeIdx = Math.floor(Math.random() * mutant.length);
-          mutant.splice(removeIdx, 1);
+        if (Math.random() < 0.15 && mutant.length > 2) mutant.splice(Math.floor(Math.random() * mutant.length), 1);
+        if (Math.random() < 0.15 && mutant.length > 0) {
+          const src = mutant[Math.floor(Math.random() * mutant.length)];
+          mutant.push({ ...src, id: Date.now() + Math.random(), x: Math.max(0, src.x + (Math.random() - 0.5) * 4 * stepSize), fret: Math.max(0, Math.min(MAX_FRET, src.fret + (Math.random() - 0.5) * 4)) });
         }
-  
-        // Добавление нового блока – с вероятностью 10% (было 20%)
-        if (Math.random() < 0.1 && mutant.length > 0) {
-          const srcIdx = Math.floor(Math.random() * mutant.length);
-          const src = mutant[srcIdx];
-          let newX = Math.min(numSteps * stepSize - src.length, src.x + (Math.random() - 0.5) * 4 * stepSize);
-          newX = Math.round(newX / stepSize) * stepSize;
-          newX = Math.max(0, newX);
-          let newFret = Math.max(0, Math.min(MAX_FRET, src.fret + (Math.random() - 0.5) * 4));
-          newFret = Math.round(newFret);
-          const newBlock = {
-            ...src,
-            id: Date.now() + Math.random(),
-            x: newX,
-            fret: newFret
-          };
-          if (newBlock.x + newBlock.length > numSteps * stepSize) newBlock.x = numSteps * stepSize - newBlock.length;
-          if (newBlock.x < 0) newBlock.x = 0;
-          mutant.push(newBlock);
-        }
-  
-        // Глобальная транспозиция – с вероятностью 5% (было 10%)
-        if (Math.random() < 0.05) {
-          const transpose = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 3) + 2); // ±2..4
-          mutant.forEach(block => {
-            block.fret = Math.max(0, Math.min(MAX_FRET, block.fret + transpose));
-          });
-        }
-  
-        // Сдвиг всего паттерна – с вероятностью 3% (было 8%)
-        if (Math.random() < 0.03) {
-          const shift = (Math.random() < 0.5 ? -1 : 1) * (Math.floor(Math.random() * 3) + 2) * stepSize;
-          mutant.forEach(block => {
-            let newX = Math.max(0, block.x + shift);
-            newX = Math.round(newX / stepSize) * stepSize;
-            block.x = newX;
-          });
-          const maxX = numSteps * stepSize;
-          mutant.forEach(block => {
-            if (block.x + block.length > maxX) block.x = maxX - block.length;
-            if (block.x < 0) block.x = 0;
-          });
-          const filtered = mutant.filter(b => b.x < maxX && b.x + b.length > 0);
-          mutant.length = 0;
-          mutant.push(...filtered);
-        }
-  
-        // Кроссовер – с вероятностью 10% (было 12%)
-        if (Math.random() < 0.1 && mutant.length >= 2) {
-          const idx1 = Math.floor(Math.random() * mutant.length);
-          let idx2 = Math.floor(Math.random() * mutant.length);
-          while (idx2 === idx1) idx2 = Math.floor(Math.random() * mutant.length);
-          const b1 = mutant[idx1];
-          const b2 = mutant[idx2];
-          const tempFret = b1.fret;
-          const tempLength = b1.length;
-          b1.fret = b2.fret;
-          b1.length = b2.length;
-          b2.fret = tempFret;
-          b2.length = tempLength;
-        }
-  
         return mutant;
       };
-  
-      // ---- 2.3. Создаём популяцию ----
+
       let population = [];
       for (let i = 0; i < POPULATION_SIZE; i++) {
-        const mutantBlocks = createMutant(currentBlocks);
-        population.push({
-          blocks: mutantBlocks,
-          fitness: evaluateFitness(mutantBlocks)
-        });
+        const mutant = createMutant(currentBlocks);
+        population.push({ blocks: mutant, fitness: evaluateFitness(mutant) });
       }
-  
-      // ---- 2.4. Селекция: сортируем по убыванию fitness ----
       population.sort((a, b) => b.fitness - a.fitness);
-  
-      // ---- 2.5. Берём лучшего (можно добавить элитизм: сохранять лучшего от предыдущей популяции) ----
-      newBlocks = population[0].blocks;
-  
-      // Опционально: добавить небольшой случайный элемент – взять одного из топ-3 с вероятностью 20%
-      // if (Math.random() < 0.2 && population.length > 2) {
-      //   const idx = 1 + Math.floor(Math.random() * 2);
-      //   newBlocks = population[idx].blocks;
-      // }
-  
-      setTracks(prev => ({ ...prev, [inst]: newBlocks }));
+      
+      setTracks(prev => ({ ...prev, [inst]: population[0].blocks }));
       if (uiSoundsEnabled) uiSounds.playChirp();
       return;
     }
-  
-    // ==============================================================
-    // 3. Если блоков нет – генерируем НОВЫЙ СЛУЧАЙНЫЙ ПАТТЕРН (старая логика)
-    // ==============================================================
-    newBlocks = [];
-    const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  
-    // ---- 3.1. Барабаны ----
-    if (inst === 'drum') {
-      const KICK    = { fret: 0, string: 0 };
-      const SNARE   = { fret: 4, string: 0 };
-      const HIHAT_C = { fret: 8, string: 1 };
-      const HIHAT_O = { fret: 12, string: 1 };
-      const CRASH   = { fret: 16, string: 1 };
-  
-      const kickPatterns = [
-        [0, 8], [0, 4, 8, 12], [0, 7, 10], [0, 8, 11], [0, 10],
-        [0, 8, 10, 14], [0, 3, 8], [0, 4, 8, 12, 15], [0, 2, 8, 10], [0, 7, 8, 15]
-      ];
-      const snarePatterns = [
-        [4, 12], [8], [4, 12, 15], [3, 6, 11, 14], [4, 10, 12],
-        [4, 7, 12], [2, 6, 10, 14], [4, 12, 13, 14], [8, 14, 15], [4, 9, 12]
-      ];
-      const hatPatterns = [
-        [0, 2, 4, 6, 8, 10, 12, 14], [2, 6, 10, 14], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [0, 4, 8, 12], [0, 2, 4, 6, 8, 9, 10, 12, 14, 15], [0, 2, 3, 4, 6, 8, 10, 11, 12, 14],
-        [0, 4, 8, 10, 12], [0, 3, 6, 9, 12], [2, 4, 6, 10, 12, 14], [0, 2, 8, 10]
-      ];
-  
-      const currentKick = randomPick(kickPatterns);
-      const currentSnare = randomPick(snarePatterns);
-      const currentHat = randomPick(hatPatterns);
-  
-      for (let step = 0; step < numSteps; step++) {
-        const stepInBar = step % 16;
-        const x = step * stepSize;
-        if (currentKick.includes(stepInBar)) {
-          newBlocks.push({ id: now + step + Math.random(), string: KICK.string, x, length: stepSize, fret: KICK.fret, velocity: 0.85 + Math.random() * 0.15, effect: null });
-        }
-        if (currentSnare.includes(stepInBar)) {
-          newBlocks.push({ id: now + step + Math.random() + 1000, string: SNARE.string, x, length: stepSize, fret: SNARE.fret, velocity: 0.8 + Math.random() * 0.2, effect: null });
-        }
-        if (currentHat.includes(stepInBar)) {
-          const isOpen = Math.random() > 0.85 && stepInBar % 4 !== 0;
-          const hat = isOpen ? HIHAT_O : HIHAT_C;
-          newBlocks.push({ id: now + step + Math.random() + 2000, string: hat.string, x, length: stepSize, fret: hat.fret, velocity: 0.4 + Math.random() * 0.4, effect: null });
-        }
-        if (step % 32 === 0) {
-          newBlocks.push({ id: now + step + Math.random() + 3000, string: CRASH.string, x, length: stepSize, fret: CRASH.fret, velocity: 1.0, effect: null });
-        }
-      }
-    }
-  
-    // ---- 3.2. Бас ----
-    else if (inst === 'bass') {
-      const bassPatterns = [
-        { steps: [0,4,8,12], frets: [0,2,4,5] },
-        { steps: [0,3,6,10,12], frets: [0,3,5,7,5] },
-        { steps: [0,6,12], frets: [0,3,5] },
-        { steps: [0,4,8,12, 2,6,10,14], frets: [0,0,0,0, 2,2,2,2] }
-      ];
-      const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
-      const pattern = randomPick(bassPatterns);
-      const baseSteps = pattern.steps;
-      let baseFrets = pattern.frets;
-      const trans = Math.floor(Math.random() * 7) - 3;
-      let frets = baseFrets.map(f => Math.min(22, Math.max(0, f + trans)));
-      frets = frets.map(f => pentatonicMinor.reduce((a, b) => Math.abs(b - f) < Math.abs(a - f) ? b : a));
-  
-      for (let step = 0; step < numSteps; step++) {
-        const patternStepIdx = step % baseSteps.length;
-        const stepPos = baseSteps[patternStepIdx] + Math.floor(step / baseSteps.length) * 16;
-        if (stepPos >= numSteps) continue;
-        const fret = frets[patternStepIdx % frets.length];
-        const stringIdx = Math.floor(Math.random() * 3);
-        const lengthPx = 4 * stepSize;
-        const x = stepPos * stepSize;
-        const velocity = 0.7 + Math.random() * 0.3;
-        newBlocks.push({
-          id: now + step + Math.random(),
-          string: stringIdx,
-          x: x,
-          length: lengthPx,
-          fret: fret,
-          velocity: velocity,
-          effect: null
-        });
-      }
-    }
-  
-    // ---- 3.3. Мелодические инструменты (гитара, синт, чип) ----
-    else {
-      const pentatonicMinor = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22];
-      const generateMotif = (length, startFret) => {
-        let motif = [];
-        let prev = startFret;
-        for (let i = 0; i < length; i++) {
-          let interval;
-          const r = Math.random();
-          if (r < 0.6) interval = [0, 2, 3, 4][Math.floor(Math.random() * 4)];
-          else if (r < 0.85) interval = 5;
-          else interval = 7;
-          let direction = Math.random() > 0.5 ? 1 : -1;
-          let newFret = prev + direction * interval;
-          newFret = Math.min(22, Math.max(0, newFret));
-          let closest = pentatonicMinor.reduce((a, b) => Math.abs(b - newFret) < Math.abs(a - newFret) ? b : a);
-          motif.push(closest);
-          prev = closest;
-        }
-        return motif;
-      };
-  
-      const motifLength = Math.floor(Math.random() * 3) + 4;
-      const startFret = pentatonicMinor[Math.floor(Math.random() * pentatonicMinor.length)];
-      const motif = generateMotif(motifLength, startFret);
-  
-      const motifDurationSteps = 8;
-      const repetitions = Math.ceil(numSteps / motifDurationSteps);
-  
-      const fullMelody = [];
-      for (let rep = 0; rep < repetitions; rep++) {
-        for (let i = 0; i < motif.length; i++) {
-          let note = motif[i];
-          if (Math.random() < 0.2) {
-            note += (Math.random() > 0.5 ? 12 : -12);
-            note = Math.min(24, Math.max(0, note));
-            note = pentatonicMinor.reduce((a, b) => Math.abs(b - note) < Math.abs(a - note) ? b : a);
+
+    // 🆕 3. ГЕНЕРАЦИЯ С НУЛЯ (Умный бит)
+    // Проверяем, есть ли хоть какие-то ноты на других инструментах
+    const totalBlocks = Object.values(tracks).flat().length;
+
+    if (totalBlocks === 0) {
+      // Если трек полностью пустой, генерируем ЦЕЛЫЙ ДЕМО-БИТ
+      const newTracks = { guitar: [], synth: [], drum: [], bass: [], chip: [] };
+      const demoType = Math.floor(Math.random() * 12); // ✅ Теперь 12 стилей!
+
+      if (demoType === 0) {
+        // 🎸 1. SYNTHWAVE (Am - F - C - G)
+        const chordRoots = [45, 41, 48, 43];
+        for (let bar = 0; bar < 4; bar++) {
+          const root = chordRoots[bar];
+          const barX = bar * 16 * stepSize;
+          for (let i = 0; i < 16; i += 2) newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 8, velocity: i % 4 === 0 ? 0.8 : 0.4, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 8 * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          for (let i = 0; i < 16; i += 2) {
+            const mapped = getNoteFret(root - 12, 0);
+            newTracks.bass.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.8, effect: null });
           }
-          fullMelody.push(note);
+          const arp = [0, 3, 7, 12];
+          for (let i = 0; i < 16; i++) {
+            const mapped = getNoteFret(root + 12 + arp[i % 4], 4);
+            newTracks.synth.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize * 0.8, fret: mapped.fret, velocity: 0.6, effect: null });
+          }
         }
-      }
-  
-      const totalNotes = fullMelody.length;
-      const stepInterval = numSteps / totalNotes;
-      const steps = [];
-      for (let i = 0; i < totalNotes; i++) {
-        let step = Math.floor(i * stepInterval);
-        if (Math.random() > 0.7) {
-          step += Math.floor(Math.random() * 3) - 1;
+        setBpm(115);
+
+      } else if (demoType === 1) {
+        // 🎧 2. LO-FI (Cmaj7 - Am7 - Dm7 - G7)
+        const chords = [[48, 52, 55, 59], [45, 48, 52, 55], [50, 53, 57, 60], [43, 47, 50, 53]];
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 3 * stepSize, length: stepSize, fret: 0, velocity: 0.8, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 10 * stepSize, length: stepSize, fret: 0, velocity: 0.8, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 0.7, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 0.7, effect: null });
+          for (let i = 0; i < 16; i += 2) {
+            if (i === 4 || i === 12) continue; 
+            newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 8, velocity: 0.3, effect: null });
+          }
+          const mappedBass = getNoteFret(chords[bar][0] - 12, 0);
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX, length: stepSize * 6, fret: mappedBass.fret, velocity: 0.8, effect: null });
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + 8 * stepSize, length: stepSize * 4, fret: mappedBass.fret, velocity: 0.7, effect: null });
+          chords[bar].forEach((note, idx) => {
+            const mapped = getNoteFret(note, 3);
+            newTracks.guitar.push({ id: Math.random(), string: mapped.string, x: barX + idx * 0.5 * stepSize, length: stepSize * 3, fret: mapped.fret, velocity: 0.5, effect: null });
+          });
+          const melody = [0, 3, 7, 10];
+          for (let i = 0; i < 4; i++) {
+            const mapped = getNoteFret(chords[bar][0] + 12 + melody[i], 5);
+            newTracks.chip.push({ id: Math.random(), string: mapped.string, x: barX + (4 + i * 2) * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.5, effect: null });
+          }
         }
-        step = Math.min(numSteps - 1, Math.max(0, step));
-        if (!steps.includes(step)) steps.push(step);
+        setBpm(85);
+
+      } else if (demoType === 2) {
+        // 🎬 3. EPIC CINEMATIC (Cm - Ab - Eb - Bb)
+        const chords = [[48, 51, 55], [44, 48, 51], [51, 55, 58], [46, 50, 53]];
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 8 * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          if (bar === 0) newTracks.drum.push({ id: Math.random(), string: 1, x: barX, length: stepSize, fret: 16, velocity: 1, effect: null });
+          const mappedBass = getNoteFret(chords[bar][0] - 24, 0);
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX, length: stepSize * 8, fret: mappedBass.fret, velocity: 1, effect: null });
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + 8 * stepSize, length: stepSize * 8, fret: mappedBass.fret, velocity: 0.9, effect: null });
+          chords[bar].forEach(note => {
+            const mapped = getNoteFret(note, 4);
+            newTracks.synth.push({ id: Math.random(), string: mapped.string, x: barX, length: stepSize * 16, fret: mapped.fret, velocity: 0.6, effect: null });
+          });
+          const mappedLead = getNoteFret(chords[bar][0] + 12, 3);
+          newTracks.guitar.push({ id: Math.random(), string: mappedLead.string, x: barX, length: stepSize * 4, fret: mappedLead.fret, velocity: 0.8, effect: null });
+          newTracks.guitar.push({ id: Math.random(), string: mappedLead.string, x: barX + 8 * stepSize, length: stepSize * 2, fret: mappedLead.fret + 2, velocity: 0.8, effect: null });
+          newTracks.guitar.push({ id: Math.random(), string: mappedLead.string, x: barX + 12 * stepSize, length: stepSize * 4, fret: mappedLead.fret + 3, velocity: 0.8, effect: null });
+        }
+        setBpm(75);
+
+      } else if (demoType === 3) {
+        // 🎉 4. HAPPY POP (C - G - Am - F) - BPM 126
+        const chords = [[48, 52, 55], [43, 47, 50], [45, 48, 52], [41, 45, 48]];
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          for (let i = 0; i < 16; i += 4) newTracks.drum.push({ id: Math.random(), string: 0, x: barX + i * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          for (let i = 2; i < 16; i += 4) newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 12, velocity: 0.6, effect: null });
+          const mappedBass = getNoteFret(chords[bar][0] - 12, 1);
+          for (let i = 0; i < 16; i += 2) {
+            newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + i * stepSize, length: stepSize, fret: mappedBass.fret + (i % 4 === 0 ? 0 : 12), velocity: 0.8, effect: null });
+          }
+          chords[bar].forEach(note => {
+            const mapped = getNoteFret(note, 4);
+            for (let i = 2; i < 16; i += 4) {
+              newTracks.synth.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.6, effect: null });
+            }
+          });
+          const mel = [12, 16, 19, 24];
+          for (let i = 0; i < 4; i++) {
+            const mapped = getNoteFret(chords[bar][0] + mel[i], 4);
+            newTracks.guitar.push({ id: Math.random(), string: mapped.string, x: barX + (i * 4) * stepSize, length: stepSize * 2, fret: mapped.fret, velocity: 0.8, effect: null });
+          }
+        }
+        setBpm(126);
+
+      } else if (demoType === 4) {
+        // 🕺 5. FUNKY DISCO (Dm7 - G7 - Cmaj7 - A7) - BPM 115
+        const chords = [[50, 53, 57, 60], [43, 47, 50, 53], [48, 52, 55, 59], [45, 49, 52, 55]];
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 3 * stepSize, length: stepSize, fret: 0, velocity: 0.8, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 8 * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          for (let i = 0; i < 16; i++) {
+            if (i === 4 || i === 12) continue;
+            newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 8, velocity: i % 2 === 0 ? 0.4 : 0.2, effect: null });
+          }
+          const mappedBass = getNoteFret(chords[bar][0] - 12, 0);
+          [0, 2, 3, 6, 8, 10, 11, 14].forEach(i => {
+            newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + i * stepSize, length: stepSize, fret: mappedBass.fret + (i % 4 === 2 ? 12 : 0), velocity: 0.9, effect: null });
+          });
+          chords[bar].forEach(note => {
+            const mapped = getNoteFret(note, 3);
+            [0, 3, 6, 10, 12].forEach(i => {
+              newTracks.guitar.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.7, effect: null });
+            });
+          });
+          const mel = [0, 3, 7, 10, 12];
+          for (let i = 0; i < 5; i++) {
+            const mapped = getNoteFret(chords[bar][0] + 12 + mel[i], 5);
+            newTracks.chip.push({ id: Math.random(), string: mapped.string, x: barX + (i * 3 + 2) * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.6, effect: null });
+          }
+        }
+        setBpm(115);
+
+      } else if (demoType === 5) {
+        // 👾 6. 8-BIT ARCADE (Em - C - G - D) - BPM 140
+        const chords = [[52, 55, 59], [48, 52, 55], [43, 47, 50], [50, 54, 57]];
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          for (let i = 0; i < 16; i += 2) newTracks.drum.push({ id: Math.random(), string: 0, x: barX + i * stepSize, length: stepSize, fret: 0, velocity: 0.9, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 1, effect: null });
+          for (let i = 0; i < 16; i += 1) newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 8, velocity: 0.3, effect: null });
+          const mappedBass = getNoteFret(chords[bar][0] - 12, 0);
+          for (let i = 0; i < 16; i += 2) {
+            newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + i * stepSize, length: stepSize, fret: mappedBass.fret, velocity: 0.9, effect: null });
+          }
+          const arp = [0, 3, 7, 12, 7, 3];
+          for (let i = 0; i < 16; i += 1) {
+            const mapped = getNoteFret(chords[bar][0] + 12 + arp[i % 6], 5);
+            newTracks.chip.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize * 0.8, fret: mapped.fret, velocity: 0.7, effect: null });
+          }
+          chords[bar].forEach(note => {
+            const mapped = getNoteFret(note, 4);
+            newTracks.synth.push({ id: Math.random(), string: mapped.string, x: barX, length: stepSize * 8, fret: mapped.fret, velocity: 0.5, effect: null });
+          });
+        }
+        setBpm(140);
+
+      } else if (demoType === 6) {
+        // 🎸 7. SOLO GUITAR (Fingerpicking) - BPM 100
+        const chords = [[45, 48, 52, 57], [41, 45, 48, 53], [48, 52, 55, 60], [43, 47, 50, 55]]; // Am, F, C, G
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          const root = getNoteFret(chords[bar][0] - 12, 0);
+          newTracks.guitar.push({ id: Math.random(), string: root.string, x: barX, length: stepSize * 4, fret: root.fret, velocity: 0.8, effect: null });
+          [2, 4, 6, 8, 10, 12, 14].forEach((step, idx) => {
+            const note = chords[bar][(idx % 3) + 1];
+            const mapped = getNoteFret(note, 3);
+            newTracks.guitar.push({ id: Math.random(), string: mapped.string, x: barX + step * stepSize, length: stepSize * 2, fret: mapped.fret, velocity: 0.6, effect: null });
+          });
+        }
+        setBpm(100);
+
+      } else if (demoType === 7) {
+        // 👾 8. CHIP SOLO (Heroic 8-bit) - BPM 150
+        const chords = [[48, 52, 55], [43, 47, 50], [45, 48, 52], [41, 45, 48]]; // C, G, Am, F
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          const arp = [0, 4, 7, 12, 16, 12, 7, 4];
+          for (let i = 0; i < 16; i += 1) {
+            const mapped = getNoteFret(chords[bar][0] + arp[i % 8], 5);
+            newTracks.chip.push({ id: Math.random(), string: mapped.string, x: barX + i * stepSize, length: stepSize * 0.8, fret: mapped.fret, velocity: 0.7, effect: null });
+          }
+          const mappedBass = getNoteFret(chords[bar][0] - 12, 1);
+          for (let i = 0; i < 16; i += 4) {
+            newTracks.chip.push({ id: Math.random(), string: mappedBass.string, x: barX + i * stepSize, length: stepSize * 2, fret: mappedBass.fret, velocity: 0.8, effect: null });
+          }
+        }
+        setBpm(150);
+
+      } else if (demoType === 8) {
+        // 🎸👾 9. GUITAR & CHIP DUO (Math Rock) - BPM 130
+        const chords = [[52, 55, 59], [48, 52, 55], [43, 47, 50], [50, 54, 57]]; // Em, C, G, D
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 8 * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 4 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 12 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          const mappedGuitar = getNoteFret(chords[bar][0], 3);
+          for (let i = 0; i < 16; i += 2) {
+            newTracks.guitar.push({ id: Math.random(), string: mappedGuitar.string, x: barX + i * stepSize, length: stepSize, fret: mappedGuitar.fret, velocity: 0.8, effect: null });
+          }
+          const arp = [0, 3, 7, 12];
+          for (let i = 0; i < 16; i += 2) {
+            const mapped = getNoteFret(chords[bar][0] + 12 + arp[(i/2) % 4], 5);
+            newTracks.chip.push({ id: Math.random(), string: mapped.string, x: barX + (i + 1) * stepSize, length: stepSize, fret: mapped.fret, velocity: 0.7, effect: null });
+          }
+        }
+        setBpm(130);
+      
+      } else if (demoType === 9) {
+        // 🥁 10. DRUM & BASS (DnB) - BPM 174
+        const bassNotes = [40, 36, 43, 38]; // E, C, G, D
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          // Drums (Breakbeat)
+          [0, 6, 10].forEach(i => newTracks.drum.push({ id: Math.random(), string: 0, x: barX + i * stepSize, length: stepSize, fret: 0, velocity: 1, effect: null }));
+          [4, 12].forEach(i => newTracks.drum.push({ id: Math.random(), string: 0, x: barX + i * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null }));
+          for (let i = 0; i < 16; i++) {
+            if (i === 4 || i === 12) continue;
+            newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: 8, velocity: 0.3, effect: null });
+          }
+          // Bass (Sub Bass)
+          const mappedBass = getNoteFret(bassNotes[bar] - 12, 0);
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX, length: stepSize * 6, fret: mappedBass.fret, velocity: 0.9, effect: null });
+          newTracks.bass.push({ id: Math.random(), string: mappedBass.string, x: barX + 10 * stepSize, length: stepSize * 4, fret: mappedBass.fret, velocity: 0.8, effect: null });
+        }
+        setBpm(174);
+
+      } else if (demoType === 10) {
+        // 🥁 11. PERCUSSION SOLO (Only Drums) - BPM 130
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX, length: stepSize, fret: 0, velocity: 1, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 7 * stepSize, length: stepSize, fret: 0, velocity: 0.8, effect: null });
+          newTracks.drum.push({ id: Math.random(), string: 0, x: barX + 10 * stepSize, length: stepSize, fret: 4, velocity: 0.9, effect: null });
+          // Toms
+          for (let i = 0; i < 16; i += 2) {
+            const tomFret = 8 + (i % 6);
+            newTracks.drum.push({ id: Math.random(), string: 1, x: barX + i * stepSize, length: stepSize, fret: tomFret, velocity: 0.7, effect: null });
+          }
+          // Snare roll (fill) at the end of the bar
+          for (let i = 12; i < 16; i++) {
+            newTracks.drum.push({ id: Math.random(), string: 0, x: barX + i * stepSize, length: stepSize, fret: 4, velocity: 0.5 + (i - 12) * 0.1, effect: null });
+          }
+        }
+        setBpm(130);
+
+      } else {
+        // 🎸 12. BASS SOLO (Only Bass) - BPM 110
+        for (let bar = 0; bar < 4; bar++) {
+          const barX = bar * 16 * stepSize;
+          const rootNote = 36 + (bar * 2); 
+          const mapped = getNoteFret(rootNote, 0);
+          // Funky syncopated bassline
+          [0, 2, 4, 7, 8, 11, 12, 14].forEach((step, idx) => {
+            const fretOffset = idx % 2 === 0 ? 0 : 12; // Octave jumps
+            newTracks.bass.push({ id: Math.random(), string: mapped.string, x: barX + step * stepSize, length: stepSize, fret: mapped.fret + fretOffset, velocity: 0.8 + (idx % 3 === 0 ? 0.2 : 0), effect: null });
+          });
+          // Slide up
+          newTracks.bass.push({ id: Math.random(), string: mapped.string, x: barX + 14 * stepSize, length: stepSize * 2, fret: mapped.fret + 5, velocity: 0.9, effect: null });
+        }
+        setBpm(110);
       }
-      steps.sort((a,b)=>a-b);
-  
-      steps.forEach((step, idx) => {
-        const fret = fullMelody[idx % fullMelody.length];
-        let stringIdx;
-        if (inst === 'guitar') stringIdx = Math.floor(Math.random() * 6) + 2;
-        else stringIdx = Math.floor(Math.random() * strings.length);
-        const lengthSteps = (Math.random() > 0.7) ? 2 : 1;
-        const lengthPx = lengthSteps * stepSize;
-        const x = step * stepSize;
-        const velocity = 0.6 + Math.random() * 0.4;
-        newBlocks.push({
-          id: now + idx + Math.random(),
-          string: stringIdx,
-          x: x,
-          length: lengthPx,
-          fret: fret,
-          velocity: velocity,
-          effect: null
-        });
-      });
+
+      setTracks(newTracks);
+      if (uiSoundsEnabled) uiSounds.playBoom();
+      return;
     }
-  
-    setTracks(prev => ({ ...prev, [inst]: newBlocks }));
-    if (uiSoundsEnabled) uiSounds.playClick();
   };
 
 const handleSelectBlock = (e, block, instName) => {
@@ -3069,105 +3393,109 @@ const deleteSelectedBlocks = () => {
   setSelectedBlockIds(new Set());
   
  };
-  // Горячие клавиши с поддержкой русской раскладки и Chrome
- useEffect(() => {
-  const handleKeyDown = (e) => {
-    // 1. Игнорируем в инпутах
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    // Горячие клавиши для выбора инструмента (1-5)
-  if (e.code >= 'Digit1' && e.code <= 'Digit5') {
-    const index = parseInt(e.code.replace('Digit', '')) - 1;
-    const instruments = ['guitar', 'synth', 'drum', 'bass', 'chip'];
-    if (instruments[index]) {
-      e.preventDefault();
-      setInstrument(instruments[index]);
-      // опционально: короткий звуковой сигнал или вспышка
-    }
-    return;
-  }
-
-    // 2. Удаление (Delete / Backspace)
-    if (e.code === 'Delete' || e.code === 'Backspace') {
-      if (selectedBlockIds.size > 0) {
-        e.preventDefault();
-        deleteSelectedBlocks();
-      }
-      return;
-    }
-
-    // 3. Пробел – Play / Pause
-    if (e.code === 'Space') {
-      e.preventDefault();
-      e.stopPropagation();
-      if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
-        document.activeElement.blur();
-      }
-      handleTogglePlay();  // ← основная функция play/pause
-      return;
-    }
-    // 4. Клавиша S – STOP (остановка с возвратом в начало)
-    if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      handleStop();
-      return;
-    }
-    // Горячая клавиша R — запись (Record)
-    if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
-     e.preventDefault();
-     handleRecord();
-     return;
-    }
-
-    // 4. Копирование / Вставка (Ctrl+C / Ctrl+V)
-    const isC = e.key === 'c' || e.key === 'с' || e.code === 'KeyC';
-    const isV = e.key === 'v' || e.key === 'м' || e.code === 'KeyV';
-
-    if ((e.ctrlKey || e.metaKey) && isC) {
-      e.preventDefault();
-      copySelectedBlocks();
-    } else if ((e.ctrlKey || e.metaKey) && isV) {
-      e.preventDefault();
-      pasteBlocks();
-    }
-    // 5. Клавиша D (при зажатом Ctrl) – дублировать выделенные блоки
- if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || e.key === 'd' || e.key === 'в')) {
-  e.preventDefault();
-  if (selectedBlockIds.size > 0) {
-    // Сначала копируем, затем вставляем (используя существующие функции)
-    copySelectedBlocks();
-    pasteBlocks();
-  }
-  return;
-}
-// 6. Ctrl+A – выделить все блоки текущего инструмента
-const isA = e.key === 'a' || e.key === 'ф' || e.code === 'KeyA';
-if ((e.ctrlKey || e.metaKey) && isA) {
-  e.preventDefault();
-  const allIds = tracks[instrument].map(b => b.id);
-  setSelectedBlockIds(new Set(allIds));
-  return;
-}
-  };
-
-  window.addEventListener('keydown', handleKeyDown, true);
-  return () => window.removeEventListener('keydown', handleKeyDown, true);
-}, [selectedBlockIds, handleTogglePlay, copySelectedBlocks, pasteBlocks, deleteSelectedBlocks]);
-const clearAllEffects = () => {
-  setTracks(prev => {
-    const updated = { ...prev };
-    Object.keys(updated).forEach(inst => {
-      updated[inst] = updated[inst].map(block => {
-        // Удаляем поле effect, если оно есть
-        if (block.effect) {
-          const { effect, ...rest } = block;
-          return rest;
+  
+    // Горячие клавиши (оптимизировано)
+    useEffect(() => {
+      const handleKeyDown = (e) => {
+        // 1. Игнорируем в инпутах
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+        // Достаем АКТУАЛЬНЫЕ функции из нашей "коробочки" (ref)
+        const { 
+          handleTogglePlay, 
+          handleStop, 
+          handleRecord, 
+          copySelectedBlocks, 
+          pasteBlocks, 
+          deleteSelectedBlocks 
+        } = funcsRef.current; 
+  
+        // Достаем АКТУАЛЬНЫЕ данные (выделенные блоки, треки, инструмент)
+        const selectedIds = selectedBlockIdsRef.current; 
+        const currentTracks = tracksRef.current;
+        const currentInstrument = instrumentRef.current;
+  
+        // Горячие клавиши для выбора инструмента (1-5)
+        if (e.code >= 'Digit1' && e.code <= 'Digit5') {
+          const index = parseInt(e.code.replace('Digit', '')) - 1;
+          const instruments = ['guitar', 'synth', 'drum', 'bass', 'chip'];
+          if (instruments[index]) {
+            e.preventDefault();
+            setInstrument(instruments[index]);
+          }
+          return;
         }
-        return block;
-      });
-    });
-    return updated;
-  });
-};
+  
+        // 2. Удаление (Delete / Backspace)
+        if (e.code === 'Delete' || e.code === 'Backspace') {
+          if (selectedIds.size > 0) {
+            e.preventDefault();
+            deleteSelectedBlocks();
+          }
+          return;
+        }
+  
+        // 3. Пробел – Play / Pause
+        if (e.code === 'Space') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+            document.activeElement.blur();
+          }
+          handleTogglePlay();
+          return;
+        }
+  
+        // 4. Клавиша S – STOP
+        if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          handleStop();
+          return;
+        }
+  
+        // 5. Клавиша R — запись (Record)
+        if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          handleRecord();
+          return;
+        }
+  
+        // 6. Копирование / Вставка (Ctrl+C / Ctrl+V)
+        const isC = e.key === 'c' || e.key === 'с' || e.code === 'KeyC';
+        const isV = e.key === 'v' || e.key === 'м' || e.code === 'KeyV';
+  
+        if ((e.ctrlKey || e.metaKey) && isC) {
+          e.preventDefault();
+          copySelectedBlocks();
+        } else if ((e.ctrlKey || e.metaKey) && isV) {
+          e.preventDefault();
+          pasteBlocks();
+        }
+  
+        // 7. Ctrl+D – дублировать выделенные блоки
+        if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || e.key === 'd' || e.key === 'в')) {
+          e.preventDefault();
+          if (selectedIds.size > 0) {
+            copySelectedBlocks();
+            pasteBlocks();
+          }
+          return;
+        }
+  
+        // 8. Ctrl+A – выделить все блоки текущего инструмента
+        const isA = e.key === 'a' || e.key === 'ф' || e.code === 'KeyA';
+        if ((e.ctrlKey || e.metaKey) && isA) {
+          e.preventDefault();
+          const allIds = currentTracks[currentInstrument].map(b => b.id);
+          setSelectedBlockIds(new Set(allIds));
+          return;
+        }
+      };
+  
+      window.addEventListener('keydown', handleKeyDown, true);
+      return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, []);
+
 const applyEffectToSelectedBlocks = (effectName) => {
   if (selectedBlockIds.size === 0) return;
   setTracks(prev => {
@@ -3355,7 +3683,9 @@ const handleLogout = () => {
       const newX = Math.max(0, Math.floor((state.blockX + deltaX) / STEP_WIDTH) * STEP_WIDTH);
       const rect = scrollRef.current.getBoundingClientRect();
       const relativeY = touch.clientY - rect.top;
-      const newString = Math.max(0, Math.min(strings.length - 1, Math.floor(relativeY / 60)));
+      let visualString = Math.floor(relativeY / 60);
+      let newString = isReversed ? strings.length - 1 - visualString : visualString;
+      newString = Math.max(0, Math.min(strings.length - 1, newString));
       setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, x: newX, string: newString } : b)}));
     } 
     else if (state.mode === 'resize') {
@@ -3401,6 +3731,47 @@ const menuItemStyle = {
       default:       return '#4D88FF';
     }
   };
+    
+      // 1. Вычисляем точную максимальную длину нот (кэшируется)
+  const maxEndPX = useMemo(() => {
+    let maxX = 0;
+    for (const arr of Object.values(tracks)) {
+      for (const b of arr) {
+        if (b.x + b.length > maxX) maxX = b.x + b.length;
+      }
+    }
+    return maxX;
+  }, [tracks]);
+
+  // 2. Вычисляем ширину сетки (добавляем 1000px запаса)
+  const gridWidth = useMemo(() => Math.max(2000, maxEndPX + 1000), [maxEndPX]);
+
+  // 3. Синхронизируем ref для аудио-движка (чтобы он видел актуальную длину без перезапуска)
+  useEffect(() => {
+    maxEndPXRef.current = maxEndPX;
+  }, [maxEndPX]);
+
+    // 4. Синхронизация лупа с Transport (Авто-зацикливание)
+    useEffect(() => {
+      const transport = Tone.getTransport();
+      const stepTime = 60 / bpm / 4;
+      
+      if (loopActive && loopEnd > loopStart) {
+        // Если включен режим лупа (зеленая рамка)
+        transport.loopStart = (loopStart / STEP_WIDTH) * stepTime;
+        transport.loopEnd = (loopEnd / STEP_WIDTH) * stepTime;
+        transport.loop = true;
+      } else if (!loopActive && maxEndPX > 0) {
+        // Если луп выключен, но есть ноты — зацикливаем весь трек от 0 до конца
+        const globalLoopEndTime = (maxEndPX / STEP_WIDTH) * stepTime;
+        transport.loopStart = 0;
+        transport.loopEnd = globalLoopEndTime;
+        transport.loop = true;
+      } else {
+        transport.loop = false;
+      }
+    }, [loopActive, loopStart, loopEnd, bpm, maxEndPX]);
+
   if (mode === "landing") {
     return (
       <div className={`app landing ${theme === 'light' ? 'light-theme' : ''}`}>
@@ -3415,6 +3786,70 @@ const menuItemStyle = {
           paddingTop: "12vh",
           boxSizing: "border-box"
         }}>
+                               {/* 🎃 ДВЕ КЛАССИЧЕСКИЕ ТЫКВЫ */}
+          <div className="halloween-pumpkins-container">
+            
+            {/* ЛЕВАЯ ТЫКВА (ШИРОКАЯ) */}
+            <div className="pumpkin-wrapper pumpkin-left">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="pumpkinGradLeft" cx="50%" cy="50%" r="50%">
+                    <stop offset="10%" stopColor="#FF9D00" />
+                    <stop offset="70%" stopColor="#E65C00" />
+                    <stop offset="100%" stopColor="#8C2900" />
+                  </radialGradient>
+                </defs>
+                {/* Стебель */}
+                <path d="M 90 50 Q 95 20 115 30 Q 110 40 115 50" fill="#4A2E15" stroke="#2B1A0B" strokeWidth="2"/>
+                {/* Тело */}
+                <ellipse cx="100" cy="125" rx="85" ry="65" fill="url(#pumpkinGradLeft)" />
+                {/* Прожилки */}
+                <path d="M 100 60 Q 70 125 100 190" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 60 Q 130 125 100 190" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 60 Q 40 125 50 185" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 60 Q 160 125 150 185" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                {/* Глаза (Классические треугольники) */}
+                <polygon points="40,100 85,110 55,140" className="face-glow" />
+                <polygon points="160,100 115,110 145,140" className="face-glow" />
+                {/* Нос */}
+                <polygon points="100,125 85,145 115,145" className="face-glow" />
+                {/* Рот с зубами */}
+                <path d="M 50,160 L 70,175 L 80,160 L 100,185 L 120,160 L 130,175 L 150,160 L 140,190 L 60,190 Z" className="face-glow" />
+              </svg>
+            </div>
+
+            {/* ПРАВАЯ ТЫКВА (ВЫСОКАЯ) */}
+            <div className="pumpkin-wrapper pumpkin-right">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <radialGradient id="pumpkinGradRight" cx="50%" cy="50%" r="50%">
+                    <stop offset="10%" stopColor="#FF8800" />
+                    <stop offset="70%" stopColor="#D94E00" />
+                    <stop offset="100%" stopColor="#7A1C00" />
+                  </radialGradient>
+                </defs>
+                {/* Стебель (изогнутый) */}
+                <path d="M 95 40 Q 105 10 125 20 Q 120 30 115 45" fill="#4A2E15" stroke="#2B1A0B" strokeWidth="2"/>
+                {/* Тело (более овальное) */}
+                <ellipse cx="100" cy="120" rx="70" ry="75" fill="url(#pumpkinGradRight)" />
+                {/* Прожилки */}
+                <path d="M 100 45 Q 70 120 100 195" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 45 Q 130 120 100 195" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 45 Q 50 120 60 185" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                <path d="M 100 45 Q 150 120 140 185" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
+                {/* Глаза (Большие, злые) */}
+                <polygon points="40,85 85,95 45,125" className="face-glow" />
+                <polygon points="160,85 115,95 155,125" className="face-glow" />
+                {/* Нос */}
+                <polygon points="100,120 90,135 110,135" className="face-glow" />
+                {/* Рот */}
+                <path d="M 55,155 L 75,165 L 85,150 L 100,175 L 115,150 L 125,165 L 145,155 L 135,185 L 65,185 Z" className="face-glow" />
+              </svg>
+            </div>
+
+          </div>
+
+
           <div className="logo-wrapper">
             <h1 className="neon-struna" style={{ marginBottom: "5px" }}>STRUNA</h1>
           </div>
@@ -3456,7 +3891,7 @@ const menuItemStyle = {
     fontSize: "10px",
     opacity: 0.8,
     letterSpacing: "1.5px",
-    color: "rgba(255,255,255,0.8)",
+    color: "inherit", // ✅ Наследует цвет текста кнопки
     fontWeight: "500"
   }}>
     🎧 3D SOUND
@@ -3517,22 +3952,15 @@ const menuItemStyle = {
   </div>
 )}
   
-          <div className="preview">
+  <div className="preview">
             {/* GUITAR */}
             <div
               className="preview-track guitar"
               onClick={(e) => { e.stopPropagation(); playDemo("guitar"); }}
               onDoubleClick={() => handleStartCreating("guitar")}
+              style={{ '--glow-color': '#FFB84D' }} // Оранжевый
             >
-              <div className="bg-wave">
-                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-                </svg>
-              </div>
               <span>GUITAR</span>
-              <div className="wave">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </div>
   
             {/* SYNTH */}
@@ -3540,16 +3968,9 @@ const menuItemStyle = {
               className="preview-track synth"
               onClick={(e) => { e.stopPropagation(); playDemo("synth"); }}
               onDoubleClick={() => handleStartCreating("synth")}
+              style={{ '--glow-color': '#4DC3FF' }} // Голубой
             >
-              <div className="bg-wave">
-                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-                </svg>
-              </div>
               <span>SYNTH</span>
-              <div className="wave">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </div>
   
             {/* DRUM */}
@@ -3557,16 +3978,9 @@ const menuItemStyle = {
               className="preview-track drum"
               onClick={(e) => { e.stopPropagation(); playDemo("drum"); }}
               onDoubleClick={() => handleStartCreating("drum")}
+              style={{ '--glow-color': '#FF4D4D' }} // Красный
             >
-              <div className="bg-wave">
-                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-                </svg>
-              </div>
               <span>DRUM</span>
-              <div className="wave">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </div>
   
             {/* BASS */}
@@ -3574,16 +3988,9 @@ const menuItemStyle = {
               className="preview-track bass"
               onClick={(e) => { e.stopPropagation(); playDemo("bass"); }}
               onDoubleClick={() => handleStartCreating("bass")}
+              style={{ '--glow-color': '#BD00FF' }} // Фиолетовый
             >
-              <div className="bg-wave">
-                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-                </svg>
-              </div>
               <span>BASS</span>
-              <div className="wave">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </div>
   
             {/* CHIP */}
@@ -3591,16 +3998,9 @@ const menuItemStyle = {
               className="preview-track chip"
               onClick={(e) => { e.stopPropagation(); playDemo("chip"); }}
               onDoubleClick={() => handleStartCreating("chip")}
+              style={{ '--glow-color': '#4DFF88' }} // Зеленый
             >
-              <div className="bg-wave">
-                <svg viewBox="0 0 200 40" preserveAspectRatio="none">
-                  <path d="M0,20 C10,5 30,5 40,20 C50,35 70,35 80,20 C90,5 110,5 120,20 C130,35 150,35 160,20 C170,5 190,5 200,20" />
-                </svg>
-              </div>
               <span>CHIP</span>
-              <div className="wave">
-                <span></span><span></span><span></span><span></span><span></span>
-              </div>
             </div>
           </div>
   
@@ -3657,44 +4057,23 @@ const menuItemStyle = {
   
       {/* Верхняя панель: EXIT, логотип, SAVE/LOAD/DRIVE/SHARE */}
 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+  
+<div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+    {/* 🔮 КНОПКА-ЛОГОТИП (ВОЗВРАТ НА ПРЕВЬЮ) */}
     <button
       onClick={() => {
         stopSound();
         setMode("landing");
       }}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: "var(--text-primary)",
-        cursor: "pointer",
-        padding: "5px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all 0.3s ease",
-      }}
-      onMouseOver={(e) => {
-        e.currentTarget.style.color = "#FF4D4D";
-        e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
-        e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.color = "var(--text-primary)";
-        e.currentTarget.style.filter = "none";
-        e.currentTarget.style.transform = "translateX(0) scale(1)";
-      }}
+      title="Вернуться на главную"
+      className="app-logo-btn"
     >
-      <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-      </svg>
+      <img
+        src="/android-chrome-192x192.png"
+        alt="Back to Home"
+        className="app-logo-img"
+      />
     </button>
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-        <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.5.3.4-BETA</span>
-      </div>
-    </div>
   </div>
 
   {/* ===== ПРАВАЯ ЧАСТЬ ===== */}
@@ -3755,6 +4134,45 @@ const menuItemStyle = {
     <span className="slider"></span>
   </label>
 </div>
+
+{/* 🎨 Кнопка рандомной смены палитры фона */}
+<button
+  className="menu-item"
+  onClick={randomizeBgPalette}
+  style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 24px'
+  }}
+>
+  <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
+    🎨 {t('bgPalette')}
+  </span>
+  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <span style={{ fontSize: '11px', opacity: 0.5 }}>🎲</span>
+    <span style={{ display: 'flex', gap: '3px' }}>
+      {(() => {
+        const p = BG_PALETTES[bgPaletteIndex];
+        const c = theme === 'light' ? p.light : p.dark;
+        return ['g1a', 'g1b', 'g1c'].map(key => (
+          <span
+            key={key}
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              background: c[key],
+              border: '1px solid rgba(255,255,255,0.25)',
+              display: 'inline-block',
+              boxShadow: `0 0 6px ${c[key]}`
+            }}
+          />
+        ));
+      })()}
+    </span>
+  </span>
+</button>
 
             <button className="menu-item" onClick={() => { handleSaveProject(); setIsUserMenuOpen(false); }}>
               {t('saveProject')}
@@ -3860,632 +4278,409 @@ const menuItemStyle = {
   </div>
 </div>
   
-{/* Блоки TEMPO / ATTACH EFFECT / MASTER (анимированный контейнер) */}
-<div style={{
-  overflow: "hidden",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  maxHeight: isTempoMasterVisible ? "300px" : "0px",
-  opacity: isTempoMasterVisible ? 1 : 0,
-  marginBottom: isTempoMasterVisible ? "20px" : "0px"
-}}>
-  <div style={{ display: "flex", gap: "20px", alignItems: "stretch", flexWrap: "wrap" }}>
-
-    {/* ========== БЛОК TEMPO ========== */}
-<div style={{
-  background: "var(--bg-card)",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid var(--border-color)",
-  boxShadow: "var(--shadow)",
-  width: "200px",
-  textAlign: "center",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  boxSizing: "border-box"
-}}>
-  <div>
-    <div style={{ fontSize: "12px", color: "var(--text-accent)", marginBottom: "6px" }}>{t('tempo')}</div>
-    <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)" }}>{bpm}</div>
-    <div style={{ fontSize: "10px", color: "var(--text-accent)", marginBottom: "12px" }}>{t('bpm')}</div>
-
-    {/* ===== КНОПКА МЕТРОНОМА ===== */}
-    <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
-      <button
-        onClick={() => {
-          if (!metroOn) Tone.start();
-          setMetroOn(!metroOn);
-        }}
-        style={{
-          background: metroOn ? 'rgba(77, 255, 136, 0.15)' : 'rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: `2px solid ${metroOn ? 'var(--text-bright)' : 'var(--border-color)'}`,
-          borderRadius: '20px',
-          padding: '4px 12px',
-          color: metroOn ? 'var(--text-bright)' : 'var(--text-secondary)',
-          fontSize: '9px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          transition: 'all 0.25s ease',
-          boxShadow: metroOn ? '0 0 15px rgba(77,255,136,0.2)' : 'none',
-          width: '100%',
-          maxWidth: '120px',
-          letterSpacing: '0.5px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-      >
-        {metroOn ? t('metroOn') : t('metroOff')}
-      </button>
-    </div>
-
-    {/* ===== УПРАВЛЕНИЕ МЕТРОНОМОМ (громкость + звук) ===== */}
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: "6px",
-      marginBottom: "12px",
-      width: "100%",
-      alignItems: "center"
-    }}>
-      {/* Ползунок громкости */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center", width: "100%" }}>
-        <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>🔊</span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={metroVolume}
-          onChange={(e) => setMetroVolume(parseFloat(e.target.value))}
-          style={{
-            flex: 1,
-            height: "4px",
-            cursor: "pointer",
-            maxWidth: "100px",
-            background: metroOn ? "var(--text-bright)" : "var(--border-color)"
-          }}
-        />
-        <span style={{ fontSize: "8px", color: "var(--text-bright)", minWidth: "24px" }}>
-          {Math.round(metroVolume * 100)}%
-        </span>
-      </div>
-
-      {/* ===== ВЫБОР ЗВУКА (стеклянный select с переводом) ===== */}
-<div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "center", width: "100%", position: "relative" }}>
-  <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>🎵</span>
-  <div style={{ position: "relative", width: "100%", maxWidth: "120px" }}>
-    <select
-      value={metroSound}
-      onChange={(e) => setMetroSound(e.target.value)}
-      className="glass-select"
-      style={{
-        appearance: "none",
-        WebkitAppearance: "none",
-        background: "rgba(255,255,255,0.06)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        border: "1px solid var(--border-color)",
-        borderRadius: "12px",
-        padding: "4px 28px 4px 12px",
-        color: "var(--text-primary)",
-        fontSize: "9px",
-        fontWeight: "bold",
-        cursor: "pointer",
-        outline: "none",
-        width: "100%",
-        transition: "all 0.25s ease"
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
-      onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
-    >
-      <option value="click" style={{ background: "var(--bg-card)" }}>🎵 {t('metroSoundClick')}</option>
-      <option value="beep" style={{ background: "var(--bg-card)" }}>🔔 {t('metroSoundBeep')}</option>
-      <option value="drum" style={{ background: "var(--bg-card)" }}>🥁 {t('metroSoundDrum')}</option>
-      <option value="noise" style={{ background: "var(--bg-card)" }}>🎛️ {t('metroSoundNoise')}</option>
-      <option value="bell" style={{ background: "var(--bg-card)" }}>🔔 {t('metroSoundBell')}</option>
-    </select>
-    {/* Кастомная стрелка */}
-    <div style={{
-      position: "absolute",
-      right: "8px",
-      top: "50%",
-      transform: "translateY(-50%)",
-      pointerEvents: "none",
-      color: "var(--text-secondary)",
-      fontSize: "8px"
-    }}>
-      ▼
-    </div>
-  </div>
-</div>
-    </div>
-  </div>
-
-  <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-    {/* Строка кнопок SET LOOP и LOOP ON/OFF */}
-    <div style={{ 
-      display: "flex", 
-      gap: "8px", 
-      marginBottom: "16px", 
-      alignItems: "stretch", 
-      justifyContent: "center",
-      width: "100%"
-    }}>
-      <button onClick={() => {
-        const currentX = playheadXRef.current;
-        if (loopStart === 0 && loopEnd === 0) {
-          setLoopStart(currentX);
-          setLoopEnd(0);
-          setPreviewLoopEnd(currentX);
-        } else if (loopStart !== 0 && loopEnd === 0) {
-          let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX;
-          if (endX <= loopStart) {
-            endX = loopStart + STEP_WIDTH;
-          }
-          setLoopEnd(endX);
-          setPreviewLoopEnd(0);
-          setLoopActive(true);
-        } else {
-          setLoopStart(0);
-          setLoopEnd(0);
-          setPreviewLoopEnd(0);
-          setLoopActive(false);
-        }
-      }} style={{
-        flex: 1,
-        background: "var(--bg-card)",
-        border: `2px solid ${loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)")}`,
-        borderRadius: "20px",
-        padding: "4px",
-        color: loopStart === 0 ? "var(--text-bright)" : (loopEnd === 0 ? "#FFA500" : "var(--warning-border)"),
-        fontSize: "8px",
-        fontWeight: "bold",
-        cursor: "pointer",
-        minWidth: 0,
-        whiteSpace: "normal", 
-        lineHeight: "1.1",
-        letterSpacing: '0.2px',
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        textAlign: "center"
+            {/* ================= ДИЗАЙН: АККУРАТНЫЙ ВЕРТИКАЛЬНЫЙ СТЕК ================= */}
+            <div style={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
+        width: "100%", 
+        maxWidth: "1050px", 
+        margin: "0 auto 30px auto" 
       }}>
-        {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
-      </button>
+        
+        {/* ================= 1. ПАНЕЛЬ INFO (ТЕМП, ЭФФЕКТЫ, МАСТЕР) ================= */}
+        <div style={{
+          width: "100%",
+          overflow: "hidden",
+          maxHeight: isTempoMasterVisible ? "400px" : "0px",
+          opacity: isTempoMasterVisible ? 1 : 0,
+          marginBottom: isTempoMasterVisible ? "20px" : "0px",
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(3, 1fr)", 
+            gap: "0px", 
+            width: "100%",
+            background: "var(--bg-card)",
+            borderRadius: "12px",
+            border: `1px solid ${getInstrumentColor(instrument)}`,
+            boxShadow: `0 0 15px ${getInstrumentColor(instrument)}33`,
+            boxSizing: "border-box"
+          }}>
+            {/* 1.1 БЛОК ТЕМПА И ЛУПА */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
+              <div style={{ fontSize: "11px", color: "var(--text-accent)", textAlign: "center", fontWeight: "bold", letterSpacing: "1px" }}>{t('tempo')}</div>
+              <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center", marginBottom: "10px" }}>{bpm}</div>
+              
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", width: "100%" }}>
+                <button onClick={() => { if (!metroOn) Tone.start(); setMetroOn(!metroOn); }} style={{
+                  background: metroOn ? 'rgba(77, 255, 136, 0.15)' : 'rgba(255,255,255,0.06)', border: `2px solid ${metroOn ? 'var(--text-bright)' : 'var(--border-color)'}`,
+                  borderRadius: '20px', padding: '4px 16px', color: metroOn ? 'var(--text-bright)' : 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', width: "120px"
+                }}>{metroOn ? t('metroOn') : t('metroOff')}</button>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", width: "100%", maxWidth: "160px" }}>
+                  <span style={{ fontSize: "9px", color: "var(--text-secondary)" }}>🔊</span>
+                  <input type="range" min="0" max="1" step="0.05" value={metroVolume} onChange={(e) => setMetroVolume(parseFloat(e.target.value))} style={{ flex: 1, height: "4px", cursor: "pointer" }} />
+                  <span style={{ fontSize: "8px", color: "var(--text-bright)", width: "24px", textAlign: "right" }}>{Math.round(metroVolume * 100)}%</span>
+                </div>
+                
+                <div style={{ position: "relative", width: "100%", maxWidth: "160px" }}>
+                  <select 
+                    value={metroSound} 
+                    onChange={(e) => setMetroSound(e.target.value)} 
+                    style={{ 
+                      width: "100%", 
+                      background: "rgba(255,255,255,0.04)", 
+                      border: "1px solid var(--border-color)", 
+                      borderRadius: "8px", 
+                      padding: "6px 10px", 
+                      color: "var(--text-primary)", 
+                      fontSize: "10px", 
+                      fontWeight: "bold", 
+                      cursor: "pointer", 
+                      appearance: "none", 
+                      WebkitAppearance: "none",
+                      textAlign: "center", 
+                      outline: "none", 
+                      boxShadow: "none"
+                    }}
+                  >
+                    <option value="click" style={{ background: "var(--bg-card)", color: "white" }}>🎵 {t('metroSoundClick')}</option>
+                    <option value="beep" style={{ background: "var(--bg-card)", color: "white" }}>🔔 {t('metroSoundBeep')}</option>
+                    <option value="drum" style={{ background: "var(--bg-card)", color: "white" }}>🥁 {t('metroSoundDrum')}</option>
+                    <option value="noise" style={{ background: "var(--bg-card)", color: "white" }}>🎛️ {t('metroSoundNoise')}</option>
+                    <option value="bell" style={{ background: "var(--bg-card)", color: "white" }}>🔔 {t('metroSoundBell')}</option>
+                  </select>
+                  <div style={{ 
+                    position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", 
+                    pointerEvents: "none", color: "var(--text-secondary)", fontSize: "8px" 
+                  }}>
+                    ▼
+                  </div>
+                </div>
+              </div>
 
-      <button onClick={() => {
-        if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive);
-        else setInfoModal({ visible: true, message: t('infoSetLoop') });
-      }} style={{
-        flex: 1,
-        background: loopActive ? "var(--text-bright)" : "var(--bg-card)",
-        border: `2px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`,
-        borderRadius: "20px",
-        padding: "4px",
-        color: loopActive ? "var(--bg-card)" : "var(--warning-border)",
-        fontSize: "8px",
-        fontWeight: "bold",
-        cursor: "pointer",
-        minWidth: 0,
-        whiteSpace: "normal",
-        lineHeight: "1.1",
-        letterSpacing: '0.2px',
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        textAlign: "center"
-      }}>
-        {loopActive ? t('loopOn') : t('loopOff')}
-      </button>
-    </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "16px", width: "100%", maxWidth: "200px" }}>
+                <button onClick={() => {
+                  const currentX = playheadXRef.current;
+                  if (loopStart === 0 && loopEnd === 0) { setLoopStart(currentX); setLoopEnd(0); setPreviewLoopEnd(currentX); } 
+                  else if (loopStart !== 0 && loopEnd === 0) { let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX; if (endX <= loopStart) endX = loopStart + STEP_WIDTH; setLoopEnd(endX); setPreviewLoopEnd(0); setLoopActive(true); } 
+                  else { setLoopStart(0); setLoopEnd(0); setPreviewLoopEnd(0); setLoopActive(false); }
+                }} style={{ flex: 1, background: "var(--btn-bg)", border: `1px solid ${loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                  {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
+                </button>
+                <button onClick={() => { if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive); else setInfoModal({ visible: true, message: t('infoSetLoop') }); }} style={{ flex: 1, background: loopActive ? "var(--text-bright)" : "var(--btn-bg)", border: `1px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopActive ? "var(--bg-card)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                  {loopActive ? t('loopOn') : t('loopOff')}
+                </button>
+              </div>
 
-    <input 
-      type="range" 
-      min="60" 
-      max="200" 
-      value={bpm} 
-      onChange={(e) => setBpm(Number(e.target.value))} 
-      style={{ width: "100%", cursor: "pointer", boxSizing: "border-box" }} 
-    />
-  </div>
-</div>
-    {/* ========== БЛОК ATTACH EFFECT ========== */}
-    <div style={{
-  background: "var(--bg-card)",
-  padding: "12px",
-  borderRadius: "12px",
-  border: "1px solid var(--border-color)",
-  boxShadow: "var(--shadow)",
-  width: "200px",
-  textAlign: "center",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between"
-}}>
-  <div>
-  <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "8px", flexWrap: "wrap" }}>
-  {[
-    { name: 'click', icon: '🔊', play: () => uiSounds.playClick() },
-    { name: 'pop', icon: '🎯', play: () => uiSounds.playPop() },
-    { name: 'pixel', icon: '🕹️', play: () => uiSounds.playPixel() },
-    { name: 'boom', icon: '💥', play: () => uiSounds.playBoom() },
-    { name: 'chirp', icon: '🐤', play: () => uiSounds.playChirp() }
-  ].map(effect => (
-    <button
-      key={effect.name}
-      onClick={(e) => {
-        const btn = e.currentTarget;
-        btn.classList.add('btn-flash');
-        setTimeout(() => btn.classList.remove('btn-flash'), 150);
-        applyEffectToSelectedBlocks(effect.name);
-        effect.play();
-      }}
-      style={{
-        background: "var(--btn-bg)",
-        border: "1px solid var(--border-color)",
-        borderRadius: "20px",
-        padding: "6px 8px",
-        color: "var(--text-accent)",
-        cursor: "pointer",
-        fontSize: "12px",
-        transition: "all 0.05s linear"
-      }}
-    >
-      {effect.icon}
-    </button>
-  ))}
-  <button
-    onClick={(e) => {
-      const btn = e.currentTarget;
-      btn.classList.add('btn-flash-red');
-      setTimeout(() => btn.classList.remove('btn-flash-red'), 150);
-      applyEffectToSelectedBlocks(null);
-    }}
-    style={{
-      background: "var(--btn-bg)",
-      border: "1px solid var(--border-color)",
-      borderRadius: "20px",
-      padding: "6px 8px",
-      color: "#FFB84D",
-      cursor: "pointer",
-      fontSize: "12px",
-      transition: "all 0.05s linear"
-    }}
-  >
-    ❌
-  </button>
-</div>
-    <div style={{ fontSize: "9px", color: "var(--text-secondary)", marginBottom: "8px" }}>{t('selectBlock')}</div>
-    <button
-      onClick={(e) => {
-        const btn = e.currentTarget;
-        btn.classList.add('btn-flash-red');
-        setTimeout(() => btn.classList.remove('btn-flash-red'), 200);
-        removeAllEffects();
-      }}
-      style={{ backgroundColor: "var(--btn-bg)", border: "1px solid var(--warning-border)", borderRadius: "20px", padding: "6px 8px", width: "100%", color: "var(--warning-border)", cursor: "pointer", fontSize: "10px", fontWeight: "bold", marginBottom: "8px", transition: "all 0.05s linear" }}
-    >
-      {t('removeAllEffects')}
-    </button>
-  </div>
-  <div>
-    <button
-      onClick={toggleSubMode}
-      style={{ background: "rgba(77,136,255,0.1)", border: `2px solid ${subMode ? "#bd00ff" : "var(--text-accent)"}`, borderRadius: "20px", padding: "6px 12px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer", transition: "all 0.1s ease" }}
-    >
-      <span style={{ fontSize: "14px" }}>🔊</span>
-      <span style={{ fontSize: "10px", fontWeight: "bold", color: subMode ? "#bd00ff" : "var(--text-accent)" }}>
-        {subMode ? t('subOn') : t('subOff')}
-      </span>
-    </button>
-  </div>
-</div>
+              <input type="range" min="60" max="200" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: "100%", maxWidth: "180px", cursor: "pointer", marginTop: "16px" }} />
+            </div>
 
-    {/* ========== БЛОК MASTER VOL ========== */}
-    <div style={{
-  background: "var(--bg-card)",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid var(--border-color)",
-  boxShadow: "var(--shadow)",
-  width: "200px",
-  textAlign: "center",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between"
-}}>
-  <div>
-    <div style={{ fontSize: "10px", color: "var(--text-accent)", marginBottom: "4px" }}>{t('masterVol')}</div>
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-      <span style={{ fontSize: "12px" }}>🔊</span>
-      <input type="range" min="0" max="1" step="0.01" value={masterGainValue} onChange={(e) => { const val = parseFloat(e.target.value); setMasterGainValue(val); if (masterGainRef.current) masterGainRef.current.gain.rampTo(val, 0.05); }} style={{ flex: 1, height: "4px" }} />
-    </div>
-    <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)", textShadow: "0 0 8px var(--text-bright)", marginBottom: "12px" }}>
-      {Math.round(masterGainValue * 100)}%
-    </div>
-  </div>
-  <div>
-    <div style={{ display: "flex", justifyContent: "center", gap: "8px", alignItems: "center", marginBottom: "12px" }}>
-      <button onClick={() => setMasterDisplayMode("vu")} style={{ background: masterDisplayMode === "vu" ? "var(--text-bright)" : "transparent", border: `1px solid ${masterDisplayMode === "vu" ? "var(--text-bright)" : "var(--text-accent)"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "vu" ? "var(--bg-card)" : "var(--text-accent)", fontWeight: "bold", cursor: "pointer" }}>{t('vu')}</button>
-      <span style={{ fontSize: "10px", color: "var(--text-accent)" }}>{t('master')}</span>
-      <button onClick={() => setMasterDisplayMode("wave")} style={{ background: masterDisplayMode === "wave" ? "var(--text-bright)" : "transparent", border: `1px solid ${masterDisplayMode === "wave" ? "var(--text-bright)" : "var(--text-accent)"}`, borderRadius: "20px", padding: "4px 8px", fontSize: "8px", color: masterDisplayMode === "wave" ? "var(--bg-card)" : "var(--text-accent)", fontWeight: "bold", cursor: "pointer" }}>{t('wave')}</button>
-    </div>
-    {masterDisplayMode === "vu" ? (
-      <div style={{ marginBottom: "8px" }}>
-        <div style={{ display: "flex", gap: "3px", justifyContent: "center", alignItems: "flex-end", height: "35px" }}>
-          {[...Array(20)].map((_, idx) => {
-            const intensity = idx / 20;
-            const isActive = masterVolume > intensity;
-            let color = "var(--text-bright)";
-            if (intensity > 0.7) color = "#FFB84D";
-            if (intensity > 0.9) color = "var(--warning-border)";
-            return <div key={idx} style={{ width: "5px", height: `${6 + intensity * 25}px`, backgroundColor: isActive ? color : "rgba(var(--bg-card-rgb), 0.2)", borderRadius: "2px", transition: "height 0.05s" }} />;
-          })}
+                        {/* 1.2 БЛОК ЭФФЕКТОВ */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
+              
+              <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
+                {[
+                  { name: 'click', label: 'Click', svg: <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>, play: () => uiSounds.playClick() }, 
+                  { name: 'pop', label: 'Pop', svg: <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" fill="none"/><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" fill="none" strokeDasharray="2 3"/></svg>, play: () => uiSounds.playPop() },
+                  { name: 'pixel', label: 'Pixel', svg: <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>, play: () => uiSounds.playPixel() }, 
+                  { name: 'boom', label: 'Boom', svg: <svg viewBox="0 0 24 24"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>, play: () => uiSounds.playBoom() },
+                  { name: 'chirp', label: 'Chirp', svg: <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>, play: () => uiSounds.playChirp() }
+                ].map(effect => (
+                  <button 
+                    key={effect.name} 
+                    title={effect.label}
+                    className="effect-btn"
+                    onClick={(e) => { 
+                      const btn = e.currentTarget; 
+                      btn.classList.add('btn-flash'); 
+                      setTimeout(() => btn.classList.remove('btn-flash'), 150); 
+                      applyEffectToSelectedBlocks(effect.name); 
+                      effect.play(); 
+                    }} 
+                  >
+                    {effect.svg}
+                  </button>
+                ))}
+                
+                {/* Кнопка удаления эффектов */}
+                <button 
+                  title="Remove Effect"
+                  className="effect-btn effect-btn-remove"
+                  onClick={(e) => { 
+                    const btn = e.currentTarget; 
+                    btn.classList.add('btn-flash-red'); 
+                    setTimeout(() => btn.classList.remove('btn-flash-red'), 150); 
+                    applyEffectToSelectedBlocks(null); 
+                  }} 
+                >
+                  <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+              
+              <div style={{ fontSize: "10px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "20px", letterSpacing: "0.5px" }}>
+                {t('selectBlock')}
+              </div>
+              
+              <button onClick={removeAllEffects} className="pill-btn warning-pill">
+                {t('removeAllEffects')}
+              </button>
+              
+              <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "200px", marginTop: "8px" }}>
+                <button onClick={toggleSubMode} className={`pill-btn ${subMode ? 'active-sub' : ''}`} style={{ flex: 1 }}>
+                  <svg style={{width: '14px', height: '14px', fill: 'currentColor'}} viewBox="0 0 24 24"><path d="M3 12h18v2H3zM6 8h12v2H6zM9 16h6v2H9z"/></svg>
+                  {subMode ? t('subOn') : t('subOff')}
+                </button>
+                
+                <button onClick={toggleReverseStrings} className={`pill-btn ${isReversed ? 'active-rev' : ''}`} style={{ flex: 1 }}>
+                  <svg style={{width: '14px', height: '14px', fill: 'currentColor'}} viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+                  {t('reverseStrings')}
+                </button>
+              </div>
+            </div>
+
+                        {/* 1.3 БЛОК МАСТЕР-ГРОМКОСТИ */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px" }}>
+              <div style={{ fontSize: "10px", color: "var(--text-accent)", textAlign: "center", fontWeight: "bold", letterSpacing: "1px" }}>{t('masterVol')}</div>
+              
+              {/* Ползунок общей громкости */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", maxWidth: "180px", marginTop: "10px" }}>
+                <span style={{ fontSize: "12px" }}>🔊</span>
+                <input type="range" min="0" max="1" step="0.01" value={masterGainValue} onChange={(e) => { const val = parseFloat(e.target.value); setMasterGainValue(val); if (masterGainRef.current) masterGainRef.current.gain.rampTo(val, 0.05); }} style={{ flex: 1, height: "4px" }} />
+              </div>
+              
+              {/* Проценты громкости */}
+              <div style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center", textShadow: "0 0 8px var(--text-bright)", marginTop: "10px" }}>{Math.round(masterGainValue * 100)}%</div>
+              
+              {/* Кнопки VU и WAVE (теперь идеально ровные) */}
+              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
+                <button 
+                  onClick={() => setMasterDisplayMode("vu")} 
+                  style={{ 
+                    background: masterDisplayMode === "vu" ? "var(--text-bright)" : "transparent", 
+                    border: `1px solid var(--text-bright)`, 
+                    borderRadius: "20px", 
+                    width: "85px", /* 👈 Фиксированная ширина */
+                    height: "24px", /* 👈 Фиксированная высота */
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "8px", 
+                    color: masterDisplayMode === "vu" ? "var(--bg-card)" : "var(--text-bright)", 
+                    fontWeight: "bold", 
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {t('vu')}
+                </button>
+                
+                <button 
+                  onClick={() => setMasterDisplayMode("wave")} 
+                  style={{ 
+                    background: masterDisplayMode === "wave" ? "var(--text-bright)" : "transparent", 
+                    border: `1px solid var(--text-bright)`, 
+                    borderRadius: "20px", 
+                    width: "85px", /* 👈 Фиксированная ширина */
+                    height: "24px", /* 👈 Фиксированная высота */
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "8px", 
+                    color: masterDisplayMode === "wave" ? "var(--bg-card)" : "var(--text-bright)", 
+                    fontWeight: "bold", 
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {t('wave')}
+                </button>
+              </div>
+              
+              {/* Сам измеритель (VU полоски или WAVE круг) */}
+              <div style={{ height: "50px", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "10px" }}>
+                {masterDisplayMode === "vu" ? (
+                  <div style={{ display: "flex", gap: "3px", justifyContent: "center", alignItems: "flex-end", height: "35px" }}>
+                    {[...Array(20)].map((_, idx) => { const intensity = idx / 20; const isActive = masterVolume > intensity; let color = "var(--text-bright)"; if (intensity > 0.7) color = "#FFB84D"; if (intensity > 0.9) color = "var(--warning-border)"; return <div key={idx} ref={el => vuBarRefs.current[idx] = el} style={{ width: "4px", height: `${6 + intensity * 25}px`, backgroundColor: isActive ? color : "rgba(var(--bg-card-rgb), 0.2)", borderRadius: "2px" }} />; })}
+                  </div>
+                ) : (
+                  <div ref={waveCircleRef} style={{ width: "40px", height: "40px", borderRadius: "50%", border: "2px solid var(--text-bright)", transform: `scale(${0.4 + masterVolume * 0.8})` }} />
+                )}
+              </div>
+              
+              {/* Таймер */}
+              <div ref={secondsRef} style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center" }}>{currentPosition.seconds.toFixed(1)}s</div>
+              <div ref={barBeatRef} style={{ fontSize: "9px", color: "var(--text-accent)", textAlign: "center" }}>({currentPosition.bar}.{currentPosition.beat})</div>
+            </div>
+            </div>
+            </div>
+
+        {/* ================= 2. ПАНЕЛЬ FX (ЭФФЕКТЫ) ================= */}
+        <div style={{
+          width: "100%",
+          overflow: "hidden",
+          maxHeight: showFX ? "180px" : "0px",
+          opacity: showFX ? 1 : 0,
+          marginBottom: showFX ? "20px" : "0px",
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "10px", width: "100%",
+            background: "var(--bg-card)", padding: "20px", borderRadius: "12px", 
+            border: `1px solid ${getInstrumentColor(instrument)}`, 
+            boxShadow: `0 0 15px ${getInstrumentColor(instrument)}33`, 
+            boxSizing: "border-box"
+          }}>
+                        {/* ЗАГОЛОВОК FX */}
+                        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: getInstrumentColor(instrument), marginBottom: "10px", padding: "0 10px" }}>
+              <span>⚙️ FX</span>
+              <span>{instrument.toUpperCase()}</span>
+            </div>
+
+            {/* VOLUME */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('volume')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{volumes[instrument].toFixed(2)}</span>
+              <input type="range" min="0" max="1" step="0.01" value={volumes[instrument]} onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 1.0 }))}>{t('reset')}</button>
+            </div>
+            {/* FX VOLUME */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('fxVol')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fxVolume.toFixed(2)}</span>
+              <input type="range" min="0" max="1" step="0.01" value={fxVolume} onChange={(e) => setFxVolume(parseFloat(e.target.value))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFxVolume(0.5)}>{t('reset')}</button>
+            </div>
+            {/* CUTOFF */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('cutoff')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{filters[instrument].cutoff}</span>
+              <input type="range" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>{t('reset')}</button>
+            </div>
+            {/* Q */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('q')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{filters[instrument].q}</span>
+              <input type="range" min="0.1" max="20" step="0.1" value={filters[instrument].q} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>{t('reset')}</button>
+            </div>
+            {/* CHORUS */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('chorus')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fx[instrument].chorus.toFixed(2)}</span>
+              <input type="range" min="0" max="1" step="0.01" value={fx[instrument].chorus} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>{t('reset')}</button>
+            </div>
+            {/* REVERB */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('reverb')}</span>
+              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fx[instrument].reverb.toFixed(2)}</span>
+              <input type="range" min="0" max="1" step="0.01" value={fx[instrument].reverb} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
+              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>{t('reset')}</button>
+            </div>
+          </div>
         </div>
-      </div>
-    ) : (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "55px", marginBottom: "8px" }}>
-        <div style={{ width: "50px", height: "50px", borderRadius: "50%", background: `radial-gradient(circle, ${masterVolume < 0.33 ? "rgba(77,255,136,0.4)" : masterVolume < 0.66 ? "rgba(255,184,77,0.4)" : "rgba(255,77,77,0.4)"}, transparent)`, border: `2px solid ${masterVolume < 0.33 ? "var(--text-bright)" : masterVolume < 0.66 ? "#FFB84D" : "var(--warning-border)"}`, transform: `scale(${0.4 + masterVolume * 0.8})`, transition: "all 0.05s" }} />
-      </div>
-    )}
-    <div style={{ fontSize: "14px", fontWeight: "bold", color: "var(--text-bright)", marginTop: "6px" }}>{currentPosition.seconds.toFixed(1)}s</div>
-    <div style={{ fontSize: "9px", color: "var(--text-accent)" }}>({currentPosition.bar}.{currentPosition.beat})</div>
-  </div>
-</div>
 
-  </div>
-</div>
+                {/* ================= 3. ПАНЕЛЬ 3D ================= */}
+                <div style={{
+          width: "100%",
+          overflow: "hidden",
+          maxHeight: show3D ? "160px" : "0px", /* 👈 Увеличили высоту со 140px до 160px, чтобы ничего не обрезалось */
+          opacity: show3D ? 1 : 0,
+          marginBottom: show3D ? "20px" : "0px",
+          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}>
+          <div style={{
+            display: "flex", flexDirection: "column", width: "100%",
+            background: "var(--bg-card)", padding: "20px", borderRadius: "12px", 
+            border: `1px solid ${getInstrumentColor(instrument)}`, 
+            boxShadow: `0 0 15px ${getInstrumentColor(instrument)}33`, 
+            boxSizing: "border-box"
+          }}>
+            {/* ЗАГОЛОВОК 3D */}
+            <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", padding: "0 10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-accent)", letterSpacing: "2px" }}>🎧 3D</span>
+                
+                {/* КНОПКА ВКЛ/ВЫКЛ */}
+                <button
+                  onClick={() => setIs3DEnabled(!is3DEnabled)}
+                  style={{
+                    background: is3DEnabled ? 'rgba(77, 255, 136, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                    border: `1px solid ${is3DEnabled ? 'var(--text-bright)' : 'var(--border-color)'}`,
+                    color: is3DEnabled ? 'var(--text-bright)' : 'var(--text-secondary)',
+                    borderRadius: '20px',
+                    padding: '4px 16px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: is3DEnabled ? '0 0 12px rgba(77, 255, 136, 0.3)' : 'none',
+                    letterSpacing: '1px'
+                  }}
+                >
+                  {is3DEnabled ? t('3dOn') : t('3dOff')}
+                </button>
+              </div>
+              
+              <span style={{ fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: getInstrumentColor(instrument) }}>{instrument.toUpperCase()}</span>
+            </div>
 
-{/* FX-панель (ползунки) – выровнена по высоте */}
-<div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0, width: "640px" }}>
-  <div style={{
-    background: "var(--bg-card)",
-    border: "1px solid var(--border-color)",
-    borderRadius: "12px",
-    boxShadow: "var(--shadow)",
-    padding: "15px 20px 20px 20px",
-    display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
-    gap: "16px",
-    width: "100%",
-    boxSizing: "border-box"
-  }}>
-    <div style={{ gridColumn: "span 6", textAlign: "center", marginBottom: "6px", fontSize: "11px", fontWeight: "bold", letterSpacing: "2px", color: getInstrumentColor(instrument) }}>
-      {instrument.toUpperCase()}
-    </div>
-
-    {/* VOLUME */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('volume')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{volumes[instrument].toFixed(2)}</span>
-      </div>
-      <input type="range" min="0" max="1" step="0.01" value={volumes[instrument]} onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 1.0 }))}>{t('reset')}</button>
-    </div>
-    {/* FX VOLUME */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('fxVol')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fxVolume.toFixed(2)}</span>
-      </div>
-      <input type="range" min="0" max="1" step="0.01" value={fxVolume} onChange={(e) => setFxVolume(parseFloat(e.target.value))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFxVolume(0.5)}>{t('reset')}</button>
-    </div>
-    {/* CUTOFF */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('cutoff')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{filters[instrument].cutoff}</span>
-      </div>
-      <input type="range" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>{t('reset')}</button>
-    </div>
-    {/* Q (RES) */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('q')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{filters[instrument].q}</span>
-      </div>
-      <input type="range" min="0.1" max="20" step="0.1" value={filters[instrument].q} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>{t('reset')}</button>
-    </div>
-    {/* CHORUS */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('chorus')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fx[instrument].chorus.toFixed(2)}</span>
-      </div>
-      <input type="range" min="0" max="1" step="0.01" value={fx[instrument].chorus} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>{t('reset')}</button>
-    </div>
-    {/* REVERB */}
-    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", minHeight: "100px" }}>
-      <div style={{ textAlign: "center", fontSize: "9px", fontWeight: "bold", color: "var(--text-secondary)", lineHeight: 1.2 }}>
-        {t('reverb')}<br/><span style={{ fontSize: "12px", color: "var(--text-bright)" }}>{fx[instrument].reverb.toFixed(2)}</span>
-      </div>
-      <input type="range" min="0" max="1" step="0.01" value={fx[instrument].reverb} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))} style={{ width: "90%", margin: "4px 0" }} />
-      <button style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>{t('reset')}</button>
-    </div>
-  </div>
-</div>
-{/* ===== НОВАЯ ПАНЕЛЬ 3D (одна строка с цветным инструментом) ===== */}
-<div style={{
-  overflow: "hidden",
-  transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-  maxHeight: show3D ? "150px" : "0px",
-  opacity: show3D ? 1 : 0,
-  marginBottom: show3D ? "30px" : "0px",
-  width: "640px"
-}}>
-  <div style={{
-    background: "var(--bg-card)",
-    border: "1px solid var(--border-color)",
-    borderRadius: "12px",
-    boxShadow: "var(--shadow)",
-    padding: "15px 20px 20px 20px",
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "16px",
-    width: "100%",
-    boxSizing: "border-box"
-  }}>
-    {/* Шапка: одна строка "3D + инструмент" */}
-    <div style={{
-  width: "100%",
-  display: "grid",
-  gridTemplateColumns: "1fr auto 1fr",
-  alignItems: "center",
-  marginBottom: "4px",
-  gap: "8px"
-}}>
-  {/* Левая колонка (пусто, чтобы центрировать среднюю) */}
-  <div></div>
-  
-  {/* Центральная колонка: 3D + инструмент */}
-  <div style={{ textAlign: "center" }}>
-    <span style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-accent)", letterSpacing: "2px" }}>
-      🎧 3D
-    </span>
-    <span style={{
-      fontSize: "11px",
-      fontWeight: "bold",
-      letterSpacing: "2px",
-      color: getInstrumentColor(instrument),
-      marginLeft: "4px"
-    }}>
-      {instrument.toUpperCase()}
-    </span>
-  </div>
-
-  {/* Правая колонка: кнопка ON/OFF */}
-  <div style={{ textAlign: "right" }}>
-    <button
-      onClick={() => setIs3DEnabled(!is3DEnabled)}
-      style={{
-        fontSize: "9px",
-        fontWeight: "bold",
-        padding: "2px 10px",
-        borderRadius: "12px",
-        border: `1px solid ${is3DEnabled ? "var(--text-bright)" : "var(--text-secondary)"}`,
-        background: is3DEnabled ? "rgba(77,255,136,0.2)" : "transparent",
-        color: is3DEnabled ? "var(--text-bright)" : "var(--text-secondary)",
-        cursor: "pointer",
-        transition: "all 0.2s ease"
-      }}
-    >
-      {is3DEnabled ? t('3dOn') : t('3dOff')}
-    </button>
-  </div>
-</div>
-
-    {/* X */}
-    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>X</span>
-      <input
-        type="range"
-        min="-10"
-        max="10"
-        step="0.1"
-        value={positions3D[instrument]?.x ?? 0}
-        onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], x: val }
-          }));
-        }}
-        style={{ width: "100px", cursor: "pointer" }}
-      />
-      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
-        {positions3D[instrument]?.x.toFixed(1) ?? 0}
-      </span>
-      <button
-        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
-        onClick={() => {
-          const defaultPos = defaultPositions[instrument];
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], x: defaultPos.x }
-          }));
-        }}
-      >
-        {t('reset')}
-      </button>
-    </div>
-
-    {/* Y */}
-    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>Y</span>
-      <input
-        type="range"
-        min="-10"
-        max="10"
-        step="0.1"
-        value={positions3D[instrument]?.y ?? 0}
-        onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], y: val }
-          }));
-        }}
-        style={{ width: "100px", cursor: "pointer" }}
-      />
-      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
-        {positions3D[instrument]?.y.toFixed(1) ?? 0}
-      </span>
-      <button
-        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
-        onClick={() => {
-          const defaultPos = defaultPositions[instrument];
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], y: defaultPos.y }
-          }));
-        }}
-      >
-        {t('reset')}
-      </button>
-    </div>
-
-    {/* Z */}
-    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>Z</span>
-      <input
-        type="range"
-        min="-10"
-        max="10"
-        step="0.1"
-        value={positions3D[instrument]?.z ?? -5}
-        onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], z: val }
-          }));
-        }}
-        style={{ width: "100px", cursor: "pointer" }}
-      />
-      <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px" }}>
-        {positions3D[instrument]?.z.toFixed(1) ?? -5}
-      </span>
-      <button
-        style={{ ...resetBtnStyle, fontSize: "9px", padding: "2px 8px" }}
-        onClick={() => {
-          const defaultPos = defaultPositions[instrument];
-          setPositions3D(prev => ({
-            ...prev,
-            [instrument]: { ...prev[instrument], z: defaultPos.z }
-          }));
-        }}
-      >
-        {t('reset')}
-      </button>
-    </div>
-  </div>
-</div>
-
+            {/* СЛАЙДЕРЫ ОСЕЙ (Убрана двойная сетка) */}
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(3, 1fr)", 
+              gap: "30px", /* Чуть увеличили отступ */
+              width: "100%",
+              opacity: is3DEnabled ? 1 : 0.3,
+              pointerEvents: is3DEnabled ? "auto" : "none",
+              transition: "opacity 0.3s ease",
+              padding: "0 10px" /* Добавили отступы по краям */
+            }}>
+              {['x', 'y', 'z'].map((axis) => (
+                <div key={axis} style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)", width: "16px" }}>{axis.toUpperCase()}</span>
+                  
+                  <input 
+                    type="range" 
+                    min="-10" 
+                    max="10" 
+                    step="0.1" 
+                    value={positions3D[instrument]?.[axis] ?? (axis === 'z' ? -5 : 0)} 
+                    onChange={(e) => { 
+                      const val = parseFloat(e.target.value); 
+                      setPositions3D(prev => ({ ...prev, [instrument]: { ...prev[instrument], [axis]: val } })); 
+                    }} 
+                    style={{ flex: 1, cursor: "pointer", minWidth: "50px" }} 
+                  />
+                  
+                  <span style={{ fontSize: "11px", color: "var(--text-bright)", minWidth: "30px", textAlign: "right" }}>
+                    {positions3D[instrument]?.[axis]?.toFixed(1) ?? (axis === 'z' ? -5 : 0)}
+                  </span>
+                  
+                  <button 
+                    style={{ ...resetBtnStyle, fontSize: "8px", padding: "2px 8px" }} 
+                    onClick={() => { 
+                      const defaultPos = defaultPositions[instrument]; 
+                      setPositions3D(prev => ({ ...prev, [instrument]: { ...prev[instrument], [axis]: defaultPos[axis] } })); 
+                    }}
+                  >
+                    {t('reset')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        
+        </div>
+        </div>
+      
+     
       {/* Блок транспорта (над сеткой) */}
       <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" }}>
   {/* Play/Pause */}
@@ -4509,29 +4704,33 @@ const menuItemStyle = {
     </svg>
   </button>
 
-  {/* AI (между Stop и Record) */}
+      {/* GEN (Генератор, между Stop и Record) */}
   <button
-  onClick={generateAIPattern}
-  className="ai-btn"
-  style={{
-    width: "55px",
-    height: "50px",
-    background: "rgba(var(--bg-card-rgb), 0.5)",
-    border: "1px solid rgba(189, 0, 255, 0.4)",
-    color: "rgba(189, 0, 255, 0.5)",
-    borderRadius: "10px",
-    fontSize: "18px",
-    fontWeight: "bold",
-    letterSpacing: "2px",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  }}
->
-  AI
-</button>
+    onClick={generateAIPattern}
+    disabled={isPlaying}
+    className="ai-btn"
+    title="Generate Pattern" // 👈 Подсказка при наведении
+    style={{
+      width: "55px",
+      height: "50px",
+      background: "rgba(var(--bg-card-rgb), 0.5)",
+      border: `1px solid ${isPlaying ? 'rgba(189, 0, 255, 0.1)' : 'rgba(189, 0, 255, 0.4)'}`,
+      color: isPlaying ? 'rgba(189, 0, 255, 0.2)' : 'rgba(189, 0, 255, 0.7)', // Чуть ярче сделали цвет
+      borderRadius: "10px",
+      fontSize: "15px", // 👈 Уменьшили шрифт, чтобы "GEN" влезло идеально
+      fontWeight: "bold",
+      letterSpacing: "1.5px",
+      cursor: isPlaying ? "not-allowed" : "pointer",
+      transition: "all 0.2s ease",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: isPlaying ? 0.5 : 1,
+      filter: isPlaying ? 'grayscale(100%)' : 'none'
+    }}
+  >
+    GEN
+  </button>
 
   {/* Record */}
   <button
@@ -4600,15 +4799,18 @@ const menuItemStyle = {
         }}
       >
         <div style={{ 
-          width: `${Math.max(2000, Math.max(0, ...Object.values(tracks).flat().map(b => b.x + b.length)) + 1000)}px`, 
+          width: `${gridWidth}px`, 
           display: "inline-block",
-          minWidth: '100%', 
+          minWidth: '100%',
           position: "relative", 
           minHeight: 480, 
           backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
           backgroundSize: `${STEP_WIDTH}px 60px` 
         }}>
-          {loopStart !== 0 && (loopEnd !== 0 && loopEnd > loopStart || previewLoopEnd > loopStart) && (
+                    {loopStart !== 0 && (
+            (loopActive && loopEnd > loopStart) || 
+            (loopEnd === 0 && previewLoopEnd > loopStart)
+          ) && (
             <div style={{
               position: "absolute",
               top: 0,
@@ -4623,15 +4825,19 @@ const menuItemStyle = {
               transition: "width 0.05s linear"
             }} />
           )}
-          {strings.map((s, i) => (
-            <div key={i} 
+          {strings.map((_, renderIndex) => {
+            const stringIndex = isReversed ? strings.length - 1 - renderIndex : renderIndex;
+            const s = strings[stringIndex];
+            
+            return (
+            <div key={stringIndex} 
               onMouseDown={(e) => {
                 if (e.button !== 0) return;
                 if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
                 isDraggingRef.current = true;
                 const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
-                const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
-                const existingOnString = tracks[instrument].filter(b => b.string === i);
+                const newBlock = { id: Date.now(), string: stringIndex, x, length: 80, fret: 0, velocity: 1, effect: null }; // ✅ Используем stringIndex
+                const existingOnString = tracks[instrument].filter(b => b.string === stringIndex);
                 const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
                 if (!overlapping) {
                   setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
@@ -4641,8 +4847,8 @@ const menuItemStyle = {
                 if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
                 const touchX = e.touches[0].clientX;
                 const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
-                const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1, effect: null };
-                const existingOnString = tracks[instrument].filter(b => b.string === i);
+                const newBlock = { id: Date.now(), string: stringIndex, x, length: 80, fret: 0, velocity: 1, effect: null }; // ✅ Используем stringIndex
+                const existingOnString = tracks[instrument].filter(b => b.string === stringIndex);
                 const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
                 if (!overlapping) {
                   setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
@@ -4651,90 +4857,41 @@ const menuItemStyle = {
               style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}
             >
               <span style={{ width: 30, fontWeight: "bold" }}>{s}</span>
-              {Object.keys(tracks).map(instName => 
-                tracks[instName]
-                  .filter(b => b.string === i)
-                  .map(b => {
-                    const isActive = instName === instrument;
-                    return (
-                      <div 
-                        key={b.id} 
-                        className={`block ${isPlaying && activeStep >= Math.floor(b.x / STEP_WIDTH) && activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) ? 'playing' : ''}`}
-                        data-id={b.id}
-                        onMouseDown={(e) => {
-                          handleSelectBlock(e, b, instName);
-                          if (instName === instrument) {
-                            if (selectedBlockIds.has(b.id)) handleGroupDragStart(e, b);
-                            isDraggingRef.current = true;
-                            startDrag(b, e);
-                          }
-                        }}
-                        onDoubleClick={() => {
-                          if (instName !== instrument) return;
-                          setTracks(prev => ({
-                            ...prev,
-                            [instrument]: prev[instrument].map(it => it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it)
-                          }));
-                        }}
-                        onTouchStart={(e) => {
-                          handleSelectBlock(e, b, instName);
-                          if (instName === instrument) handleTouchStart(e, b, false);
-                        }}
-                        onTouchMove={(e) => {
-                          if (instName === instrument) handleTouchMove(e);
-                        }}
-                        onTouchEnd={handleTouchEnd}
-                        onContextMenu={(e) => { 
-                          e.preventDefault(); 
-                          if (instName !== instrument) return;
-                          setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)}));
-                          setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
-                        }} 
-                        style={{
-                          position: "absolute",
-                          left: b.x,
-                          width: b.length,
-                          height: 45,
-                          backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.2)",
-                          boxShadow: instName === instrument ? `0 4px 0 rgba(0,0,0,0.5), 0 0 8px ${getColor(b.fret)}` : "none",
-                          opacity: instName === instrument ? (b.velocity || 1) : 0.5,
-                          border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
-                          outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
-                          outlineOffset: "2px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontWeight: "bold",
-                          cursor: instName === instrument ? "grab" : "default",
-                          zIndex: instName === instrument ? 10 : 5,
-                          borderRadius: 8,
-                          pointerEvents: "auto",
-                          touchAction: "none",
-                          transition: "none"
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                          <span>{b.fret}</span>
-                          {b.effect === 'click' && <span style={{ fontSize: "10px" }}>🔊</span>}
-                          {b.effect === 'pop' && <span style={{ fontSize: "10px" }}>🎯</span>}
-                          {b.effect === 'pixel' && <span style={{ fontSize: "10px" }}>🕹️</span>}
-                          {b.effect === 'boom' && <span style={{ fontSize: "10px" }}>💥</span>}
-                          {b.effect === 'chirp' && <span style={{ fontSize: "10px" }}>🐤</span>}
-                        </div>
-                        {instName === instrument && (
-                          <div 
-                            onMouseDown={(e) => startResize(b, e)}
-                            onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
-                            style={{ position: "absolute", right: 0, top: 0, width: 15, height: "100%", cursor: "ew-resize", background: "rgba(0,0,0,0.1)", borderRadius: "0 6px 6px 0" }} 
-                          />
-                        )}
-                      </div>
-                    );
-                  })
-              )}
+
+{/* ===== ВСТАВИТЬ СЮДА ===== */}
+{Object.keys(tracks).map(instName => 
+  tracks[instName]
+  .filter(b => b.string === stringIndex) // ✅ Используем stringIndex
+    .map(b => {
+      const isActive = isPlaying && activeStep >= Math.floor(b.x / STEP_WIDTH) && activeStep < Math.floor((b.x + b.length) / STEP_WIDTH);
+      const isSelected = selectedBlockIds.has(b.id);
+
+      return (
+        <NoteBlock
+          key={b.id}
+          block={b}
+          instName={instName}
+          instrument={instrument}
+          isSelected={isSelected}
+          isActive={isActive}
+          getColor={getColor}
+          handleSelectBlock={handleSelectBlock}
+          handleGroupDragStart={handleGroupDragStart}
+          startDrag={startDrag}
+          startResize={startResize}
+          handleTouchStart={handleTouchStart}
+          handleTouchMove={handleTouchMove}
+          handleTouchEnd={handleTouchEnd}
+          isDraggingRef={isDraggingRef}
+          setTracks={setTracks}
+          setSelectedBlockIds={setSelectedBlockIds}
+        />
+      );
+    })
+)}
+              
             </div>
-          ))}
+          )})}
           <div 
             ref={playheadRef} 
             className="playhead-grabber" 
@@ -4786,6 +4943,20 @@ const menuItemStyle = {
   >
     Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
   </p>
+  {/* 👇 ДОБАВЛЯЕМ ВЕРСИЮ СЮДА 👇 */}
+  <span style={{
+    fontSize: "9px",
+    color: "var(--text-accent)",
+    opacity: 0.6,
+    letterSpacing: "1px",
+    textTransform: "uppercase",
+    padding: "2px 8px",
+    border: "1px solid rgba(77, 136, 255, 0.2)",
+    borderRadius: "4px"
+  }}>
+    VERSION 2.0
+  </span>
+
 </div>
 
 {/* Модальное окно "Помощь" */}
@@ -4824,7 +4995,10 @@ const menuItemStyle = {
       <h2 className="changelog-title">{t('changelogTitle')}</h2>
       <div style={{ textAlign: "left", margin: "20px 0", lineHeight: "1.8", fontSize: "14px", color: "var(--text-secondary)" }}>
         {t('changelogText').map((item, idx) => (
-          <div key={idx} style={{ padding: "4px 0" }}>{item}</div>
+          <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: "6px 0", borderBottom: idx !== t('changelogText').length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+          <span style={{ color: 'var(--text-accent)' }}>•</span>
+          <span style={{ flex: 1 }}>{item.replace('• ', '')}</span>
+        </div>
         ))}
       </div>
       <div className="modal-buttons">

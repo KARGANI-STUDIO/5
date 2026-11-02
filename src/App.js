@@ -3878,7 +3878,7 @@ const menuItemStyle = {
             <h1 className="neon-struna" style={{ marginBottom: "5px" }}>STRUNA</h1>
           </div>
   
-          <p className="tagline" style={{ marginTop: "0", marginBottom: "25px", whiteSpace: "nowrap" }}>
+          <p className="tagline" style={{ marginTop: "0", marginBottom: "25px" }}>
   {Array.from(t('tagline')).map((char, index) => {
     if (char === ' ') {
       return <span key={index} style={{ display: 'inline-block', width: '0.5em' }}>&nbsp;</span>;

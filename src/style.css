@@ -2891,28 +2891,31 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     justify-content: space-between;
   }
 
-  /* --- 8. ИДЕАЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
+    /* --- 8. ИДЕАЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
   
-  /* Жестко фиксируем экран, скролл запрещен */
+  /* Жестко фиксируем экран, скролл запрещен. 100dvh решает проблему с адресной строкой на мобилках */
   .landing {
-    height: 100vh !important;
-    min-height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
     overflow: hidden !important;
   }
   
   html:has(.landing), body:has(.landing) {
     overflow: hidden !important;
-    height: 100vh !important;
+    height: 100dvh !important;
   }
 
-  /* Контент распределяется по экрану */
+  /* Контент распределяется по экрану. Flexbox обязателен для прижатия подвала */
   .landing-content {
     height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
     padding-top: 8vh !important; 
     padding-left: 15px !important;
     padding-right: 15px !important;
-    padding-bottom: 2vh !important; 
+    padding-bottom: 10px !important; /* Небольшой отступ снизу */
     justify-content: flex-start !important;
+    box-sizing: border-box !important;
   }
 
   /* --- УМЕНЬШАЕМ ВЕРХНИЕ КНОПКИ --- */
@@ -2978,10 +2981,17 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   }
 
   /* --- ПОДВАЛ (POWERED BY) --- */
-  /* Прибиваем к самому низу */
+  /* margin-top: auto в flex-контейнере выталкивает этот блок в самый низ */
   .landing-content > div:last-child {
     margin-top: auto !important;
     padding-top: 10px !important;
+    padding-bottom: 5px !important;
+  }
+
+  /* Делаем текст "Powered By" чуть аккуратнее, чтобы точно влез */
+  .powered-by-text {
+    font-size: 8px !important;
+    letter-spacing: 2px !important;
   }
 
   /* --- ТЫКВЫ --- */
@@ -2998,6 +3008,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     height: 60px; 
   }
 }
+
 
 /* ==================== ПАНЕЛЬ FX (БАЗОВЫЕ СТИЛИ ДЛЯ ПК) ==================== */
 .fx-item {

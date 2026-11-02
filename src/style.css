@@ -2905,45 +2905,62 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     height: 100vh !important;
   }
 
-  /* Контент занимает всю высоту и распределяется гибко */
+  /* Контент распределяется по экрану */
   .landing-content {
     height: 100% !important;
-    padding-top: 6vh !important; /* Чуть поднимаем контент */
+    padding-top: 8vh !important; 
     padding-left: 15px !important;
     padding-right: 15px !important;
-    padding-bottom: 2vh !important; /* Отступ для меню телефона */
+    padding-bottom: 2vh !important; 
     justify-content: flex-start !important;
   }
 
-  /* Убираем обрезку текста и делаем его адаптивным */
+  /* --- УМЕНЬШАЕМ ВЕРХНИЕ КНОПКИ --- */
+  .top-btn {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 16px !important;
+  }
+  
+  /* Кнопка Google */
+  .landing-content > div[style*="position: 'fixed'"] {
+    top: 15px !important;
+    right: 15px !important;
+    gap: 8px !important;
+  }
+  .landing-content > div[style*="position: 'fixed'"] > div {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* --- ЛОГОТИП И ТЕКСТ --- */
+  .neon-struna {
+    font-size: clamp(35px, 12vw, 60px) !important; /* Значительно уменьшаем лого */
+    margin-bottom: 5px !important;
+    letter-spacing: 2px !important;
+  }
+
   .tagline {
     white-space: normal !important; 
-    font-size: 0.9rem !important;
-    letter-spacing: 3px !important; /* Уменьшаем расстояние между буквами */
+    font-size: 0.8rem !important; /* Уменьшаем текст */
+    letter-spacing: 2px !important; /* Убираем широкие пробелы между буквами */
     line-height: 1.4 !important;
     margin-bottom: 15px !important;
   }
 
-  /* Логотип STRUNA */
-  .neon-struna {
-    font-size: clamp(40px, 15vw, 80px) !important; /* Немного уменьшаем */
-    margin-bottom: 5px !important;
-  }
-
-  /* Кнопка START CREATING */
+  /* --- КНОПКА СТАРТ --- */
   .start-btn {
-    padding: 12px 25px !important;
-    font-size: 15px !important;
+    padding: 10px 25px !important;
+    font-size: 14px !important;
     margin-top: 5px !important;
-    margin-bottom: 10px !important;
+    margin-bottom: 20px !important;
   }
 
-  /* Блок с инструментами (Превью) */
+  /* --- ИНСТРУМЕНТЫ --- */
   .preview {
-    flex: 1 !important; /* Занимает всё оставшееся пространство */
+    flex: none !important; /* Убираем растягивание, чтобы не было пустоты */
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important; /* Центрируем инструменты по вертикали */
     width: 100% !important; 
     max-width: 100% !important;
     margin-top: 0 !important;
@@ -2952,33 +2969,33 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     gap: 10px !important; 
   }
 
-  /* Сами кнопки инструментов */
   .preview-track {
     padding: 12px 15px !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     border-radius: 12px !important;
     width: 100% !important;
     box-sizing: border-box;
   }
 
-  /* Подвал прибиваем к самому низу */
+  /* --- ПОДВАЛ (POWERED BY) --- */
+  /* Прибиваем к самому низу */
   .landing-content > div:last-child {
     margin-top: auto !important;
     padding-top: 10px !important;
   }
 
-  /* Чуть корректируем позиции тыкв, чтобы они не наезжали на контент */
+  /* --- ТЫКВЫ --- */
   .pumpkin-left { 
     top: 5%; 
     left: 2%; 
-    width: 60px; 
-    height: 60px; 
+    width: 50px; 
+    height: 50px; 
   }
   .pumpkin-right { 
-    top: 9%; 
+    top: 8%; 
     right: 2%; 
-    width: 50px; 
-    height: 70px; 
+    width: 45px; 
+    height: 60px; 
   }
 }
 

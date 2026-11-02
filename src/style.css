@@ -2582,3 +2582,400 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   0% { transform: translateY(0); opacity: 0.7; }
   100% { transform: translateY(-15px); opacity: 1; }
 }
+
+/* ==================== МОБИЛЬНАЯ ПАНЕЛЬ ДЕЙСТВИЙ ==================== */
+.mobile-action-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 22, 41, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 99998;
+  animation: slideUpPanel 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mobile-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.mobile-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.9);
+}
+
+.mobile-delete-btn {
+  background: rgba(255, 77, 77, 0.15);
+  border-color: rgba(255, 77, 77, 0.3);
+  font-size: 18px;
+  color: #ff4d4d;
+  margin-left: 10px;
+}
+
+.mobile-delete-btn:active {
+  background: rgba(255, 77, 77, 0.3);
+  transform: scale(0.9);
+}
+
+@keyframes slideUpPanel {
+  from { opacity: 0; transform: translate(-50%, 50px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+/* ==================== ЗОНА РЕСАЙЗА БЛОКА ==================== */
+.note-resize-handle {
+  width: 15px; /* Для ПК: оставляем место для перетаскивания */
+  transition: background 0.2s ease;
+}
+
+.note-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* На сенсорных экранах делаем зону шире для пальца */
+@media (max-width: 1024px) {
+  .note-resize-handle {
+    width: 25px; 
+  }
+}
+
+/* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ (ПОРТРЕТНЫЙ РЕЖИМ) ==================== */
+@media (max-width: 768px) {
+  
+  /* --- 1. ВЕРХНЯЯ ПАНЕЛЬ И ПРОФИЛЬ --- */
+  .user-profile-btn {
+    padding: 4px !important;
+    border-radius: 50% !important;
+    gap: 0 !important;
+  }
+  /* Прячем текст "МОЯ СТРУНА", оставляем только аватарку */
+  .user-profile-btn > span {
+    display: none !important; 
+  }
+  
+  /* Делаем меню фиксированным, чтобы оно не наезжало на кнопку */
+  .liquid-glass-menu {
+    position: fixed !important;
+    top: 80px !important;
+    right: 15px !important;
+    width: calc(100vw - 30px) !important;
+    max-width: 320px !important;
+  }
+
+    /* --- 2. ПАНЕЛЬ ИНСТРУМЕНТОВ --- */
+    .instrument-selector {
+      flex-wrap: wrap !important; /* Оставляем перенос, чтобы блок INFO/FX/3D уехал вниз */
+      justify-content: center !important;
+      padding: 10px !important;
+      gap: 6px !important; /* Уменьшаем отступ между кнопками */
+    }
+    
+    /* Делаем инструменты в один ряд (по 5 штук) */
+    .inst-btn {
+      flex: 1 1 calc(20% - 6px) !important; /* 20% ширины для каждого из 5 инструментов */
+      min-width: 0 !important; /* Убираем минимальную ширину, чтобы они сжались */
+      padding: 8px 2px !important; /* Делаем кнопки более узкими */
+    }
+  
+    /* Уменьшаем иконки и текст, чтобы всё влезло */
+    .inst-icon {
+      font-size: 14px !important;
+      margin-bottom: 2px !important;
+    }
+    .inst-text {
+      font-size: 6px !important;
+      letter-spacing: 0px !important;
+      white-space: nowrap !important;
+    }
+  
+    /* Блок с кнопками INFO, FX, 3D переносится на новую строку и центрируется */
+    .instrument-selector > div:last-child {
+      width: 100%;
+      justify-content: center;
+      margin-left: 0 !important;
+      margin-top: 8px;
+      gap: 8px !important;
+    }
+  
+    /* Кнопки INFO/FX/3D тоже становятся по 3 в ряд */
+    .fx-toggle-btn {
+      flex: 1 1 calc(33% - 10px) !important;
+      border-radius: 12px !important;
+      padding: 8px 2px !important;
+    }
+
+  /* Уменьшаем шрифты */
+  .inst-icon { font-size: 16px !important; }
+  .inst-text { font-size: 8px !important; }
+
+  /* --- 3. КНОПКИ ТРАНСПОРТА --- */
+  .transport-row {
+    flex-wrap: wrap !important;
+    justify-content: center;
+  }
+  .transport-row > div {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  /* --- 4. ОСТАЛЬНЫЕ ПАНЕЛИ --- */
+  .info-panel-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .info-panel-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px !important;
+  }
+  .fx-panel-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Кнопка "Очистить инструмент" превращается в иконку корзины */
+  .clear-instrument-btn {
+    font-size: 0 !important;
+    padding: 8px 12px !important;
+  }
+  .clear-instrument-btn::before {
+    content: '🗑️';
+    font-size: 16px;
+  }
+
+  .custom-modal {
+    width: 90vw !important;
+    padding: 20px !important;
+  }
+    /* --- 5. КРАСИВОЕ РАСКРЫТИЕ ПАНЕЛИ INFO НА МОБИЛКЕ --- */
+  
+  /* Делаем отступы внутри блоков INFO более аккуратными */
+  .info-panel-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; /* Красивая тонкая линия-разделитель */
+    padding: 20px 10px !important;
+  }
+  
+  .info-panel-grid > div:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Центрируем заголовки и элементы управления */
+  .info-panel-grid > div > div {
+    margin-bottom: 15px;
+  }
+
+  /* Делаем кнопки эффектов (иконки) чуть меньше, чтобы они влезли в один ряд */
+  .effect-btn {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  
+  /* Уменьшаем размер шрифта в кнопках VU/WAVE */
+  .info-panel-grid button {
+    font-size: 9px !important;
+  }
+
+  /* Прячем скроллбар у сетки, чтобы он не перекрывал контент */
+  .scroll-container {
+    padding-bottom: 20px;
+  }
+          /* --- 6. ПАНЕЛЬ FX КАК В 3D (НА МОБИЛКЕ) --- */
+  .fx-panel-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important; /* Убираем отступы, используем рамки */
+    padding: 10px 15px !important;
+  }
+
+  .fx-item {
+    flex-direction: row !important; /* Выстраиваем в строку */
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 12px 0 !important;
+    gap: 10px;
+  }
+
+  .fx-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+
+  .fx-label {
+    width: 65px; /* Фиксированная ширина для ровного выравнивания */
+    text-align: left;
+    order: 1;
+    font-size: 10px;
+  }
+
+  .fx-slider {
+    flex: 1; /* Растягиваем ползунок на всё свободное место */
+    max-width: none;
+    order: 2;
+  }
+
+  .fx-value {
+    width: 35px;
+    text-align: right;
+    order: 3;
+    font-size: 10px;
+  }
+
+  .fx-reset-btn {
+    order: 4;
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+      /* --- 7. КРАСИВАЯ ПАНЕЛЬ 3D НА МОБИЛКЕ --- */
+  .panel-3d-axes {
+    /* Перестраиваем сетку в одну колонку */
+    grid-template-columns: 1fr !important; 
+    gap: 15px !important; /* Уменьшаем отступ между осями */
+    padding: 0 5px !important;
+  }
+
+  /* Делаем ползунки чуть шире, чтобы за них было удобно тянуть */
+  .panel-3d-axes input[type="range"] {
+    min-width: 80px !important;
+  }
+  
+  /* Выравниваем подписи и кнопки сброса по краям */
+  .panel-3d-axes > div {
+    justify-content: space-between;
+  }
+}
+
+/* ==================== ПАНЕЛЬ FX (БАЗОВЫЕ СТИЛИ ДЛЯ ПК) ==================== */
+.fx-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.fx-label { font-size: 9px; color: var(--text-secondary); font-weight: bold; order: 1; }
+.fx-value { font-size: 11px; color: var(--text-bright); order: 2; }
+.fx-slider { width: 100%; max-width: 100px; order: 3; }
+
+.fx-reset-btn {
+  font-size: 8px;
+  padding: 2px 10px;
+  background: var(--btn-bg);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  order: 4;
+  transition: background 0.2s;
+}
+.fx-reset-btn:hover { background: var(--btn-hover); }
+
+/* ==================== СКРЫВАЕМ VU/WAVE НА МОБИЛКАХ ==================== */
+@media (max-width: 768px) {
+  .master-mode-toggles,
+  .master-meter-container {
+    display: none !important;
+  }
+  
+  /* Заодно уменьшим отступы в панели INFO, чтобы она стала компактнее */
+  .info-panel-grid > div {
+    padding: 12px 10px !important;
+  }
+}
+
+/* ==================== КНОПКИ УПРАВЛЕНИЯ ЭФФЕКТАМИ ==================== */
+.effects-controls-wrapper {
+  display: flex;
+  flex-direction: row;     /* Всегда в ряд */
+  flex-wrap: nowrap;       /* Запрещаем перенос на новую строку */
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 260px;        /* Ограничиваем ширину на ПК, чтобы не были огромными */
+  margin-top: 10px;
+}
+
+/* Базовый стиль для всех трех кнопок в контейнере */
+.effects-controls-wrapper .pill-btn {
+  flex: 1;                 /* Делаем все кнопки одинаковой ширины */
+  width: auto !important;
+  max-width: none !important;
+  height: 48px !important; /* Чуть увеличили высоту для удобства */
+  padding: 4px 2px !important;
+  font-size: 8px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+  white-space: normal;     /* Разрешаем тексту переноситься, если не влезает */
+}
+
+/* --- КНОПКИ УПРАВЛЕНИЯ ЭФФЕКТАМИ НА МОБИЛКЕ --- */
+.effects-controls-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: 340px !important; /* 👈 Ограничиваем максимальную ширину контейнера */
+  margin: 15px auto 0 auto !important; /* 👈 Центрируем по горизонтали */
+  gap: 6px !important;
+}
+
+.effects-controls-wrapper .pill-btn {
+  flex: 1; /* Кнопки делят 340px поровну */
+  height: 48px !important;
+  padding: 4px 2px !important;
+  font-size: 8px !important;
+  white-space: normal !important; /* Разрешаем тексту переноситься */
+  line-height: 1.1;
+  text-align: center;
+  border-radius: 12px !important;
+}
+
+
+/* ==================== СКРЫВАЕМ МЕТРОНОМ И ЛУП НА МОБИЛКАХ ==================== */
+@media (max-width: 768px) {
+  .mobile-hide-tempo-controls {
+    display: none !important;
+  }
+  
+  /* Чтобы блок не выглядел пустым, уменьшим отступы */
+  .info-panel-grid > div {
+    padding: 15px 10px !important;
+  }
+}

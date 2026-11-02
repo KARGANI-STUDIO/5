@@ -149,7 +149,8 @@ const NoteBlock = React.memo(({
         <div
           onMouseDown={(e) => startResize(b, e)}
           onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
-          style={{ position: "absolute", right: 0, top: 0, width: 15, height: "100%", cursor: "ew-resize", background: "rgba(0,0,0,0.1)", borderRadius: "0 6px 6px 0" }}
+          className="note-resize-handle"
+          style={{ position: "absolute", right: 0, top: 0, height: "100%", cursor: "ew-resize", background: "rgba(0,0,0,0.1)", borderRadius: "0 6px 6px 0" }} 
         />
       )}
     </div>
@@ -263,7 +264,7 @@ const translations = {
   en: {
     tagline: "UNBOUND SOUND",
     startBtn: "START CREATING",
-    desktopOnly: "Desktop Version Only",
+  
     // Верхняя панель (старые ключи, оставляем для совместимости)
     save: "SAVE",
     load: "LOAD",
@@ -377,6 +378,7 @@ tutorialMessage: "Click on the grid to add a note. Use mouse wheel to change pit
     changelogBtn: "What's New",
 changelogTitle: "✨ What's New (v2.0)",
 changelogText: [
+  "• Full mobile and touch support: intuitive gestures and a brand new quick-edit panel.",
   "• Brand new GEN engine: Instantly generate complete tracks in 12 unique music styles.",
   "• Completely new Liquid Glass design with smooth animations.",
   "• Dynamic background palettes and seamless light/dark themes.",
@@ -388,7 +390,7 @@ changelogText: [
   ru: {
     tagline: "ЗВУК БЕЗ ГРАНИЦ",
     startBtn: "НАЧАТЬ ТВОРИТЬ",
-    desktopOnly: "Только для ПК",
+    
     // Верхняя панель (старые ключи, оставляем для совместимости)
     save: "СОХРАНИТЬ",
     load: "ЗАГРУЗИТЬ",
@@ -502,6 +504,7 @@ tutorialMessage: "Кликни по сетке — появится нота. К
     changelogBtn: "Что нового",
 changelogTitle: "✨ Что нового (v2.0)",
 changelogText: [
+  "• Полная поддержка мобильных устройств: удобные жесты и новая панель редактирования.",
   "• Новый GEN-движок: генерация полноценных битов в 12 разных стилях.",
   "• Новый дизайн в стиле Liquid Glass и плавные анимации.",
   "• Динамические палитры фона и бесшовная смена тем.",
@@ -3644,16 +3647,9 @@ const handleLogout = () => {
   const handleTouchStart = (e, b, isResize) => {
     e.stopPropagation();
     const touch = e.touches[0];
-    const now = Date.now();
     const state = touchStateRef.current;
 
-    if (now - state.lastTapTime < 350 && state.block?.id === b.id) {
-      state.taps += 1;
-    } else {
-      state.taps = 1;
-    }
-    
-    state.lastTapTime = now;
+    state.lastTapTime = Date.now();
     state.startX = touch.clientX;
     state.startY = touch.clientY;
     state.block = b;
@@ -3663,19 +3659,31 @@ const handleLogout = () => {
     state.initialVelocity = b.velocity ?? 1;
     state.hasMoved = false;
 
+    // Логика долгого нажатия для удаления
+    clearTimeout(state.tapTimer);
+    state.tapTimer = setTimeout(() => {
+      // Если палец не сдвинулся за 500мс — удаляем блок
+      if (!state.hasMoved) {
+        setTracks(prev => ({
+          ...prev, 
+          [instrument]: prev[instrument].filter(it => it.id !== b.id)
+        }));
+        setSelectedBlockIds(prev => {
+          const ns = new Set(prev);
+          ns.delete(b.id);
+          return ns;
+        });
+        if (uiSoundsEnabled) uiSounds.playPop();
+        state.block = null; // Сбрасываем
+      }
+    }, 600);
+
     if (isResize) {
       state.mode = 'resize';
-      state.taps = 0; 
-    } else if (state.taps === 3) {
-      state.mode = 'volume';
-    } else if (state.taps === 2) {
-      state.mode = 'color';
+      clearTimeout(state.tapTimer); // Отменяем удаление при ресайзе
     } else {
       state.mode = 'drag'; 
     }
-
-    clearTimeout(state.tapTimer);
-    state.tapTimer = setTimeout(() => { state.taps = 0; }, 400);
   };
 
   const handleTouchMove = (e) => {
@@ -3686,36 +3694,15 @@ const handleLogout = () => {
     const deltaX = touch.clientX - state.startX;
     const deltaY = touch.clientY - state.startY;
 
-    // 1. Сначала проверяем, сдвинулся ли палец достаточно сильно
+    // Если палец сдвинулся — отменяем таймер удаления
     if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-        state.hasMoved = true;
+      state.hasMoved = true;
+      clearTimeout(state.tapTimer);
     }
 
-    // 2. Если еще не сдвинулся — ничего не делаем (ждем)
     if (!state.hasMoved) return;
 
-    // 3. А вот ТЕПЕРЬ пошла вся остальная логика (удаление, движение и т.д.)
-    if (state.mode === 'drag' && deltaY < -50 && Math.abs(deltaX) < 40) {
-        // ... твой код удаления
-        setTracks(prev => ({
-          ...prev, 
-          [instrument]: prev[instrument].filter(it => it.id !== state.block.id)
-      })); 
-      state.block = null;
-      state.mode = null;
-      return;
-  }
-  if (state.mode === 'color' && state.hasMoved) {
-    const fretChange = Math.floor(-deltaY / 20); 
-    const newFret = Math.max(0, Math.min(MAX_FRET, state.initialFret + fretChange));
-    setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, fret: newFret } : b)}));
-  }
-    else if (state.mode === 'volume' && state.hasMoved) {
-      const volChange = -deltaY / 200; 
-      const newVol = Math.min(1, Math.max(0, state.initialVelocity + volChange));
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, velocity: newVol } : b)}));
-    } 
-    else if (state.mode === 'drag' && state.hasMoved) {
+    if (state.mode === 'drag') {
       const newX = Math.max(0, Math.floor((state.blockX + deltaX) / STEP_WIDTH) * STEP_WIDTH);
       const rect = scrollRef.current.getBoundingClientRect();
       const relativeY = touch.clientY - rect.top;
@@ -3731,6 +3718,7 @@ const handleLogout = () => {
   };
 
   const handleTouchEnd = () => {
+    clearTimeout(touchStateRef.current.tapTimer);
     touchStateRef.current.mode = null;
     touchStateRef.current.block = null;
   };
@@ -4064,18 +4052,7 @@ const menuItemStyle = {
   Powered By <span className="neon-kargani" style={{ fontWeight: "bold" }}>KARGANI STUDIO</span>
  
 </p>
-            <span style={{
-              fontSize: "9px",
-              color: "#4D88FF",
-              opacity: 0.6,
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              padding: "2px 8px",
-              border: "1px solid rgba(77, 136, 255, 0.2)",
-              borderRadius: "4px"
-            }}>
-              {t('desktopOnly')}
-            </span>
+            
           </div>
         </div>
       </div>
@@ -4328,12 +4305,12 @@ const menuItemStyle = {
         <div style={{
           width: "100%",
           overflow: "hidden",
-          maxHeight: isTempoMasterVisible ? "400px" : "0px",
+          maxHeight: isTempoMasterVisible ? "900px" : "0px",
           opacity: isTempoMasterVisible ? 1 : 0,
           marginBottom: isTempoMasterVisible ? "20px" : "0px",
           transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
         }}>
-          <div style={{ 
+          <div className="info-panel-grid" style={{ 
             display: "grid", 
             gridTemplateColumns: "repeat(3, 1fr)", 
             gap: "0px", 
@@ -4344,12 +4321,13 @@ const menuItemStyle = {
             boxShadow: `0 0 15px ${getInstrumentColor(instrument)}33`,
             boxSizing: "border-box"
           }}>
-            {/* 1.1 БЛОК ТЕМПА И ЛУПА */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
+                       {/* 1.1 БЛОК ТЕМПА И ЛУПА */}
+                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
               <div style={{ fontSize: "11px", color: "var(--text-accent)", textAlign: "center", fontWeight: "bold", letterSpacing: "1px" }}>{t('tempo')}</div>
               <div style={{ fontSize: "28px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center", marginBottom: "10px" }}>{bpm}</div>
               
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", width: "100%" }}>
+              {/* 👇 ОБОРАЧИВАЕМ ЭТОТ БЛОК 👇 */}
+              <div className="mobile-hide-tempo-controls" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", width: "100%" }}>
                 <button onClick={() => { if (!metroOn) Tone.start(); setMetroOn(!metroOn); }} style={{
                   background: metroOn ? 'rgba(77, 255, 136, 0.15)' : 'rgba(255,255,255,0.06)', border: `2px solid ${metroOn ? 'var(--text-bright)' : 'var(--border-color)'}`,
                   borderRadius: '20px', padding: '4px 16px', color: metroOn ? 'var(--text-bright)' : 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', width: "120px"
@@ -4362,60 +4340,37 @@ const menuItemStyle = {
                 </div>
                 
                 <div style={{ position: "relative", width: "100%", maxWidth: "160px" }}>
-                  <select 
-                    value={metroSound} 
-                    onChange={(e) => setMetroSound(e.target.value)} 
-                    style={{ 
-                      width: "100%", 
-                      background: "rgba(255,255,255,0.04)", 
-                      border: "1px solid var(--border-color)", 
-                      borderRadius: "8px", 
-                      padding: "6px 10px", 
-                      color: "var(--text-primary)", 
-                      fontSize: "10px", 
-                      fontWeight: "bold", 
-                      cursor: "pointer", 
-                      appearance: "none", 
-                      WebkitAppearance: "none",
-                      textAlign: "center", 
-                      outline: "none", 
-                      boxShadow: "none"
-                    }}
-                  >
+                  <select value={metroSound} onChange={(e) => setMetroSound(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "6px 10px", color: "var(--text-primary)", fontSize: "10px", fontWeight: "bold", cursor: "pointer", appearance: "none", WebkitAppearance: "none", textAlign: "center", outline: "none", boxShadow: "none" }}>
                     <option value="click" style={{ background: "var(--bg-card)", color: "white" }}>🎵 {t('metroSoundClick')}</option>
                     <option value="beep" style={{ background: "var(--bg-card)", color: "white" }}>🔔 {t('metroSoundBeep')}</option>
                     <option value="drum" style={{ background: "var(--bg-card)", color: "white" }}>🥁 {t('metroSoundDrum')}</option>
                     <option value="noise" style={{ background: "var(--bg-card)", color: "white" }}>🎛️ {t('metroSoundNoise')}</option>
                     <option value="bell" style={{ background: "var(--bg-card)", color: "white" }}>🔔 {t('metroSoundBell')}</option>
                   </select>
-                  <div style={{ 
-                    position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", 
-                    pointerEvents: "none", color: "var(--text-secondary)", fontSize: "8px" 
-                  }}>
-                    ▼
-                  </div>
+                  <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--text-secondary)", fontSize: "8px" }}>▼</div>
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", marginTop: "6px", width: "100%", maxWidth: "200px" }}>
+                  <button onClick={() => {
+                    const currentX = playheadXRef.current;
+                    if (loopStart === 0 && loopEnd === 0) { setLoopStart(currentX); setLoopEnd(0); setPreviewLoopEnd(currentX); } 
+                    else if (loopStart !== 0 && loopEnd === 0) { let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX; if (endX <= loopStart) endX = loopStart + STEP_WIDTH; setLoopEnd(endX); setPreviewLoopEnd(0); setLoopActive(true); } 
+                    else { setLoopStart(0); setLoopEnd(0); setPreviewLoopEnd(0); setLoopActive(false); }
+                  }} style={{ flex: 1, background: "var(--btn-bg)", border: `1px solid ${loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                    {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
+                  </button>
+                  <button onClick={() => { if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive); else setInfoModal({ visible: true, message: t('infoSetLoop') }); }} style={{ flex: 1, background: loopActive ? "var(--text-bright)" : "var(--btn-bg)", border: `1px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopActive ? "var(--bg-card)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
+                    {loopActive ? t('loopOn') : t('loopOff')}
+                  </button>
                 </div>
               </div>
-
-              <div style={{ display: "flex", gap: "8px", marginTop: "16px", width: "100%", maxWidth: "200px" }}>
-                <button onClick={() => {
-                  const currentX = playheadXRef.current;
-                  if (loopStart === 0 && loopEnd === 0) { setLoopStart(currentX); setLoopEnd(0); setPreviewLoopEnd(currentX); } 
-                  else if (loopStart !== 0 && loopEnd === 0) { let endX = (previewLoopEnd > loopStart) ? previewLoopEnd : currentX; if (endX <= loopStart) endX = loopStart + STEP_WIDTH; setLoopEnd(endX); setPreviewLoopEnd(0); setLoopActive(true); } 
-                  else { setLoopStart(0); setLoopEnd(0); setPreviewLoopEnd(0); setLoopActive(false); }
-                }} style={{ flex: 1, background: "var(--btn-bg)", border: `1px solid ${loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopStart === 0 ? "var(--text-bright)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                  {loopStart === 0 ? t('setLoop') : (loopEnd === 0 ? t('setEnd') : t('resetLoop'))}
-                </button>
-                <button onClick={() => { if (loopStart !== 0 && loopEnd !== 0 && loopEnd > loopStart) setLoopActive(!loopActive); else setInfoModal({ visible: true, message: t('infoSetLoop') }); }} style={{ flex: 1, background: loopActive ? "var(--text-bright)" : "var(--btn-bg)", border: `1px solid ${loopActive ? "var(--text-bright)" : "var(--warning-border)"}`, borderRadius: "8px", padding: "6px 0", color: loopActive ? "var(--bg-card)" : "var(--warning-border)", fontSize: "8px", fontWeight: "bold", cursor: "pointer" }}>
-                  {loopActive ? t('loopOn') : t('loopOff')}
-                </button>
-              </div>
+              {/* 👆 КОНЕЦ ОБОРАЧИВАЕМОГО БЛОКА 👆 */}
 
               <input type="range" min="60" max="200" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} style={{ width: "100%", maxWidth: "180px", cursor: "pointer", marginTop: "16px" }} />
             </div>
 
-                        {/* 1.2 БЛОК ЭФФЕКТОВ */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
+                                   {/* 1.2 БЛОК ЭФФЕКТОВ */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px", borderRight: "1px solid var(--border-color)" }}>
               
               <div style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
                 {[
@@ -4459,26 +4414,29 @@ const menuItemStyle = {
               <div style={{ fontSize: "10px", color: "var(--text-secondary)", textAlign: "center", marginBottom: "20px", letterSpacing: "0.5px" }}>
                 {t('selectBlock')}
               </div>
-              
-              <button onClick={removeAllEffects} className="pill-btn warning-pill">
-                {t('removeAllEffects')}
-              </button>
-              
-              <div style={{ display: "flex", gap: "8px", width: "100%", maxWidth: "200px", marginTop: "8px" }}>
-                <button onClick={toggleSubMode} className={`pill-btn ${subMode ? 'active-sub' : ''}`} style={{ flex: 1 }}>
-                  <svg style={{width: '14px', height: '14px', fill: 'currentColor'}} viewBox="0 0 24 24"><path d="M3 12h18v2H3zM6 8h12v2H6zM9 16h6v2H9z"/></svg>
+
+                            {/* 👇 ОБНОВЛЕННЫЙ КОНТЕЙНЕР ДЛЯ 3 КНОПОК 👇 */}
+                            <div className="effects-controls-wrapper">
+                <button onClick={removeAllEffects} className="pill-btn warning-pill">
+                  {t('removeAllEffects')}
+                </button>
+                
+                <button onClick={toggleSubMode} className={`pill-btn ${subMode ? 'active-sub' : ''}`}>
+                  <svg style={{width: '14px', height: '14px', fill: 'currentColor', marginBottom: '2px'}} viewBox="0 0 24 24"><path d="M3 12h18v2H3zM6 8h12v2H6zM9 16h6v2H9z"/></svg>
                   {subMode ? t('subOn') : t('subOff')}
                 </button>
                 
-                <button onClick={toggleReverseStrings} className={`pill-btn ${isReversed ? 'active-rev' : ''}`} style={{ flex: 1 }}>
-                  <svg style={{width: '14px', height: '14px', fill: 'currentColor'}} viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+                <button onClick={toggleReverseStrings} className={`pill-btn ${isReversed ? 'active-rev' : ''}`}>
+                  <svg style={{width: '14px', height: '14px', fill: 'currentColor', marginBottom: '2px'}} viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
                   {t('reverseStrings')}
                 </button>
               </div>
+              {/* 👆 КОНЕЦ КОНТЕЙНЕРА 👆 */}
+
             </div>
 
                         {/* 1.3 БЛОК МАСТЕР-ГРОМКОСТИ */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px" }}>
               <div style={{ fontSize: "10px", color: "var(--text-accent)", textAlign: "center", fontWeight: "bold", letterSpacing: "1px" }}>{t('masterVol')}</div>
               
               {/* Ползунок общей громкости */}
@@ -4490,16 +4448,16 @@ const menuItemStyle = {
               {/* Проценты громкости */}
               <div style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center", textShadow: "0 0 8px var(--text-bright)", marginTop: "10px" }}>{Math.round(masterGainValue * 100)}%</div>
               
-              {/* Кнопки VU и WAVE (теперь идеально ровные) */}
-              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
+              {/* Кнопки VU и WAVE (добавлен класс master-mode-toggles) */}
+              <div className="master-mode-toggles" style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
                 <button 
                   onClick={() => setMasterDisplayMode("vu")} 
                   style={{ 
                     background: masterDisplayMode === "vu" ? "var(--text-bright)" : "transparent", 
                     border: `1px solid var(--text-bright)`, 
                     borderRadius: "20px", 
-                    width: "85px", /* 👈 Фиксированная ширина */
-                    height: "24px", /* 👈 Фиксированная высота */
+                    width: "85px",
+                    height: "24px",
                     padding: 0,
                     display: "flex",
                     alignItems: "center",
@@ -4520,8 +4478,8 @@ const menuItemStyle = {
                     background: masterDisplayMode === "wave" ? "var(--text-bright)" : "transparent", 
                     border: `1px solid var(--text-bright)`, 
                     borderRadius: "20px", 
-                    width: "85px", /* 👈 Фиксированная ширина */
-                    height: "24px", /* 👈 Фиксированная высота */
+                    width: "85px",
+                    height: "24px",
                     padding: 0,
                     display: "flex",
                     alignItems: "center",
@@ -4537,8 +4495,8 @@ const menuItemStyle = {
                 </button>
               </div>
               
-              {/* Сам измеритель (VU полоски или WAVE круг) */}
-              <div style={{ height: "50px", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "10px" }}>
+             {/* Сам измеритель (добавлен класс master-meter-container) */}
+             <div className="master-meter-container" style={{ height: "50px", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "10px" }}>
                 {masterDisplayMode === "vu" ? (
                   <div style={{ display: "flex", gap: "3px", justifyContent: "center", alignItems: "flex-end", height: "35px" }}>
                     {[...Array(20)].map((_, idx) => { const intensity = idx / 20; const isActive = masterVolume > intensity; let color = "var(--text-bright)"; if (intensity > 0.7) color = "#FFB84D"; if (intensity > 0.9) color = "var(--warning-border)"; return <div key={idx} ref={el => vuBarRefs.current[idx] = el} style={{ width: "4px", height: `${6 + intensity * 25}px`, backgroundColor: isActive ? color : "rgba(var(--bg-card-rgb), 0.2)", borderRadius: "2px" }} />; })}
@@ -4549,7 +4507,7 @@ const menuItemStyle = {
               </div>
               
               {/* Таймер */}
-              <div ref={secondsRef} style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center" }}>{currentPosition.seconds.toFixed(1)}s</div>
+              <div ref={secondsRef} style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-bright)", textAlign: "center", marginTop: "10px" }}>{currentPosition.seconds.toFixed(1)}s</div>
               <div ref={barBeatRef} style={{ fontSize: "9px", color: "var(--text-accent)", textAlign: "center" }}>({currentPosition.bar}.{currentPosition.beat})</div>
             </div>
             </div>
@@ -4559,12 +4517,12 @@ const menuItemStyle = {
         <div style={{
           width: "100%",
           overflow: "hidden",
-          maxHeight: showFX ? "180px" : "0px",
+          maxHeight: showFX ? "600px" : "0px",
           opacity: showFX ? 1 : 0,
           marginBottom: showFX ? "20px" : "0px",
           transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
         }}>
-          <div style={{
+          <div className="fx-panel-grid" style={{
             display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "10px", width: "100%",
             background: "var(--bg-card)", padding: "20px", borderRadius: "12px", 
             border: `1px solid ${getInstrumentColor(instrument)}`, 
@@ -4577,56 +4535,61 @@ const menuItemStyle = {
               <span>{instrument.toUpperCase()}</span>
             </div>
 
-            {/* VOLUME */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('volume')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{volumes[instrument].toFixed(2)}</span>
-              <input type="range" min="0" max="1" step="0.01" value={volumes[instrument]} onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 1.0 }))}>{t('reset')}</button>
+                                    {/* VOLUME */}
+            <div className="fx-item">
+              <span className="fx-label">{t('volume')}</span>
+              <input type="range" className="fx-slider" min="0" max="1" step="0.01" value={volumes[instrument]} onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))} />
+              <span className="fx-value">{volumes[instrument].toFixed(2)}</span>
+              <button className="fx-reset-btn" onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 1.0 }))}>{t('reset')}</button>
             </div>
+
             {/* FX VOLUME */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('fxVol')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fxVolume.toFixed(2)}</span>
-              <input type="range" min="0" max="1" step="0.01" value={fxVolume} onChange={(e) => setFxVolume(parseFloat(e.target.value))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFxVolume(0.5)}>{t('reset')}</button>
+            <div className="fx-item">
+              <span className="fx-label">{t('fxVol')}</span>
+              <input type="range" className="fx-slider" min="0" max="1" step="0.01" value={fxVolume} onChange={(e) => setFxVolume(parseFloat(e.target.value))} />
+              <span className="fx-value">{fxVolume.toFixed(2)}</span>
+              <button className="fx-reset-btn" onClick={() => setFxVolume(0.5)}>{t('reset')}</button>
             </div>
+
             {/* CUTOFF */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('cutoff')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{filters[instrument].cutoff}</span>
-              <input type="range" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>{t('reset')}</button>
+            <div className="fx-item">
+              <span className="fx-label">{t('cutoff')}</span>
+              <input type="range" className="fx-slider" min="200" max="10000" value={filters[instrument].cutoff} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))} />
+              <span className="fx-value">{filters[instrument].cutoff}</span>
+              <button className="fx-reset-btn" onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>{t('reset')}</button>
             </div>
+
             {/* Q */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('q')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{filters[instrument].q}</span>
-              <input type="range" min="0.1" max="20" step="0.1" value={filters[instrument].q} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>{t('reset')}</button>
+            <div className="fx-item">
+              <span className="fx-label">{t('q')}</span>
+              <input type="range" className="fx-slider" min="0.1" max="20" step="0.1" value={filters[instrument].q} onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))} />
+              <span className="fx-value">{filters[instrument].q}</span>
+              <button className="fx-reset-btn" onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>{t('reset')}</button>
             </div>
+
             {/* CHORUS */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('chorus')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fx[instrument].chorus.toFixed(2)}</span>
-              <input type="range" min="0" max="1" step="0.01" value={fx[instrument].chorus} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>{t('reset')}</button>
+            <div className="fx-item">
+              <span className="fx-label">{t('chorus')}</span>
+              <input type="range" className="fx-slider" min="0" max="1" step="0.01" value={fx[instrument].chorus} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))} />
+              <span className="fx-value">{fx[instrument].chorus.toFixed(2)}</span>
+              <button className="fx-reset-btn" onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>{t('reset')}</button>
             </div>
+
             {/* REVERB */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: "9px", color: "var(--text-secondary)", fontWeight: "bold", marginBottom: "2px" }}>{t('reverb')}</span>
-              <span style={{ fontSize: "11px", color: "var(--text-bright)", marginBottom: "8px" }}>{fx[instrument].reverb.toFixed(2)}</span>
-              <input type="range" min="0" max="1" step="0.01" value={fx[instrument].reverb} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))} style={{ width: "100%", maxWidth: "100px" }} />
-              <button style={{ ...resetBtnStyle, marginTop: "8px", padding: "2px 10px", fontSize: "8px" }} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>{t('reset')}</button>
+            <div className="fx-item">
+              <span className="fx-label">{t('reverb')}</span>
+              <input type="range" className="fx-slider" min="0" max="1" step="0.01" value={fx[instrument].reverb} onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))} />
+              <span className="fx-value">{fx[instrument].reverb.toFixed(2)}</span>
+              <button className="fx-reset-btn" onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>{t('reset')}</button>
             </div>
-          </div>
-        </div>
+            </div>
+            </div>
 
                 {/* ================= 3. ПАНЕЛЬ 3D ================= */}
                 <div style={{
           width: "100%",
           overflow: "hidden",
-          maxHeight: show3D ? "160px" : "0px", /* 👈 Увеличили высоту со 140px до 160px, чтобы ничего не обрезалось */
+          maxHeight: show3D ? "400px" : "0px", /* 👈 Увеличили высоту со 140px до 160px, чтобы ничего не обрезалось */
           opacity: show3D ? 1 : 0,
           marginBottom: show3D ? "20px" : "0px",
           transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
@@ -4668,7 +4631,7 @@ const menuItemStyle = {
             </div>
 
             {/* СЛАЙДЕРЫ ОСЕЙ (Убрана двойная сетка) */}
-            <div style={{ 
+            <div className="panel-3d-axes" style={{ 
               display: "grid", 
               gridTemplateColumns: "repeat(3, 1fr)", 
               gap: "30px", /* Чуть увеличили отступ */
@@ -4718,7 +4681,7 @@ const menuItemStyle = {
       
      
       {/* Блок транспорта (над сеткой) */}
-      <div style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" }}>
+      <div className="transport-row" style={{ display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" }}>
   {/* Play/Pause */}
   <button onClick={handleTogglePlay} className={`play-pause-btn ${isPlaying ? "playing" : "stopped"}`}>
     {isPlaying ? (
@@ -5149,6 +5112,47 @@ const menuItemStyle = {
     </div>
   </div>
 )}
+
+       {/* 📱 МОБИЛЬНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ ВЫДЕЛЕННЫМ БЛОКОМ */}
+       {selectedBlockIds.size > 0 && window.innerWidth < 1024 && (
+        <div className="mobile-action-panel">
+          
+          <div className="mobile-action-group">
+            <span className="mobile-label">PITCH</span>
+            <button className="mobile-btn" onClick={() => {
+              setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => selectedBlockIds.has(b.id) ? { ...b, fret: Math.min(MAX_FRET, b.fret + 1) } : b)}));
+            }}>+</button>
+            <button className="mobile-btn" onClick={() => {
+              setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => selectedBlockIds.has(b.id) ? { ...b, fret: Math.max(0, b.fret - 1) } : b)}));
+            }}>-</button>
+          </div>
+
+          <div className="mobile-action-group">
+            <span className="mobile-label">VOL</span>
+            <button className="mobile-btn" onClick={() => {
+              setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => selectedBlockIds.has(b.id) ? { ...b, velocity: Math.min(1.5, (b.velocity || 1) + 0.1) } : b)}));
+            }}>+</button>
+            <button className="mobile-btn" onClick={() => {
+              setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => selectedBlockIds.has(b.id) ? { ...b, velocity: Math.max(0.1, (b.velocity || 1) - 0.1) } : b)}));
+            }}>-</button>
+          </div>
+
+          <button className="mobile-btn mobile-delete-btn" onClick={() => {
+            setTracks(prev => {
+              const updated = { ...prev };
+              Object.keys(updated).forEach(inst => {
+                updated[inst] = updated[inst].filter(b => !selectedBlockIds.has(b.id));
+              });
+              return updated;
+            });
+            setSelectedBlockIds(new Set());
+            if (uiSoundsEnabled) uiSounds.playBoom();
+          }}>
+            🗑️
+          </button>
+        </div>
+      )}
+
 
       {/* 🎓 ИНТЕРАКТИВНЫЙ ТУТОРИАЛ */}
       {tutorialStep > 0 && (

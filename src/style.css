@@ -2707,47 +2707,47 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     max-width: 320px !important;
   }
 
-    /* --- 2. ПАНЕЛЬ ИНСТРУМЕНТОВ --- */
-    .instrument-selector {
-      flex-wrap: wrap !important; /* Оставляем перенос, чтобы блок INFO/FX/3D уехал вниз */
-      justify-content: center !important;
-      padding: 10px !important;
-      gap: 6px !important; /* Уменьшаем отступ между кнопками */
-    }
-    
-    /* Делаем инструменты в один ряд (по 5 штук) */
-    .inst-btn {
-      flex: 1 1 calc(20% - 6px) !important; /* 20% ширины для каждого из 5 инструментов */
-      min-width: 0 !important; /* Убираем минимальную ширину, чтобы они сжались */
-      padding: 8px 2px !important; /* Делаем кнопки более узкими */
-    }
+  /* --- 2. ПАНЕЛЬ ИНСТРУМЕНТОВ --- */
+  .instrument-selector {
+    flex-wrap: wrap !important; /* Оставляем перенос, чтобы блок INFO/FX/3D уехал вниз */
+    justify-content: center !important;
+    padding: 10px !important;
+    gap: 6px !important; /* Уменьшаем отступ между кнопками */
+  }
   
-    /* Уменьшаем иконки и текст, чтобы всё влезло */
-    .inst-icon {
-      font-size: 14px !important;
-      margin-bottom: 2px !important;
-    }
-    .inst-text {
-      font-size: 6px !important;
-      letter-spacing: 0px !important;
-      white-space: nowrap !important;
-    }
-  
-    /* Блок с кнопками INFO, FX, 3D переносится на новую строку и центрируется */
-    .instrument-selector > div:last-child {
-      width: 100%;
-      justify-content: center;
-      margin-left: 0 !important;
-      margin-top: 8px;
-      gap: 8px !important;
-    }
-  
-    /* Кнопки INFO/FX/3D тоже становятся по 3 в ряд */
-    .fx-toggle-btn {
-      flex: 1 1 calc(33% - 10px) !important;
-      border-radius: 12px !important;
-      padding: 8px 2px !important;
-    }
+  /* Делаем инструменты в один ряд (по 5 штук) */
+  .inst-btn {
+    flex: 1 1 calc(20% - 6px) !important; /* 20% ширины для каждого из 5 инструментов */
+    min-width: 0 !important; /* Убираем минимальную ширину, чтобы они сжались */
+    padding: 8px 2px !important; /* Делаем кнопки более узкими */
+  }
+
+  /* Уменьшаем иконки и текст, чтобы всё влезло */
+  .inst-icon {
+    font-size: 14px !important;
+    margin-bottom: 2px !important;
+  }
+  .inst-text {
+    font-size: 6px !important;
+    letter-spacing: 0px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Блок с кнопками INFO, FX, 3D переносится на новую строку и центрируется */
+  .instrument-selector > div:last-child {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0 !important;
+    margin-top: 8px;
+    gap: 8px !important;
+  }
+
+  /* Кнопки INFO/FX/3D тоже становятся по 3 в ряд */
+  .fx-toggle-btn {
+    flex: 1 1 calc(33% - 10px) !important;
+    border-radius: 12px !important;
+    padding: 8px 2px !important;
+  }
 
   /* Уменьшаем шрифты */
   .inst-icon { font-size: 16px !important; }
@@ -2792,7 +2792,8 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     width: 90vw !important;
     padding: 20px !important;
   }
-    /* --- 5. КРАСИВОЕ РАСКРЫТИЕ ПАНЕЛИ INFO НА МОБИЛКЕ --- */
+  
+  /* --- 5. КРАСИВОЕ РАСКРЫТИЕ ПАНЕЛИ INFO НА МОБИЛКЕ --- */
   
   /* Делаем отступы внутри блоков INFO более аккуратными */
   .info-panel-grid > div {
@@ -2825,7 +2826,8 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   .scroll-container {
     padding-bottom: 20px;
   }
-          /* --- 6. ПАНЕЛЬ FX КАК В 3D (НА МОБИЛКЕ) --- */
+
+  /* --- 6. ПАНЕЛЬ FX КАК В 3D (НА МОБИЛКЕ) --- */
   .fx-panel-grid {
     grid-template-columns: 1fr !important;
     gap: 0 !important; /* Убираем отступы, используем рамки */
@@ -2870,7 +2872,8 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     padding: 4px 8px;
     font-size: 9px;
   }
-      /* --- 7. КРАСИВАЯ ПАНЕЛЬ 3D НА МОБИЛКЕ --- */
+
+  /* --- 7. КРАСИВАЯ ПАНЕЛЬ 3D НА МОБИЛКЕ --- */
   .panel-3d-axes {
     /* Перестраиваем сетку в одну колонку */
     grid-template-columns: 1fr !important; 
@@ -2888,51 +2891,94 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     justify-content: space-between;
   }
 
-  /* --- 8. ЛЕНДИНГ (ГЛАВНЫЙ ЭКРАН) НА МОБИЛКЕ --- */
+  /* --- 8. ИДЕАЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
+  
+  /* Жестко фиксируем экран, скролл запрещен */
+  .landing {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    overflow: hidden !important;
+  }
+  
+  html:has(.landing), body:has(.landing) {
+    overflow: hidden !important;
+    height: 100vh !important;
+  }
+
+  /* Контент занимает всю высоту и распределяется гибко */
   .landing-content {
-    padding-top: 8vh !important; /* Чуть поднимаем контент */
-    padding-left: 20px !important; /* Добавляем отступы по бокам */
-    padding-right: 20px !important;
+    height: 100% !important;
+    padding-top: 6vh !important; /* Чуть поднимаем контент */
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    padding-bottom: 2vh !important; /* Отступ для меню телефона */
+    justify-content: flex-start !important;
   }
 
   /* Убираем обрезку текста и делаем его адаптивным */
   .tagline {
     white-space: normal !important; 
-    font-size: 1rem !important;
+    font-size: 0.9rem !important;
     letter-spacing: 3px !important; /* Уменьшаем расстояние между буквами */
     line-height: 1.4 !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 15px !important;
   }
 
   /* Логотип STRUNA */
   .neon-struna {
     font-size: clamp(40px, 15vw, 80px) !important; /* Немного уменьшаем */
-    margin-bottom: 10px !important;
+    margin-bottom: 5px !important;
   }
 
   /* Кнопка START CREATING */
   .start-btn {
-    padding: 14px 30px !important;
-    font-size: 16px !important;
-    margin-top: 10px !important;
+    padding: 12px 25px !important;
+    font-size: 15px !important;
+    margin-top: 5px !important;
+    margin-bottom: 10px !important;
   }
 
   /* Блок с инструментами (Превью) */
   .preview {
-    width: 100% !important; /* Убираем жесткие 420px */
+    flex: 1 !important; /* Занимает всё оставшееся пространство */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important; /* Центрируем инструменты по вертикали */
+    width: 100% !important; 
     max-width: 100% !important;
-    margin-top: 30px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
     padding: 0 !important;
-    gap: 12px !important; /* Уменьшаем расстояние между кнопками */
+    gap: 10px !important; 
   }
 
   /* Сами кнопки инструментов */
   .preview-track {
-    padding: 14px 15px !important;
+    padding: 12px 15px !important;
     font-size: 12px !important;
     border-radius: 12px !important;
     width: 100% !important;
     box-sizing: border-box;
+  }
+
+  /* Подвал прибиваем к самому низу */
+  .landing-content > div:last-child {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+  }
+
+  /* Чуть корректируем позиции тыкв, чтобы они не наезжали на контент */
+  .pumpkin-left { 
+    top: 5%; 
+    left: 2%; 
+    width: 60px; 
+    height: 60px; 
+  }
+  .pumpkin-right { 
+    top: 9%; 
+    right: 2%; 
+    width: 50px; 
+    height: 70px; 
   }
 }
 

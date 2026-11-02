@@ -4028,7 +4028,7 @@ const menuItemStyle = {
             </div>
           </div>
   
-          <div style={{
+          <div className="landing-footer" style={{
             textAlign: "center",
             width: "100%",
             display: "flex",
@@ -4918,18 +4918,17 @@ const menuItemStyle = {
 </button>
 </div>
 {/* ===== ПОДВАЛ С POWERED BY (как на превью) ===== */}
-<div style={{
-  textAlign: "center",
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "4px",
-  marginTop: "20px",
-  marginBottom: "10px",
-  position: "relative",
-  zIndex: 2
-}}>
+<div className="landing-footer" style={{
+            textAlign: "center",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "auto",
+            position: "relative",
+            zIndex: 2
+          }}>
   <p
     className="powered-by-text"
     style={{

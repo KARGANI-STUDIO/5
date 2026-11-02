@@ -2891,121 +2891,122 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     justify-content: space-between;
   }
 
-    /* --- 8. ИДЕАЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
+      /* --- 8. ИДЕАЛЬНЫЙ МОБИЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
   
-  /* Жестко фиксируем экран, скролл запрещен. 100dvh решает проблему с адресной строкой на мобилках */
-  .landing {
+  .app.landing {
     height: 100dvh !important;
     min-height: 100dvh !important;
+    padding: 0 !important;
     overflow: hidden !important;
-  }
-  
-  html:has(.landing), body:has(.landing) {
-    overflow: hidden !important;
-    height: 100dvh !important;
   }
 
-  /* Контент распределяется по экрану. Flexbox обязателен для прижатия подвала */
+  html:has(.landing),
+  body:has(.landing) {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
   .landing-content {
+    width: 100% !important;
     height: 100% !important;
+    min-height: 0 !important; /* Убираем конфликт с minHeight: 100vh */
     display: flex !important;
     flex-direction: column !important;
-    padding-top: 8vh !important; 
-    padding-left: 15px !important;
-    padding-right: 15px !important;
-    padding-bottom: 10px !important; /* Небольшой отступ снизу */
     justify-content: flex-start !important;
+    
+    /* Отступы: сверху безопасный, снизу учитывает полоску iPhone */
+    padding: clamp(54px, 7vh, 68px) 14px max(8px, env(safe-area-inset-bottom)) !important;
     box-sizing: border-box !important;
   }
 
-  /* --- УМЕНЬШАЕМ ВЕРХНИЕ КНОПКИ --- */
-  .top-btn {
-    width: 40px !important;
-    height: 40px !important;
-    font-size: 16px !important;
-  }
-  
-  /* Кнопка Google */
-  .landing-content > div[style*="position: 'fixed'"] {
-    top: 15px !important;
-    right: 15px !important;
-    gap: 8px !important;
-  }
-  .landing-content > div[style*="position: 'fixed'"] > div {
-    width: 40px !important;
-    height: 40px !important;
-  }
-
-  /* --- ЛОГОТИП И ТЕКСТ --- */
+  /* Логотип */
   .neon-struna {
-    font-size: clamp(35px, 12vw, 60px) !important; /* Значительно уменьшаем лого */
+    font-size: clamp(35px, 11vw, 52px) !important;
+    line-height: 1 !important;
     margin-bottom: 5px !important;
     letter-spacing: 2px !important;
   }
 
+  /* Слоган */
   .tagline {
-    white-space: normal !important; 
-    font-size: 0.8rem !important; /* Уменьшаем текст */
-    letter-spacing: 2px !important; /* Убираем широкие пробелы между буквами */
-    line-height: 1.4 !important;
-    margin-bottom: 15px !important;
+    font-size: 0.78rem !important;
+    margin-bottom: 12px !important;
+    letter-spacing: 2px !important;
+    white-space: normal !important;
   }
 
-  /* --- КНОПКА СТАРТ --- */
+  /* Кнопка START */
   .start-btn {
-    padding: 10px 25px !important;
-    font-size: 14px !important;
-    margin-top: 5px !important;
-    margin-bottom: 20px !important;
+    padding: 9px 24px !important;
+    margin-top: 4px !important;
+    margin-bottom: 12px !important;
   }
 
-  /* --- ИНСТРУМЕНТЫ --- */
+  /* Пять инструментов */
   .preview {
-    flex: none !important; /* Убираем растягивание, чтобы не было пустоты */
-    display: flex !important;
-    flex-direction: column !important;
-    width: 100% !important; 
-    max-width: 100% !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
-    padding: 0 !important;
-    gap: 10px !important; 
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    gap: 7px !important;
   }
 
   .preview-track {
-    padding: 12px 15px !important;
+    padding: 8px 12px !important;
     font-size: 11px !important;
     border-radius: 12px !important;
     width: 100% !important;
     box-sizing: border-box;
   }
 
-  /* --- ПОДВАЛ (POWERED BY) --- */
-  /* margin-top: auto в flex-контейнере выталкивает этот блок в самый низ */
-  .landing-content > div:last-child {
+  /* Нижняя надпись (теперь через новый класс) */
+  .landing-footer {
     margin-top: auto !important;
-    padding-top: 10px !important;
-    padding-bottom: 5px !important;
+    flex-shrink: 0 !important;
+    padding-top: 8px !important;
+    text-align: center !important;
   }
 
-  /* Делаем текст "Powered By" чуть аккуратнее, чтобы точно влез */
   .powered-by-text {
     font-size: 8px !important;
-    letter-spacing: 2px !important;
+    letter-spacing: 1.5px !important;
   }
 
-  /* --- ТЫКВЫ --- */
+  /* Корректировка тыкв */
   .pumpkin-left { 
-    top: 5%; 
+    top: 4%; 
     left: 2%; 
-    width: 50px; 
-    height: 50px; 
+    width: 45px; 
+    height: 45px; 
   }
   .pumpkin-right { 
-    top: 8%; 
+    top: 7%; 
     right: 2%; 
-    width: 45px; 
-    height: 60px; 
+    width: 40px; 
+    height: 55px; 
+  }
+}
+
+/* Дополнительная компактность для невысоких экранов (как iPhone SE) */
+@media (max-width: 768px) and (max-height: 700px) {
+  .landing-content {
+    padding-top: 48px !important;
+  }
+  .neon-struna {
+    font-size: clamp(32px, 10vw, 46px) !important;
+  }
+  .tagline {
+    margin-bottom: 8px !important;
+    font-size: 0.72rem !important;
+  }
+  .start-btn {
+    padding: 7px 20px !important;
+    margin-bottom: 8px !important;
+  }
+  .preview {
+    gap: 5px !important;
+  }
+  .preview-track {
+    padding: 7px 12px !important;
   }
 }
 
@@ -3112,3 +3113,4 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     padding: 15px 10px !important;
   }
 }
+

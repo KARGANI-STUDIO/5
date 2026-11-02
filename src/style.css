@@ -2498,3 +2498,87 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   20% { opacity: 1; }
   100% { transform: rotate(45deg) translateX(100%); opacity: 0; }
 }
+
+/* ==================== ИНТЕРАКТИВНЫЙ ТУТОРИАЛ ==================== */
+.tutorial-container {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none; /* Чтобы можно было кликать по сетке сквозь туториал */
+}
+
+.tutorial-card {
+  background: rgba(18, 22, 41, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(77, 136, 255, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(77, 136, 255, 0.2);
+  border-radius: 20px;
+  padding: 20px 30px;
+  text-align: center;
+  max-width: 400px;
+  pointer-events: auto; /* Кнопку можно нажимать */
+  animation: tutorialSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.tutorial-title {
+  color: var(--text-accent);
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin: 0 0 10px 0;
+  font-weight: bold;
+}
+
+.tutorial-content p {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  line-height: 1.4;
+}
+
+.tutorial-skip-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.tutorial-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: #fff;
+}
+
+/* Прыгающая стрелочка */
+.tutorial-arrow {
+  width: 0; 
+  height: 0; 
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 15px solid var(--text-accent);
+  margin-top: 15px;
+  animation: bounceArrow 1.5s infinite alternate ease-in-out;
+  filter: drop-shadow(0 0 8px var(--text-accent));
+}
+
+@keyframes tutorialSlideUp {
+  from { opacity: 0; transform: translateY(50px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bounceArrow {
+  0% { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(-15px); opacity: 1; }
+}

@@ -190,6 +190,7 @@ function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [infoModal, setInfoModal] = useState({ visible: false, message: '', title: '' });
   const [bpm, setBpm] = useState(120);
+  const [tutorialStep, setTutorialStep] = useState(0); // 0 = выключен
   const [currentAITonality, setCurrentAITonality] = useState(null); // Память для AI
   
   const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
@@ -343,6 +344,14 @@ const translations = {
     confirmReset: "YES, RESET ALL",
     tutorialTitle: "Welcome to STRUNA! 🎸",
 tutorialMessage: "Click on the grid to add a note. Use mouse wheel to change pitch. Press Space to play. Start creating!",
+    // Tutorial Steps
+    tutorialTitle: "INTERACTIVE TUTORIAL 🎓",
+    tutorialStep1: "1. Click on the grid to create a note.",
+    tutorialStep2: "2. Drag the right edge of the note to make it longer.",
+    tutorialStep3: "3. Hover over the note and scroll your mouse wheel to change color.",
+    tutorialStep4: "4. Press the PLAY button to listen!",
+    tutorialFinish: "You are a pro now! Start creating! 🚀",
+    tutorialSkip: "Skip Tutorial",
     // Controls Help
     controls: {
       title: "CONTROLS GUIDE",
@@ -460,6 +469,14 @@ changelogText: [
     confirmReset: "ДА, СБРОСИТЬ ВСЁ",
     tutorialTitle: "Добро пожаловать в STRUNA! 🎸",
 tutorialMessage: "Кликни по сетке — появится нота. Колесико мыши меняет высоту. Нажмите Пробел для воспроизведения. Начинайте творить!",
+    // Tutorial Steps
+    tutorialTitle: "ИНТЕРАКТИВНЫЙ ТУТОРИАЛ 🎓",
+    tutorialStep1: "1. Кликни по сетке, чтобы создать ноту.",
+    tutorialStep2: "2. Потяни за правый край ноты, чтобы удлинить её.",
+    tutorialStep3: "3. Наведи на ноту и покрути колесико мыши, чтобы изменить цвет/лад.",
+    tutorialStep4: "4. Нажми кнопку PLAY, чтобы услышать трек!",
+    tutorialFinish: "Ты теперь профи! Начинай творить! 🚀",
+    tutorialSkip: "Пропустить",
     // Controls Help
     controls: {
       title: "РУКОВОДСТВО ПО УПРАВЛЕНИЮ",
@@ -2180,16 +2197,35 @@ useEffect(() => {
     return () => clearTimeout(timer);
   }, [tracks, loopActive, loopStart, loopEnd, isPlaying]);
 
-useEffect(() => {
-  // Показываем туториал только если мы в режиме приложения и ещё не показывали
-  if (mode === "app" && !localStorage.getItem('struna_tutorial_shown')) {
-    setInfoModal({
-      visible: true,
-      title: t('tutorialTitle'),
-      message: t('tutorialMessage')
-    });
-  }
-}, [mode]);
+  useEffect(() => {
+    // Показываем туториал только если мы в режиме app и ещё не проходили
+    if (mode === "app" && !localStorage.getItem('struna_tutorial_v2_shown')) {
+      setTutorialStep(1);
+    }
+  }, [mode]);
+    // Логика прохождения туториала
+    useEffect(() => {
+      if (tutorialStep === 0) return;
+      
+      const totalBlocks = Object.values(tracks).flat();
+  
+      // Шаг 1 -> 2: Создана нота
+      if (tutorialStep === 1 && totalBlocks.length > 0) {
+        setTutorialStep(2);
+      }
+      // Шаг 2 -> 3: Нота удлинена (изначальная длина 80)
+      if (tutorialStep === 2 && totalBlocks.some(b => b.length > 80)) {
+        setTutorialStep(3);
+      }
+      // Шаг 3 -> 4: Изменен лад (цвет)
+      if (tutorialStep === 3 && totalBlocks.some(b => b.fret > 0)) {
+        setTutorialStep(4);
+      }
+      // Шаг 4 -> 5: Нажат Play
+      if (tutorialStep === 4 && isPlaying) {
+        setTutorialStep(5);
+      }
+    }, [tracks, isPlaying, tutorialStep]);
 
   const handleSaveProject = () => {
     const projectData = { bpm, tracks, filters, fx };
@@ -2846,10 +2882,10 @@ if (!isPlayheadDraggingRef.current && playheadRef.current) {
 
   const handleCloseInfoModal = () => {
     setInfoModal({ visible: false, message: '', title: '' });
-    // Если туториал ещё не был показан – запоминаем, что показали
-    if (!localStorage.getItem('struna_tutorial_shown')) {
-      localStorage.setItem('struna_tutorial_shown', 'true');
-    }
+  };
+  const finishTutorial = () => {
+    setTutorialStep(0);
+    localStorage.setItem('struna_tutorial_v2_shown', 'true');
   };
   
   const generateAIPattern = () => {
@@ -5113,6 +5149,37 @@ const menuItemStyle = {
     </div>
   </div>
 )}
+
+      {/* 🎓 ИНТЕРАКТИВНЫЙ ТУТОРИАЛ */}
+      {tutorialStep > 0 && (
+        <div className="tutorial-container">
+          <div className="tutorial-card">
+            <h3 className="tutorial-title">
+              {tutorialStep === 5 ? t('tutorialFinish') : t('tutorialTitle')}
+            </h3>
+            
+            <div className="tutorial-content">
+              {tutorialStep === 1 && <p>{t('tutorialStep1')}</p>}
+              {tutorialStep === 2 && <p>{t('tutorialStep2')}</p>}
+              {tutorialStep === 3 && <p>{t('tutorialStep3')}</p>}
+              {tutorialStep === 4 && <p>{t('tutorialStep4')}</p>}
+            </div>
+
+            {tutorialStep < 5 ? (
+              <button className="tutorial-skip-btn" onClick={finishTutorial}>
+                {t('tutorialSkip')}
+              </button>
+            ) : (
+              <button className="tutorial-skip-btn" onClick={finishTutorial} style={{ background: 'var(--text-bright)', color: '#000' }}>
+                {t('infoOk')}
+              </button>
+            )}
+          </div>
+          {tutorialStep < 5 && <div className="tutorial-arrow"></div>}
+        </div>
+      )}
+      
+
     </div>
   );
 }

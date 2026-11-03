@@ -817,19 +817,55 @@ div[style*="background-color"], .step-cell { color: #000000 !important; font-wei
 }
 .neon-struna:hover { transform: scale(1.02); }
 
+/* ==================== НЕОНОВЫЙ ЛОГОТИП KARGANI STUDIO ==================== */
 .neon-kargani {
-  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
+  background: linear-gradient(
+    90deg, 
+    #ff0033 0%,    /* Яркий красный */
+    #ffffff 20%,   /* Белый */
+    #ffd700 40%,   /* Золотой */
+    #111111 50%,   /* Черный (глубокий графит) */
+    #ffd700 60%,   /* Золотой */
+    #ffffff 80%,   /* Белый */
+    #ff0033 100%   /* Яркий красный */
+  );
   background-size: 300% auto;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 5px rgba(255, 0, 128, 0.4)) drop-shadow(0 0 8px rgba(0, 255, 255, 0.2));
-  animation: neonFlowSmooth 8s ease-in-out infinite;
+  
+  /* Запускаем анимацию переливания и свечения */
+  animation: kargantiShift 6s ease-in-out infinite alternate;
+  
   font-weight: bold;
   display: inline-block;
   transition: transform 0.3s ease;
 }
-.neon-kargani:hover { transform: scale(1.02); }
+
+.neon-kargani:hover {
+  transform: scale(1.05);
+}
+
+/* Анимация переливания цвета и свечения */
+@keyframes kargantiShift {
+  0% {
+    background-position: 0% 50%;
+    /* Красно-белое свечение */
+    filter: drop-shadow(0 0 4px rgba(255, 0, 51, 0.6)) 
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+  }
+  50% {
+    /* Золото-черное свечение */
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8)) 
+            drop-shadow(0 0 15px rgba(255, 215, 0, 0.4));
+  }
+  100% {
+    background-position: 100% 50%;
+    /* Возврат к красно-белому свечению */
+    filter: drop-shadow(0 0 4px rgba(255, 0, 51, 0.6)) 
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+  }
+}
 
 /* ==================== НАВИГАЦИОННЫЕ И ДОП КНОПКИ ==================== */
 .back-to-home-btn {
@@ -2686,6 +2722,14 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 
 /* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ (ПОРТРЕТНЫЙ РЕЖИМ) ==================== */
 @media (max-width: 768px) {
+
+  /* --- 10. ВЕРТИКАЛЬНЫЙ СКРОЛЛ СЕТКИ НА МОБИЛКАХ --- */
+  .scroll-container {
+    /* Ограничиваем высоту: 50% от высоты экрана минус небольшие отступы */
+    max-height: 50vh !important; 
+    /* Включаем плавный инерционный скролл для iOS */
+    -webkit-overflow-scrolling: touch !important;
+  }
   
   /* --- 1. ВЕРХНЯЯ ПАНЕЛЬ И ПРОФИЛЬ --- */
   .user-profile-btn {
@@ -2753,17 +2797,58 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   .inst-icon { font-size: 16px !important; }
   .inst-text { font-size: 8px !important; }
 
-  /* --- 3. КНОПКИ ТРАНСПОРТА --- */
-  .transport-row {
-    flex-wrap: wrap !important;
-    justify-content: center;
-  }
-  .transport-row > div {
-    margin-left: 0 !important;
-    width: 100%;
-    justify-content: center;
-    margin-top: 10px;
-  }
+    /* --- 3. КНОПКИ ТРАНСПОРТА (В ОДИН РЯД) --- */
+    .transport-row {
+      display: flex !important;
+      flex-wrap: nowrap !important; /* Запрещаем перенос на новую строку */
+      justify-content: space-between !important;
+      gap: 5px !important;
+      width: 100% !important;
+      padding: 0 10px !important;
+      box-sizing: border-box !important;
+      margin-top: 15px !important;
+      margin-bottom: 15px !important;
+    }
+  
+    /* Магия: «растворяем» обертку правой группы, чтобы ее кнопки встали в общий ряд */
+    .transport-row > div {
+      display: contents !important;
+    }
+  
+    /* Делаем все 7 кнопок абсолютно одинаковыми */
+    .transport-row button {
+      flex: 1 1 0% !important; /* Все кнопки делят место поровну */
+      min-width: 0 !important; /* Разрешаем им сжиматься на узких экранах */
+      height: 45px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 8px !important;
+    }
+  
+    /* Убираем текст "REC", оставляем только точку */
+    .transport-row .record-square-btn {
+      font-size: 0 !important; 
+    }
+    .transport-row .record-square-btn .record-dot {
+      margin: 0 !important;
+    }
+  
+    /* Чуть уменьшаем текст, чтобы всё влезло */
+    .transport-row .ai-btn {
+      font-size: 12px !important;
+      letter-spacing: 0 !important;
+    }
+    .transport-row .reset-btn {
+      font-size: 7.5px !important;
+      letter-spacing: 0 !important;
+    }
+    /* Кнопка очистки остается в виде иконки корзины */
+    .transport-row .clear-instrument-btn {
+      font-size: 0 !important;
+    }
 
   /* --- 4. ОСТАЛЬНЫЕ ПАНЕЛИ --- */
   .info-panel-grid {
@@ -2891,7 +2976,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     justify-content: space-between;
   }
 
-      /* --- 8. ИДЕАЛЬНЫЙ МОБИЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
+    /* --- 8. ИДЕАЛЬНЫЙ МОБИЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
   
   .app.landing {
     height: 100dvh !important;
@@ -2909,13 +2994,13 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   .landing-content {
     width: 100% !important;
     height: 100% !important;
-    min-height: 0 !important; /* Убираем конфликт с minHeight: 100vh */
+    min-height: 0 !important; 
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
     
-    /* Отступы: сверху безопасный, снизу учитывает полоску iPhone */
-    padding: clamp(54px, 7vh, 68px) 14px max(8px, env(safe-area-inset-bottom)) !important;
+    /* 👇 Увеличили верхний отступ до 90px, чтобы убрать наложение кнопок на логотип */
+    padding: 90px 14px max(12px, env(safe-area-inset-bottom)) !important;
     box-sizing: border-box !important;
   }
 
@@ -2930,40 +3015,43 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   /* Слоган */
   .tagline {
     font-size: 0.78rem !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 15px !important;
     letter-spacing: 2px !important;
     white-space: normal !important;
   }
 
   /* Кнопка START */
   .start-btn {
-    padding: 9px 24px !important;
-    margin-top: 4px !important;
-    margin-bottom: 12px !important;
+    padding: 10px 24px !important;
+    margin-top: 5px !important;
+    margin-bottom: 15px !important;
   }
 
   /* Пять инструментов */
   .preview {
     width: 100% !important;
-    flex: 0 0 auto !important;
+    flex: 1 !important; /* 👈 Растягиваем блок на всё свободное место */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important; /* 👈 Центрируем кнопки по вертикали */
     margin: 0 !important;
-    gap: 7px !important;
+    gap: 10px !important;
   }
 
   .preview-track {
-    padding: 8px 12px !important;
+    padding: 10px 12px !important;
     font-size: 11px !important;
     border-radius: 12px !important;
     width: 100% !important;
     box-sizing: border-box;
   }
 
-  /* Нижняя надпись (теперь через новый класс) */
+  /* Нижняя надпись */
   .landing-footer {
-    margin-top: auto !important;
     flex-shrink: 0 !important;
-    padding-top: 8px !important;
+    padding-top: 10px !important;
     text-align: center !important;
+    margin-top: 0 !important; /* Убрали auto, так как preview теперь сам занимает место */
   }
 
   .powered-by-text {
@@ -2973,40 +3061,69 @@ div[style*="background-color: var(--bg-card)"] button:hover {
 
   /* Корректировка тыкв */
   .pumpkin-left { 
-    top: 4%; 
+    top: 8%; 
     left: 2%; 
     width: 45px; 
     height: 45px; 
   }
   .pumpkin-right { 
-    top: 7%; 
+    top: 11%; 
     right: 2%; 
     width: 40px; 
     height: 55px; 
+  }
+  /* --- 9. КНОПКИ ПОМОЩЬ И ЧТО НОВОГО (ТОЛЬКО ИКОНКИ) --- */
+  .bottom-action-buttons {
+    gap: 15px !important; /* Увеличиваем отступ между круглыми кнопками */
+    margin: 15px 0 !important;
+  }
+
+  .controls-help-btn {
+    font-size: 0 !important; /* Скрываем текст внутри кнопки */
+    width: 45px !important;  /* Делаем кнопку идеально круглой */
+    height: 45px !important;
+    min-width: 45px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important; /* Убираем старые отступы */
+  }
+
+  /* Добавляем иконки вместо скрытого текста */
+  .controls-help-btn:nth-child(1)::before {
+    content: '❓';
+    font-size: 18px !important;
+  }
+
+  .controls-help-btn:nth-child(2)::before {
+    content: '📢';
+    font-size: 18px !important;
   }
 }
 
 /* Дополнительная компактность для невысоких экранов (как iPhone SE) */
 @media (max-width: 768px) and (max-height: 700px) {
   .landing-content {
-    padding-top: 48px !important;
+    padding-top: 70px !important; /* Чуть меньше для маленьких экранов */
   }
   .neon-struna {
     font-size: clamp(32px, 10vw, 46px) !important;
   }
   .tagline {
-    margin-bottom: 8px !important;
+    margin-bottom: 10px !important;
     font-size: 0.72rem !important;
   }
   .start-btn {
-    padding: 7px 20px !important;
-    margin-bottom: 8px !important;
+    padding: 8px 20px !important;
+    margin-bottom: 10px !important;
   }
   .preview {
-    gap: 5px !important;
+    gap: 8px !important;
   }
   .preview-track {
-    padding: 7px 12px !important;
+    padding: 8px 12px !important;
   }
 }
 
@@ -3049,6 +3166,9 @@ div[style*="background-color: var(--bg-card)"] button:hover {
     padding: 12px 10px !important;
   }
 }
+
+
+
 
 /* ==================== КНОПКИ УПРАВЛЕНИЯ ЭФФЕКТАМИ ==================== */
 .effects-controls-wrapper {

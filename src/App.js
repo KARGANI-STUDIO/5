@@ -4781,20 +4781,19 @@ const menuItemStyle = {
       {/* Сетка (scroll-container) */}
       <div 
         ref={scrollRef}
-        
         className="scroll-container"
         onContextMenu={(e) => e.preventDefault()}
         style={{
           width: "100%",
           overflowX: "auto",
-          overflowY: "auto",
+          overflowY: "auto", // Теперь это будет работать
           paddingBottom: "10px",
           position: "relative",
           background: "#050814",
           borderRadius: 10,
           border: "1px solid #161B33",
-          WebkitOverflowScrolling: "touch",
-          touchAction: "pan-x"
+          WebkitOverflowScrolling: "touch", // Плавный скролл на iOS
+          touchAction: "pan-x pan-y" // ✅ РАЗРЕШАЕМ СКРОЛЛ ВО ВСЕ СТОРОНЫ
         }}
       >
         <div style={{ 
@@ -4906,17 +4905,15 @@ const menuItemStyle = {
             
   
     {/* Кнопки внизу: Помощь и Что нового */}
-<div style={{ display: "flex", gap: "10px", justifyContent: "center", margin: "20px 0" }}>
-<button className="controls-help-btn" onClick={() => setShowHelp(true)}>
-  {t('controlsHelp')}
-</button>
-<button 
-  className="controls-help-btn" 
-  onClick={() => setShowChangelog(true)}
->
-  {t('changelogBtn')}
-</button>
-</div>
+    {/* Кнопки внизу: Помощь и Что нового */}
+    <div className="bottom-action-buttons" style={{ display: "flex", gap: "10px", justifyContent: "center", margin: "20px 0" }}>
+      <button className="controls-help-btn" onClick={() => setShowHelp(true)}>
+        {t('controlsHelp')}
+      </button>
+      <button className="controls-help-btn" onClick={() => setShowChangelog(true)}>
+        {t('changelogBtn')}
+      </button>
+    </div>
 {/* ===== ПОДВАЛ С POWERED BY (как на превью) ===== */}
 <div className="landing-footer" style={{
             textAlign: "center",

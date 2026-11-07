@@ -1,2063 +1,3191 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
-import * as Tone from "tone";
-import "./style.css";
-import { useGoogleLogin } from '@react-oauth/google';
-import UserProfile from './UserProfile';
-import { supabase } from './supabaseClient';
-
-function App() {
-  const [user, setUser] = useState(() => {
-    // При загрузке страницы проверяем, есть ли сохраненный юзер в памяти браузера
-    const savedUser = localStorage.getItem("struna_user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-  const [mode, setMode] = useState("landing");
-  const strings = ["E", "A", "D", "G", "B", "e"];
-  const [tracks, setTracks] = useState({ guitar: [], synth: [], bass: [], chip: [] });
-  const [instrument, setInstrument] = useState("guitar");
-  const [showHelp, setShowHelp] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [bpm, setBpm] = useState(120);
-  const [hoveredBlockId, setHoveredBlockId] = useState(null);
-  const [demoPlaying, setDemoPlaying] = useState(null); // имя инструмента или null
-  const [isTempoMasterVisible, setIsTempoMasterVisible] = useState(true);
-  const defaultFilters = {
-    guitar: { cutoff: 8000, q: 1 },
-    synth: { cutoff: 8000, q: 1 },
-    bass: { cutoff: 8000, q: 1 },
-    chip: { cutoff: 12000, q: 0.8 }
-  };
-  const defaultFx = {
-    guitar: { reverb: 0.25, chorus: 0.3 },
-    synth: { reverb: 0.25, chorus: 0.3 },
-    bass: { reverb: 0.1, chorus: 0.2 },
-    chip: { reverb: 0.05, chorus: 0.05 }
-  };
-  const defaultVolumes = {
-    guitar: 0.35,
-    synth: 0.4,
-    bass: 0.5,
-    chip: 0.45
-  };
-
-  const [filters, setFilters] = useState(defaultFilters);
-  const [fx, setFx] = useState(defaultFx);
-  const [volumes, setVolumes] = useState(defaultVolumes);
-  const [mute, setMute] = useState({ guitar: false, synth: false, bass: false, chip: false });
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showFX, setShowFX] = useState(true);
-  const [isRecording, setIsRecording] = useState(false);
-  const [activeStep, setActiveStep] = useState(null);
-  const [currentPosition, setCurrentPosition] = useState({ bar: 1, beat: 1, seconds: 0 });
-  const [selectedBlockIds, setSelectedBlockIds] = useState(new Set());
-  const [isGroupDragging, setIsGroupDragging] = useState(false);
-  const [dragStartInfo, setDragStartInfo] = useState(null);
-  const [masterVolume, setMasterVolume] = useState(0);
-  const meterRef = useRef(null);
-  const copiedBlocksRef = useRef([]);
-  const playheadXRef = useRef(0);
-  const scrollRef = useRef(null);
-  const isDraggingRef = useRef(false);
-  const scrollSpeedRef = useRef(0);
-  const rafRef = useRef(null);
-  const playheadRef = useRef(null);
-  const synthsRef = useRef({});
-  const filtersRef = useRef({});
-  const gainsRef = useRef({});
-  const masterGainRef = useRef(null);
-  const fxRef = useRef({});
-  const animationRef = useRef(null);
-  const startTimeRef = useRef(0);
-  const pauseOffsetRef = useRef(0);
-  const triggeredRef = useRef(new Set());
-  const fileInputRef = useRef(null);
-  const recorderRef = useRef(null);
-  const demoRef = useRef(null); // ссылка на текущий демо-синтезатор
-  const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-      });
-      const data = await res.json();
-      const userData = { ...data, access_token: tokenResponse.access_token };
-      setUser(userData);
-      localStorage.setItem("struna_user", JSON.stringify(userData));
-      window.location.reload();
-    },
-    scope: 'https://www.googleapis.com/auth/drive.file',
-  });
-  // НОВЫЙ РЕФ ДЛЯ СЕНСОРА v1.1
-  const touchStateRef = useRef({
-    taps: 0, lastTapTime: 0, tapTimer: null,
-    startX: 0, startY: 0, blockX: 0, blockLength: 0, block: null,
-    mode: null, initialFret: 0, initialVelocity: 1, hasMoved: false
-  });
-  const handleStartCreating = async (inst = "guitar") => {
-    if (demoRef.current) {
-      try {
-        demoRef.current.synth?.dispose();
-        demoRef.current.masterGain?.dispose();
-        demoRef.current.bitCrusher?.dispose();
-        demoRef.current.extra?.forEach(node => node?.dispose());
-      } catch(e) {}
-      demoRef.current = null;
-    }
-    setDemoPlaying(null);
-    await Tone.start();
-    setInstrument(inst);
-    setMode("app");
-  };
-  const playDemo = async (inst) => {
-    // Останавливаем предыдущее демо
-    if (demoRef.current) {
-      try {
-        if (demoRef.current.synth) demoRef.current.synth.dispose();
-        if (demoRef.current.masterGain) demoRef.current.masterGain.dispose();
-        if (demoRef.current.extra) {
-          demoRef.current.extra.forEach(node => node?.dispose());
-        }
-      } catch(e) {}
-      demoRef.current = null;
-    }
-  
-    if (Tone.context.state !== 'running') {
-      await Tone.start();
-    }
-  
-    setDemoPlaying(inst);
-    setTimeout(() => setDemoPlaying(null), 800);
-  
-    const now = Tone.now();
-    let synth;
-    let masterGain;
-    let bitCrusher = null;
-    let guitarBoost = null;
-    let notes = [];
-  
-    masterGain = new Tone.Gain(0.5).toDestination();
-  
-    switch (inst) {
-      case "guitar":
-        synth = new Tone.PolySynth(Tone.FMSynth, {
-          harmonicity: 2,
-          modulationIndex: 6,
-          oscillator: { type: "triangle" },
-          envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.8 },
-          modulationEnvelope: { attack: 0.05, decay: 0.1, sustain: 1, release: 0.5 }
-        });
-        guitarBoost = new Tone.Gain(4.0);
-        synth.connect(guitarBoost);
-        guitarBoost.connect(masterGain);
-        notes = [
-          { note: "C4", time: now + 0.0, duration: 0.4 },
-          { note: "E4", time: now + 0.5, duration: 0.4 },
-          { note: "G4", time: now + 1.0, duration: 0.8 }
-        ];
-        break;
-  
-      case "synth":
-        synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "sawtooth" },
-          envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.0 }
-        });
-        synth.connect(masterGain);
-        notes = [
-          { note: "D4", time: now + 0.0, duration: 0.3 },
-          { note: "F#4", time: now + 0.4, duration: 0.3 },
-          { note: "A4", time: now + 0.8, duration: 0.6 },
-          { note: "D5", time: now + 1.3, duration: 0.8 }
-        ];
-        break;
-  
-      case "bass":
-        synth = new Tone.MonoSynth({
-          oscillator: { type: "fatsawtooth", count: 2, spread: 10 },
-          envelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.5 }
-        });
-        synth.connect(masterGain);
-        notes = [
-          { note: "E2", time: now + 0.0, duration: 0.5 },
-          { note: "G2", time: now + 0.6, duration: 0.5 },
-          { note: "A2", time: now + 1.2, duration: 0.8 }
-        ];
-        break;
-  
-      case "chip":
-        synth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "square" },
-          envelope: { attack: 0.005, decay: 0.1, sustain: 0.2, release: 0.1 }
-        });
-        bitCrusher = new Tone.BitCrusher(4);
-        synth.connect(bitCrusher);
-        bitCrusher.connect(masterGain);
-        notes = [
-          { note: "C5", time: now + 0.0, duration: 0.1 },
-          { note: "E5", time: now + 0.2, duration: 0.1 },
-          { note: "G5", time: now + 0.4, duration: 0.2 },
-          { note: "C6", time: now + 0.7, duration: 0.3 }
-        ];
-        break;
-  
-      default:
-        return;
-    }
-  
-    // Сохраняем всё для очистки
-    demoRef.current = { synth, masterGain, bitCrusher, extra: [guitarBoost].filter(Boolean) };
-  
-    notes.forEach(n => {
-      synth.triggerAttackRelease(n.note, n.duration, n.time);
-    });
-  
-    setTimeout(() => {
-      if (demoRef.current && demoRef.current.synth === synth) {
-        demoRef.current = null;
-      }
-      synth.dispose();
-      masterGain.dispose();
-      if (bitCrusher) bitCrusher.dispose();
-      if (guitarBoost) guitarBoost.dispose();
-    }, 3000);
-  };
-  const STEP_WIDTH = 20;
-  const STEP_TIME = useMemo(() => 60 / bpm / 4, [bpm]);
-  const FOLLOW_OFFSET = 150;
-  const OPEN_STRINGS = [82.41, 110, 146.83, 196, 246.94, 329.63];
-  const autoScrollIfNeeded = (clientX) => {
-    const el = scrollRef.current;
-    if (!el) return;
-  
-    const rect = el.getBoundingClientRect();
-    const edge = 80;
-  
-    const distRight = rect.right - clientX;
-const distLeft = clientX - rect.left;
-
-const maxSpeed = 12;
-const deadZone = 20;
-
-let speed = 0;
-
-let direction = 0;
-let raw = 0;
-
-if (distRight < edge - deadZone) {
-  direction = 1;
-  raw = (edge - deadZone - distRight) / (edge - deadZone);
-
-} else if (distLeft < edge - deadZone) {
-  direction = -1;
-  raw = (edge - deadZone - distLeft) / (edge - deadZone);
+/* ==================== СБРОС И ОСНОВНЫЕ СТИЛИ ==================== */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100% !important;
+  overflow-x: auto;
+  position: relative !important;
+  background-color: #0a0b14;
+  touch-action: manipulation;
+}
+* {
+  box-sizing: border-box;
 }
 
-// ограничиваем 0..1
-const rawClamped = Math.max(0, Math.min(1, raw));
+/* ==================== CSS-ПЕРЕМЕННЫЕ (ДЛЯ ТЕМ) ==================== */
+:root {
+  /* Тёмная тема (по умолчанию) */
+  --bg-page: #0B1020;
+  --bg-card: #0a0e1a;
+  --bg-card-rgb: 10, 14, 26;
+  --bg-scroll: #050814;
+  --bg-input: #2a3a6e;
+  --text-primary: #ffffff;
+  --text-accent: #4D88FF;
+  --text-bright: #4DFF88;
+  --text-secondary: #AAB3C2;
+  --border-color: #2a3a6e;
+  --shadow-color: 0, 0, 0, 0.3;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --btn-bg: #1e2a50;
+  --btn-hover: #2a3a6e;
+  --modal-bg: #0d0d12;
+  --modal-border: #00f3ff;
+  --warning-bg: #0d0d0d;
+  --warning-border: #ff3333;
+  --scroll-thumb: #1e2a50;
 
-// кривая (мягкость)
-const power = rawClamped * rawClamped * rawClamped * (rawClamped * (6 * rawClamped - 15) + 10);
-// минимальная скорость
-const minSpeed = 0.5;
-const dynamicMinSpeed = minSpeed * (0.5 + rawClamped * 0.5);
-
-// базовая скорость
-const baseSpeed = power * maxSpeed;
-
-// если начали двигаться — не даём быть слишком медленным
-const boostedSpeed =
-  rawClamped > 0.02
-    ? Math.max(baseSpeed, dynamicMinSpeed)
-    : 0;
-
-// финальная скорость
-speed = direction * boostedSpeed;
-const targetSpeed = Math.max(
-  -maxSpeed,
-  Math.min(maxSpeed, speed)
-);
-
-// если цель почти 0 → сразу стоп
-const easing = 0.15;
-const stopThreshold = 0.1;
-
-// всегда плавно идём к цели (даже если targetSpeed = 0)
-scrollSpeedRef.current += (targetSpeed - scrollSpeedRef.current) * easing;
-
-// останавливаемся только когда и цель, и скорость почти 0
-if (
-  Math.abs(scrollSpeedRef.current) < stopThreshold &&
-  Math.abs(targetSpeed) < stopThreshold
-) {
-  scrollSpeedRef.current = 0;
+  /* 🎨 Цвета свечения фона (тёмная тема — по умолчанию, палитра "Neon") */
+  --bg-glow1-a: rgba(180, 60, 255, 0.5);
+  --bg-glow1-b: rgba(255, 0, 128, 0.35);
+  --bg-glow1-c: rgba(0, 200, 255, 0.25);
+  --bg-glow2-a: rgba(255, 200, 0, 0.2);
+  --bg-glow2-b: rgba(255, 100, 200, 0.15);
+  --bg-glow2-c: rgba(0, 200, 255, 0.1);
 }
-    
-    if (!rafRef.current) {
-      const loop = () => {
-        if (!scrollRef.current) {
-          rafRef.current = null;
-          return;
-        }
-    
-        scrollRef.current.scrollLeft += scrollSpeedRef.current;
-    
-        rafRef.current = requestAnimationFrame(loop);
-      };
-    
-      rafRef.current = requestAnimationFrame(loop);
-    } // ← закрыли if
-    
-    };
-    const handleGroupDragStart = (e, block) => {
-      setIsGroupDragging(true);
-      const initialPositions = new Map();
-      
-      // Сохраняем позиции и строки всех выделенных блоков
-      tracks[instrument].forEach(b => {
-        if (selectedBlockIds.has(b.id)) {
-          initialPositions.set(b.id, { x: b.x, string: b.string });
-        }
-      });
-    
-      setDragStartInfo({
-        startX: e.clientX,
-        startY: e.clientY,                 // ← сохраняем начальную Y
-        initialBlocks: initialPositions
-      });
-    };
+
+.app.light-theme {
+  /* Светлая тема */
+  --bg-page: #f0f2f8;
+  --bg-card: #ffffff;
+  --bg-card-rgb: 255, 255, 255;
+  --bg-scroll: #eef2f7;
+  --bg-input: #d0d0e0;
+  --text-primary: #1a1a2e;
+  --text-accent: #0066ff;
+  --text-bright: #27ae60;
+  --text-secondary: #555566;
+  --border-color: #c0c0d0;
+  --shadow-color: 0, 0, 0, 0.1;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --btn-bg: #ffffff;
+  --btn-hover: #e8e8f0;
+  --modal-bg: #ffffff;
+  --modal-border: #0066ff;
+  --warning-bg: #ffffff;
+  --warning-border: #cc3333;
+  --scroll-thumb: #99aaff;
+
+  /* 🎨 Цвета свечения фона (светлая тема — по умолчанию, палитра "Neon") */
+  --bg-glow1-a: rgba(0, 122, 255, 0.45);
+  --bg-glow1-b: rgba(175, 82, 222, 0.35);
+  --bg-glow1-c: rgba(255, 45, 85, 0.25);
+  --bg-glow2-a: rgba(255, 200, 0, 0.35);
+  --bg-glow2-b: rgba(255, 100, 200, 0.25);
+  --bg-glow2-c: rgba(0, 200, 255, 0.15);
+}
+
+/* ==================== ОБЩИЕ СТИЛИ ПРИЛОЖЕНИЯ ==================== */
+.app {
+  background: radial-gradient(ellipse at 50% 0%, rgba(20, 25, 45, 0.9) 0%, #0a0b14 70%, #050814 100%) !important;
+  min-height: 100vh;
+  padding: 20px;
+  color: var(--text-primary);
+  font-family: sans-serif;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+.app::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 30% 40%, var(--bg-glow1-a) 0%, var(--bg-glow1-b) 30%, var(--bg-glow1-c) 60%, transparent 80%) !important;
+  width: 800px !important;
+  height: 800px !important;
+  filter: blur(100px) !important;
+  animation: floatDarkMain 10s ease-in-out infinite alternate !important;
+  opacity: 0.9 !important;
+  z-index: 0;
+  pointer-events: none;
+}
+.app::after {
+  content: "";
+  position: fixed;
+  bottom: 5%;
+  right: 5%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at 60% 70%, var(--bg-glow2-a) 0%, var(--bg-glow2-b) 40%, var(--bg-glow2-c) 70%, transparent 90%);
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+  animation: floatDarkSecond 16s ease-in-out infinite alternate;
+  opacity: 0.6;
+}
+
+@keyframes floatDarkMain {
+  0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0.8; }
+  50% { transform: translateX(-50%) translateY(-5%) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(3%) scale(0.95); opacity: 0.9; }
+}
+@keyframes floatDarkSecond {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  100% { transform: translate(-10%, 8%) scale(1.3); opacity: 0.8; }
+}
+
+/* ==================== СВЕТЛАЯ ТЕМА — УСИЛЕННЫЙ ФОН С ШАРАМИ ==================== */
+.app.light-theme {
+  background: radial-gradient(ellipse at 50% 0%, #e8ecf4 0%, #d5dbe8 50%, #c0c8d8 100%) !important;
+  color: #1a1a2e !important;
+}
+.app.light-theme::before {
+  background: radial-gradient(circle at 40% 30%, var(--bg-glow1-a) 0%, var(--bg-glow1-b) 35%, var(--bg-glow1-c) 65%, transparent 85%) !important;
+  filter: blur(90px) !important;
+  animation: floatLightMain 14s ease-in-out infinite alternate !important;
+  opacity: 0.9 !important;
+}
+.app.light-theme::after {
+  background: radial-gradient(circle at 60% 70%, var(--bg-glow2-a) 0%, var(--bg-glow2-b) 40%, var(--bg-glow2-c) 70%, transparent 90%) !important;
+  filter: blur(80px) !important;
+  animation: floatLightSecond 18s ease-in-out infinite alternate !important;
+  opacity: 0.8 !important;
+}
+
+@keyframes floatLightMain {
+  0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 0.7; }
+  50% { transform: translateX(-50%) translateY(-5%) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(4%) scale(0.95); opacity: 0.8; }
+}
+@keyframes floatLightSecond {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-10%, 8%) scale(1.3); opacity: 0.9; }
+}
+
+/* ==================== СКРОЛЛБАР ==================== */
+::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+  background: var(--bg-scroll);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 10px;
+  border: 1px solid var(--text-accent);
+  box-shadow: inset 0 0 5px rgba(77, 136, 255, 0.2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-accent);
+  box-shadow: 0 0 10px var(--text-accent);
+}
+::-webkit-scrollbar-corner {
+  background: var(--bg-scroll);
+}
+.scroll-x::-webkit-scrollbar { height: 8px; display: block !important; }
+.scroll-x::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; }
+.scroll-x { overflow-x: auto; overflow-y: hidden; position: relative; z-index: 1; }
+.sequencer-scroll { scroll-behavior: smooth; }
+
+/* ==================== ВЕРХНИЕ КНОПКИ ==================== */
+.top-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-size: 20px;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.top-btn:hover {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.top-btn:active { transform: scale(0.95); }
+
+.app.light-theme .top-btn {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  color: #1a1a2e;
+}
+.app.light-theme .top-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== КНОПКИ ТРАНСПОРТА ==================== */
+.play-pause-btn {
+  width: 80px;
+  height: 45px;
+  border-radius: 8px;
+  background: var(--btn-bg) !important;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.play-pause-btn.stopped { border-color: var(--text-bright); box-shadow: 0 0 15px rgba(77, 255, 136, 0.4); }
+.play-pause-btn.playing { border-color: var(--text-accent); box-shadow: 0 0 15px rgba(77, 136, 255, 0.5); }
+.play-pause-btn:hover {
+  background-color: rgba(77, 255, 136, 0.1) !important;
+  box-shadow: 0 0 20px rgba(77, 255, 136, 0.4), inset 0 0 10px rgba(77, 255, 136, 0.1);
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+.play-pause-btn.playing:hover {
+  background-color: rgba(77, 136, 255, 0.1) !important;
+  box-shadow: 0 0 20px rgba(77, 136, 255, 0.4);
+}
+
+.stop-btn {
+  width: 55px;
+  height: 50px;
+  background-color: var(--btn-bg) !important;
+  border: 1px solid #ff4d4d !important;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.2);
+}
+.stop-btn svg rect { filter: drop-shadow(0 0 5px #ff4d4d); }
+.stop-btn svg { fill: #ff4d4d; filter: drop-shadow(0 0 5px #ff4d4d); transition: transform 0.2s ease; }
+.stop-btn:hover {
+  background-color: var(--btn-hover) !important;
+  box-shadow: 0 0 20px rgba(255, 77, 77, 0.4), inset 0 0 10px rgba(255, 77, 77, 0.1);
+  transform: translateY(-2px);
+  filter: brightness(1.2);
+}
+.stop-btn:active { transform: scale(0.9); box-shadow: 0 0 5px rgba(255, 77, 77, 0.6); }
+.stop-btn:active svg { transform: scale(0.8); }
+
+.record-square-btn {
+  width: 55px;
+  height: 50px;
+  background: var(--btn-bg) !important;
+  border: 1px solid #ff4d4d !important;
+  color: #ff4d4d !important;
+  border-radius: 10px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+.record-square-btn:hover {
+  background: var(--btn-hover) !important;
+  transform: translateY(-1px);
+}
+.record-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #ff4d4d;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+.record-square-btn .record-dot { width: 8px; height: 8px; }
+
+.record-square-btn.recording-active {
+  background: #ff4d4d !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px #ff4d4d !important;
+  animation: pulse-record 1s infinite !important;
+}
+.record-square-btn.recording-active .record-dot { background-color: #ffffff !important; }
+
+@keyframes pulse-record {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
+}
+
+.app.light-theme .record-square-btn {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: #cc3333 !important;
+  color: #cc3333 !important;
+}
+.app.light-theme .record-square-btn:hover { background: #ffffff !important; }
+.app.light-theme .record-square-btn.recording-active {
+  background: #cc3333 !important;
+  color: #ffffff !important;
+}
+.app.light-theme .record-square-btn.recording-active .record-dot { background-color: #ffffff !important; }
+
+.save-btn, .load-btn {
+  background-color: var(--btn-bg) !important;
+  border: 1px solid rgba(77, 136, 255, 0.4) !important;
+  color: var(--text-primary) !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.3s ease !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.save-btn:hover { border-color: #8a2be2 !important; box-shadow: 0 0 15px rgba(138, 43, 226, 0.6) !important; filter: brightness(1.2); transform: translateY(-1px); }
+.load-btn:hover { border-color: var(--text-bright) !important; box-shadow: 0 0 15px rgba(77, 255, 136, 0.5) !important; filter: brightness(1.2); transform: translateY(-1px); }
+
+.reset-btn {
+  background-color: var(--btn-bg) !important;
+  border: 1px solid #ff4d4d !important;
+  color: #ff4d4d !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.3s ease !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.reset-btn:hover {
+  background-color: rgba(255, 77, 77, 0.1) !important;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.5) !important;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+.reset-btn:active { transform: scale(0.95); }
+
+/* ==================== СТЕКЛЯННЫЕ КАРТОЧКИ ==================== */
+.app .instrument-selector,
+.app .scroll-container,
+.app div[style*="background: #0a0e1a"],
+.app div[style*="background:#0a0e1a"],
+.app div[style*="background-color: #0a0e1a"],
+.app div[style*="background: #0B1020"],
+.app div[style*="background: #0f172a"],
+.app div[style*="background: rgba(0,0,0,0.3)"] {
+  background: rgba(20, 25, 45, 0.5) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 20px !important;
+}
+
+.app .scroll-container {
+  background: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(32px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.app .scroll-container > div { background: transparent !important; }
+.app .scroll-container div[style*="backgroundImage"] {
+  background-image: linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+                    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px) !important;
+}
+
+.app.light-theme .instrument-selector,
+.app.light-theme .scroll-container,
+.app.light-theme div[style*="background: #0a0e1a"],
+.app.light-theme div[style*="background:#0a0e1a"],
+.app.light-theme div[style*="background-color: #0a0e1a"],
+.app.light-theme div[style*="background: #0B1020"],
+.app.light-theme div[style*="background: #0f172a"],
+.app.light-theme div[style*="background: rgba(0,0,0,0.3)"] {
+  background: rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 20px !important;
+}
+
+.app.light-theme .scroll-container {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(32px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+.app.light-theme .scroll-container div[style*="backgroundImage"] {
+  background-image: linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px),
+                    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px) !important;
+}
+
+/* ==================== ИНСТРУМЕНТЫ ==================== */
+.instrument-selector {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 10px;
+}
+.inst-btn {
+  position: relative;
+  color: rgba(255, 255, 255, 0.5) !important;
+  padding: 12px 24px !important;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 100px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.inst-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+  color: var(--text-primary) !important;
+}
+.inst-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 25px currentColor !important;
+}
+
+.inst-icon { font-size: 20px; transition: transform 0.3s ease; }
+.inst-btn:hover .inst-icon { transform: scale(1.2) rotate(5deg); }
+.inst-text { font-size: 10px; font-weight: bold; letter-spacing: 2px; }
+.active-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* Цвета инструментов */
+button.inst-btn.guitar-btn { color: #ffaa00 !important; border-color: rgba(255, 170, 0, 0.3) !important; }
+button.inst-btn.synth-btn { color: #00d2ff !important; border-color: rgba(0, 210, 255, 0.3) !important; }
+button.inst-btn.drum-btn { color: #FF3333 !important; border-color: rgba(255, 51, 51, 0.3) !important; }
+button.inst-btn.bass-btn { color: #bd00ff !important; border-color: rgba(189, 0, 255, 0.3) !important; }
+button.inst-btn.chip-btn { color: #2ecc71 !important; border-color: rgba(46, 204, 113, 0.3) !important; }
+
+button.inst-btn.guitar-btn.active, button.inst-btn.guitar-btn:hover { border-color: #ffaa00 !important; box-shadow: 0 0 20px rgba(255, 170, 0, 0.6) !important; }
+button.inst-btn.guitar-btn.active .inst-icon { filter: drop-shadow(0 0 8px #ffaa00); }
+
+button.inst-btn.synth-btn.active, button.inst-btn.synth-btn:hover { border-color: #00d2ff !important; box-shadow: 0 0 20px rgba(0, 210, 255, 0.6) !important; }
+button.inst-btn.synth-btn.active .inst-icon { filter: drop-shadow(0 0 8px #00d2ff); }
+
+button.inst-btn.drum-btn.active, button.inst-btn.drum-btn:hover { border-color: #FF3333 !important; box-shadow: 0 0 20px rgba(255, 51, 51, 0.6) !important; }
+button.inst-btn.drum-btn.active .inst-icon { filter: drop-shadow(0 0 8px #FF3333); }
+
+button.inst-btn.bass-btn.active, button.inst-btn.bass-btn:hover { border-color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.6) !important; }
+button.inst-btn.bass-btn.active .inst-icon { filter: drop-shadow(0 0 8px #bd00ff); }
+
+button.inst-btn.chip-btn.active, button.inst-btn.chip-btn:hover { border-color: #2ecc71 !important; box-shadow: 0 0 20px rgba(46, 204, 113, 0.6) !important; }
+button.inst-btn.chip-btn.active .inst-icon { filter: drop-shadow(0 0 8px #2ecc71); }
+
+.fx-toggle-btn { margin-left: auto; border-style: dashed !important; }
+.fx-toggle-btn.fx-active, .fx-toggle-btn:hover { border-color: #ff4dfc !important; color: #ff4dfc !important; box-shadow: 0 0 15px rgba(255, 77, 252, 0.4) !important; }
+.fx-toggle-btn.fx-active .inst-icon { filter: drop-shadow(0 0 8px #ff4dfc); }
+
+.app.light-theme .inst-btn {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06) !important;
+}
+.app.light-theme .inst-btn:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+.app.light-theme .inst-btn.active { background: rgba(255, 255, 255, 0.6) !important; }
+
+/* ==================== BPM ==================== */
+.bpm-display { display: flex; flex-direction: column; align-items: flex-start; gap: 0px; line-height: 1.1; min-width: 90px; padding: 2px 5px; }
+.bpm-label { font-size: 11px; color: var(--text-bright); text-transform: uppercase; letter-spacing: 2.5px; font-weight: bold; text-shadow: 0 0 5px var(--text-bright), 0 0 10px var(--text-bright), 0 0 20px rgba(77, 255, 136, 0.7); }
+.bpm-value { font-size: 20px; color: var(--text-accent); font-family: 'Courier New', monospace; font-weight: 900; text-shadow: 0 0 5px var(--text-accent), 0 0 12px var(--text-accent), 0 0 25px rgba(77, 136, 255, 0.8); }
+
+/* ==================== СЕТКА И БЛОКИ ==================== */
+.block {
+  transition: all 0.08s linear;
+  border-radius: 8px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4), 0 0 8px currentColor, inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  will-change: transform;
+}
+.block:active { transform: scale(0.98); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 0 12px currentColor; }
+.block.playing {
+  filter: brightness(1.3);
+  box-shadow: 0 0 15px currentColor, inset 0 0 8px rgba(255, 255, 255, 0.6);
+  transform: scale(1.02);
+  transition: all 0.05s ease;
+  animation: notePulse 0.2s ease-in-out 2;
+}
+@keyframes notePulse {
+  0% { filter: brightness(1.2); box-shadow: 0 0 5px currentColor, 0 4px 0 rgba(0,0,0,0.5); transform: scale(1); }
+  50% { filter: brightness(1.8); box-shadow: 0 0 25px currentColor, 0 4px 0 rgba(0,0,0,0.5); transform: scale(1.03); }
+  100% { filter: brightness(1.2); box-shadow: 0 0 5px currentColor, 0 4px 0 rgba(0,0,0,0.5); transform: scale(1); }
+}
+div[style*="background-color"], .step-cell { color: #000000 !important; font-weight: 900 !important; text-shadow: none !important; display: flex !important; align-items: center; justify-content: center; }
+.tracks { display: inline-flex; gap: 16px; min-width: max-content; }
+.tracks > * { width: 20px; flex-shrink: 0; }
+
+/* ==================== ЛУПЕР ==================== */
+.loop-btn { transition: all 0.2s ease; position: relative; overflow: hidden; }
+.loop-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.loop-btn.active { animation: neonPulse 1.2s infinite; box-shadow: 0 0 12px var(--text-bright), inset 0 0 6px var(--text-bright); }
+@keyframes neonPulse {
+  0% { box-shadow: 0 0 4px var(--text-bright), inset 0 0 2px var(--text-bright); }
+  50% { box-shadow: 0 0 18px var(--text-bright), inset 0 0 10px var(--text-bright); }
+  100% { box-shadow: 0 0 4px var(--text-bright), inset 0 0 2px var(--text-bright); }
+}
+
+/* ==================== ПРЕВЬЮ (БЕЗ ВОЛН) ==================== */
+.preview { margin-top: 40px; width: 420px; display: flex; flex-direction: column; gap: 16px;}
+
+.preview-track {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 16px 20px !important;
+  display: flex;                 /* Включаем флекс для идеального центрирования */
+  align-items: center;           /* Центрируем по вертикали */
+  justify-content: center;       /* Центрируем по горизонтали */
   
-    const handleGroupDragMove = (e) => {
-      if (!isGroupDragging || !dragStartInfo) return;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.preview-track:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+  filter: brightness(1.1);
+}
+.app.light-theme .preview-track {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .preview-track:hover { background: rgba(255, 255, 255, 0.4) !important; border-color: currentColor !important; }
+
+.preview-track.guitar { color: #FFB84D; }
+.preview-track.synth  { color: #4DC3FF; }
+.preview-track.drum   { color: #FF4D4D; }
+.preview-track.bass   { color: #BD00FF; }
+.preview-track.chip   { color: #4DFF88; }
+.preview-track.demo-active { filter: brightness(1.4) drop-shadow(0 0 12px currentColor); transform: scale(1.02); transition: all 0.1s ease; }
+
+/* ==================== ЛЕНДИНГ ==================== */
+.landing {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh !important;
+  width: 100vw !important;
+  text-align: center;
+  overflow: hidden !important;
+  background: #0a0b14;
+}
+.landing::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vmin;
+  height: 90vmin;
+  background: radial-gradient(circle, rgba(255, 0, 80, 0.7) 0%, rgba(200, 0, 150, 0.5) 30%, rgba(100, 0, 200, 0.4) 60%, rgba(0, 150, 255, 0.2) 80%, transparent 100%);
+  border-radius: 50%;
+  filter: blur(50px);
+  z-index: 0;
+  pointer-events: none;
+  animation: pulseCenter 6s ease-in-out infinite alternate;
+}
+.landing::after {
+  content: "";
+  position: absolute;
+  bottom: 10%;
+  right: 5%;
+  width: 50vmin;
+  height: 50vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(255, 100, 0, 0.1) 40%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: floatLanding 14s ease-in-out infinite alternate;
+}
+.app.light-theme.landing::after {
+  left: 5%;
+  width: 40vmin;
+  height: 40vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.25) 0%, rgba(255, 100, 0, 0.15) 40%, transparent 70%) !important;
+  animation: floatLandingLight 20s ease-in-out infinite alternate !important;
+}
+.app.landing::after {
+  left: 5%;
+  width: 40vmin;
+  height: 40vmin;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(255, 100, 0, 0.1) 40%, transparent 70%);
+  animation: floatLandingDark 18s ease-in-out infinite alternate;
+}
+
+@keyframes pulseCenter {
+  0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; filter: blur(50px); }
+  50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; filter: blur(40px); }
+  100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.9; filter: blur(55px); }
+}
+@keyframes floatLanding {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  100% { transform: translate(-10%, 5%) scale(1.4); opacity: 0.9; }
+}
+@keyframes floatLandingLight {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  100% { transform: translate(-8%, 10%) scale(1.5); opacity: 0.8; }
+}
+@keyframes floatLandingDark {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  100% { transform: translate(-8%, 10%) scale(1.5); opacity: 0.7; }
+}
+
+.landing .landing-content { position: relative; z-index: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+.tagline {
+  color: var(--text-accent);
+  letter-spacing: 6px;
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  text-shadow: 0 0 5px var(--text-accent), 0 0 10px rgba(77, 136, 255, 0.5);
+  animation: neonFlicker 2s infinite alternate;
+}
+@keyframes neonFlicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% { text-shadow: 0 0 4px var(--text-accent), 0 0 8px rgba(77, 136, 255, 0.4), 0 0 14px var(--text-accent); opacity: 1; }
+  20%, 24%, 55% { text-shadow: 0 0 2px var(--text-accent), 0 0 4px rgba(77, 136, 255, 0.2); opacity: 0.7; }
+}
+.flicker-char { display: inline-block; animation: burnout 2.5s infinite steps(1); }
+@keyframes burnout { 0%, 100%, 95%, 99% { opacity: 1; } 96%, 97% { opacity: 0; } 98% { opacity: 0.2; } }
+
+/* ==================== КНОПКА СТАРТ (LIQUID GLASS) ==================== */
+.start-btn {
+  padding: 16px 45px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-primary) !important;
+  
+  /* Стеклянный эффект */
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  
+  /* Тонкие рамки для объема */
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.3) !important;
+  
+  /* Тени и внутренний блик */
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(255, 255, 255, 0.05) !important;
     
-      const deltaX = e.clientX - dragStartInfo.startX;
-      const deltaY = e.clientY - dragStartInfo.startY;
-      
-      const deltaStepsX = Math.round(deltaX / STEP_WIDTH);
-      const deltaStepsY = Math.round(deltaY / 60); // высота одной струны 60px
-    
-      setTracks(prev => ({
-        ...prev,
-        [instrument]: prev[instrument].map(b => {
-          if (dragStartInfo.initialBlocks.has(b.id)) {
-            const initial = dragStartInfo.initialBlocks.get(b.id);
-            // Новая горизонтальная позиция
-            const newX = Math.max(0, initial.x + deltaStepsX * STEP_WIDTH);
-            // Новая вертикальная позиция (струна)
-            let newString = initial.string + deltaStepsY;
-            newString = Math.max(0, Math.min(strings.length - 1, newString));
-            return { ...b, x: newX, string: newString };
-          }
-          return b;
-        })
-      }));
-    };
-  useEffect(() => {
-    const handleMove = (e) => {
-      if (!isDraggingRef.current) return;
-      if (isGroupDragging) handleGroupDragMove(e);
-         autoScrollIfNeeded(e.clientX);
-    };
+  border-radius: 60px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   
-    const handleUp = () => {
-      isDraggingRef.current = false;
-      scrollSpeedRef.current = 0;
-      setIsGroupDragging(false);
-    
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-  
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-  },[isGroupDragging, dragStartInfo, instrument, tracks, selectedBlockIds]);
-  useEffect(() => {
-    const grid = scrollRef.current;
-    if (!grid) return;
+  /* Мягкая пульсация */
+  animation: glassPulse 3s ease-in-out infinite;
+}
 
-    const handleWheel = (e) => {
-      // 1. Если мы над кубиком (нотой)
-      if (hoveredBlockId) {
-        e.preventDefault();
+/* Эффект при наведении */
+.start-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  border-top-color: rgba(255, 255, 255, 0.5) !important;
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 30px var(--text-accent) !important; /* Свечение в цвет темы */
+  animation: none; /* Отключаем пульсацию при наведении */
+}
 
-        setTracks(prev => {
-          // ИСПРАВЛЕННАЯ ПРОВЕРКА: используем .has(), так как это Set
-          const isSelected = selectedBlockIds.has(hoveredBlockId);
-          if (!isSelected) return prev;
+.start-btn:active {
+  transform: translateY(1px) scale(0.98) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), inset 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+}
 
-          return {
-            ...prev,
-            [instrument]: prev[instrument].map((it) => {
-              if (it.id === hoveredBlockId) {
-                // А) ЕСЛИ ЗАЖАТ ALT — МЕНЯЕМ ГРОМКОСТЬ (VELOCITY)
-                if (e.altKey) {
-                  const volDelta = e.deltaY > 0 ? -0.1 : 0.1;
-                  const currentVel = it.velocity ?? 1;
-                  const newVelocity = Math.max(0.1, Math.min(1.5, currentVel + volDelta));
-                  return { ...it, velocity: newVelocity };
-                } 
-                // Б) ИНАЧЕ — МЕНЯЕМ ЛАД (ТОН / FRET)
-                else {
-                  const fretDelta = e.deltaY > 0 ? -1 : 1;
-                  const newFret = Math.max(0, (it.fret || 0) + fretDelta);
-                  return { ...it, fret: newFret };
-                }
-              }
-              return it;
-            })
-          };
-        });
-        return;
-      }
-
-      // 2. Если мы просто крутим колесо над пустой сеткой — скроллим
-      if (!hoveredBlockId) {
-        e.preventDefault();
-        grid.scrollTo({
-          left: grid.scrollLeft + (e.deltaY * 2),
-          behavior: 'smooth'
-        });
-      }
-    };
-
-    grid.addEventListener("wheel", handleWheel, { passive: false });
-    return () => grid.removeEventListener("wheel", handleWheel);
-
-    // ВАЖНО: массив зависимостей должен совпадать с переменными выше
-  }, [instrument, hoveredBlockId, selectedBlockIds]);
-  const getColor = (fret) => {
-    const colors = ["#FF4D4D", "#FF7A4D", "#FFB84D", "#FFD84D", "#E6FF4D", "#A8FF4D", "#4DFF88", "#4DFFD2", "#4DC3FF", "#4D88FF", "#7A4DFF", "#C84DFF", "#FF4DA6"];
-    return colors[fret % colors.length];
-  };
-  // --- AUDIO INIT ---
-useEffect(() => {
-  // 1. Мастер-компрессор (идёт в самый конец цепи)
-  const masterCompressor = new Tone.Compressor({
-    threshold: -12,
-    ratio: 3,
-    attack: 0.01,
-    release: 0.2,
-    knee: 5
-  }).toDestination(); // отправляем на колонки
-
-  // 2. Лимитер для защиты от перегрузки
-  const limiter = new Tone.Limiter(-3).connect(masterCompressor);
-
-  // 3. Мастер-гейн (общая громкость)
-  const master = new Tone.Gain(0.9).connect(limiter);
-  masterGainRef.current = master;
-  const meter = new Tone.Meter();
-  master.connect(meter);
-  meterRef.current = meter; 
-
-  // 4. Recorder
-  recorderRef.current = new Tone.Recorder();
-  master.connect(recorderRef.current);
-
-  // ---------- SIDECHAIN KICK (невидимый ритмический импульс) ----------
-  const kickNoise = new Tone.Noise("brown");
-  const kickFilter = new Tone.Filter(80, "lowpass");
-  const kickEnv = new Tone.Gain(0);
-  kickNoise.connect(kickFilter);
-  kickFilter.connect(kickEnv);
-  kickEnv.gain.value = 0; // не слышен в мастере
-
-  // Компрессор для баса с sidechain-входом
-  const bassSidechainComp = new Tone.Compressor({
-    threshold: -20,
-    ratio: 4,
-    attack: 0.01,
-    release: 0.2,
-    knee: 5
-  });
-
-  // Подключаем источник импульса к sidechain-входу компрессора
-  kickEnv.connect(bassSidechainComp);
-
-  // Функция короткого "удара"
-  const triggerKick = () => {
-    kickEnv.gain.setTargetAtTime(0.8, Tone.now(), 0.005);
-    kickEnv.gain.setTargetAtTime(0, Tone.now() + 0.05, 0.05);
-  };
-
-  // Лупер, тикающий каждую четверть
-  const kickLoop = new Tone.Loop(() => triggerKick(), "4n");
-
-  // Сохраняем для управления из других мест (временное решение)
-  window.__sidechain = { kickLoop, bassSidechainComp };
-
-  // 5. Создаём инструменты
-  ["guitar", "synth", "bass", "chip"].forEach((type) => {
-    let volume = volumes[type];   // берём громкость из состояния
-let panValue = type === 'guitar' ? -0.4 : (type === 'synth' ? 0.4 : (type === 'chip' ? 0.2 : 0));
-let cutoffFreq = type === 'bass' ? 1200 : (type === 'guitar' ? 3500 : (type === 'synth' ? 6000 : 10000));
-
-
-    const gain = new Tone.Gain(volume).connect(master);
-    const panner = new Tone.Panner(panValue).connect(gain);
-    const filter = new Tone.Filter(cutoffFreq, "lowpass");
-
-    const chorus = new Tone.Chorus(2, 1.5, 0.3).start();
-    const reverb = new Tone.Reverb({ decay: 1.2, wet: 1 });
-    const chorusGain = new Tone.Gain(0);
-    const reverbGain = new Tone.Gain(0);
-
-    fxRef.current[type] = { chorus, reverb, chorusGain, reverbGain };
-
-    // Подключение эффектов: всё идёт через panner -> gain -> master
-    filter.connect(panner);
-    filter.connect(chorus);
-    chorus.connect(chorusGain);
-    chorusGain.connect(panner);
-    filter.connect(reverb);
-    reverb.connect(reverbGain);
-    reverbGain.connect(panner);
-
-    gainsRef.current[type] = gain;
-    filtersRef.current[type] = filter;
-
-    // Создаём синтезатор
-    if (type === "bass") {
-      const bassSynth = new Tone.MonoSynth({
-        oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
-        envelope: { attack: 0.03, decay: 0.4, sustain: 0.8, release: 0.6 }
-      });
-      bassSynth.connect(bassSidechainComp);
-      bassSidechainComp.connect(filter);
-      synthsRef.current[type] = bassSynth;
-    } else if (type === "guitar") {
-      synthsRef.current[type] = new Tone.PolySynth(Tone.FMSynth, {
-        harmonicity: 2, modulationIndex: 10, oscillator: { type: "triangle" },
-        envelope: { attack: 0.05, decay: 0.3, sustain: 0.4, release: 1.5 },
-        modulationEnvelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
-      }).connect(filter);
-    } 
-    else if (type === "chip") {
-      const chipSynth = new Tone.PolySynth(Tone.Synth, {
-          oscillator: { type: "square" },
-          envelope: { attack: 0.001, decay: 0.05, sustain: 0.1, release: 0.05 }
-      });
-      // Биткрашер с максимальным "денди" эффектом
-      const bitCrusher = new Tone.BitCrusher(8);
-      if (bitCrusher.frequency) bitCrusher.frequency.value = 8000;
-      chipSynth.connect(bitCrusher);
-      bitCrusher.connect(filter);
-      synthsRef.current[type] = chipSynth; // обрати внимание: synthsRef (с s)
-    } else { // synth (по умолчанию)
-      synthsRef.current[type] = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: "sawtooth" },
-        envelope: { attack: 0.15, decay: 0.2, sustain: 0.4, release: 2.0 }
-      }).connect(filter);
-    }
-  });
-
-  // Cleanup function (очистка при размонтировании компонента)
-  return () => {
-    // Останавливаем лупер, если он активен
-    if (window.__sidechain?.kickLoop) {
-      window.__sidechain.kickLoop.stop();
-    }
-    // Отключаем и уничтожаем все узлы
-    masterGainRef.current?.dispose();
-    Object.values(synthsRef.current).forEach(s => s?.dispose());
-    Object.values(filtersRef.current).forEach(f => f?.dispose());
-    Object.values(gainsRef.current).forEach(g => g?.dispose());
-    Object.values(fxRef.current).forEach(fx => {
-      fx.chorus?.dispose();
-      fx.reverb?.dispose();
-      fx.chorusGain?.dispose();
-      fx.reverbGain?.dispose();
-    });
-    kickNoise?.dispose();
-    kickFilter?.dispose();
-    kickEnv?.dispose();
-    bassSidechainComp?.dispose();
-    kickLoop?.dispose();
-    delete window.__sidechain;
-  };
-}, []);
-
-  useEffect(() => {
-    Object.entries(mute).forEach(([type, isMuted]) => {
-      const gain = gainsRef.current[type];
-      if (gain) {
-        gain.gain.rampTo(isMuted ? 0 : 1, 0.05);
-      }
-    });
-  }, [mute]);
-
-  useEffect(() => {
-    const now = Tone.now();
-    Object.entries(filters).forEach(([type, f]) => {
-      const filter = filtersRef.current[type];
-      if (filter) {
-        filter.frequency.setTargetAtTime(f.cutoff, now, 0.05);
-        filter.Q.setTargetAtTime(f.q, now, 0.05);
-      }
-    });
-  }, [filters]);
-
-  useEffect(() => {
-    const now = Tone.now();
-    Object.entries(fx).forEach(([type, values]) => {
-      const fxUnit = fxRef.current[type];
-
-      if (fxUnit) {
-        fxUnit.chorusGain.gain.setTargetAtTime(values.chorus, now, 0.05);
-        fxUnit.reverbGain.gain.setTargetAtTime(values.reverb, now, 0.05);
-      }
-    });
-  }, [fx]);
-  useEffect(() => {
-    const loadFromUrl = async () => {
-      // 1. Ищем ID проекта в ссылке
-      const params = new URLSearchParams(window.location.search);
-      const projectId = params.get('project');
-  
-      if (projectId) {
-        console.log("Обнаружен ID проекта в ссылке, загружаю...");
-        
-        // 2. Достаем данные из Supabase
-        const { data, error } = await supabase
-          .from('projects')
-          .select('grid_data')
-          .eq('id', projectId)
-          .single();
-  
-        if (error) {
-          console.error('Ошибка загрузки по ссылке:', error.message);
-          return;
-        }
-  
-        if (data && data.grid_data) {
-          const p = data.grid_data;
-          
-          // 3. Загружаем всё в плеер (убедись, что эти функции у тебя так называются)
-          if (p.bpm) setBpm(p.bpm);
-          if (p.tracks) setTracks(p.tracks);
-          if (p.filters) setFilters(p.filters);
-          if (p.fx) setFx(p.fx);
-          
-          alert("Проект успешно загружен по вашей ссылке! Нажмите PLAY.");
-        }
-      }
-    };
-  
-    loadFromUrl();
-  }, []);
-  useEffect(() => {
-    Object.entries(volumes).forEach(([type, vol]) => {
-      const gain = gainsRef.current[type];
-      if (gain) {
-        gain.gain.rampTo(vol, 0.05);
-      }
-    });
-  }, [volumes]);
-    
-  const handleShare = async () => {
-    try {
-      // Собираем все данные проекта (как в твоем handleSaveProject)
-      const projectData = { 
-        tracks: tracks, 
-        bpm: bpm, 
-        filters: filters, 
-        fx: fx 
-      };
-  
-      const { data, error } = await supabase
-        .from('projects')
-        .insert([
-          { 
-            user_email: user?.email || 'guest', 
-            tempo: bpm, 
-            grid_data: projectData // сохраняем весь объект со всеми настройками
-          }
-        ])
-        .select();
-  
-      if (error) throw error;
-  
-      if (data && data[0]) {
-        // Создаем ссылку
-        const shareUrl = `${window.location.origin}?project=${data[0].id}`;
-        
-        // Копируем в буфер
-        await navigator.clipboard.writeText(shareUrl);
-        alert('Ссылка на твой трек скопирована! Можно отправлять друзьям.');
-      }
-    } catch (error) {
-      console.error('Ошибка Supabase:', error.message);
-      alert('Не удалось создать ссылку: ' + error.message);
-    }
-  };
-  const handleSaveProject = () => {
-    const projectData = { bpm, tracks, filters, fx };
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `struna_proj_${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleLoadProject = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        if (data.tracks) setTracks(data.tracks);
-        if (data.bpm) setBpm(data.bpm);
-        if (data.filters) setFilters(data.filters);
-        if (data.fx) setFx(data.fx);
-      } catch (err) {
-        alert("Ошибка при чтении файла!");
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = null; 
-  };
-
-  const getRelativeX = (clientX) => {
-    const rect = scrollRef.current.getBoundingClientRect();
-    return clientX - rect.left + scrollRef.current.scrollLeft;
-  };
-
-  // --- ЛОГИКА МЫШИ (Оставлена для десктопа) ---
-  const startDrag = (block, e) => {
-    e.stopPropagation();
-    const startX = e.clientX || (e.touches && e.touches[0].clientX);
-    const initialBlockX = block.x;
-
-    const onMove = (moveEvent) => {
-      const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
-      const deltaX = currentX - startX;
-      const newX = Math.max(0, Math.floor((initialBlockX + deltaX) / STEP_WIDTH) * STEP_WIDTH);
-      
-      const rect = scrollRef.current.getBoundingClientRect();
-      const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
-      const relativeY = currentY - rect.top;
-      const newString = Math.max(0, Math.min(strings.length - 1, Math.floor(relativeY / 60)));
-      
-      setTracks(prev => ({
-        ...prev,
-        [instrument]: prev[instrument].map(b => b.id === block.id ? { ...b, x: newX, string: newString } : b)
-      }));
-    };
-
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
-
-  const startResize = (block, e) => {
-    e.stopPropagation();
-    const clientX = e.clientX; 
-    const startX = clientX; 
-    const initialLength = block.length;
-
-    const onMove = (moveEvent) => {
-      const moveX = moveEvent.clientX;
-      const deltaX = moveX - startX; 
-      const newLength = Math.max(STEP_WIDTH, Math.floor((initialLength + deltaX) / STEP_WIDTH) * STEP_WIDTH);
-      
-      setTracks(prev => ({
-        ...prev, 
-        [instrument]: prev[instrument].map(b => b.id === block.id ? { ...b, length: newLength } : b)
-      }));
-    };
-
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  }; 
-
-  const startPlayheadDrag = (e) => {
-    if (!e.shiftKey && e.type === 'mousedown') return;
-    
-    e.preventDefault();
-    const grid = scrollRef.current;
-    const startClientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-
-    const onMove = (moveEvent) => {
-      const currentClientX = moveEvent.type.includes('touch') ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      
-      const rect = grid.getBoundingClientRect();
-      const xInView = currentClientX - rect.left;
-      const xInGrid = xInView + grid.scrollLeft;
-      const boundedX = Math.max(0, xInGrid);
-      
-      if (playheadRef.current) playheadRef.current.style.transform = `translateX(${boundedX}px)`;
-      
-      const edgeThreshold = 50;
-      const scrollSpeed = 15;
-      if (xInView > rect.width - edgeThreshold) grid.scrollLeft += scrollSpeed;
-      else if (xInView < edgeThreshold) grid.scrollLeft -= scrollSpeed;
-      
-      const newTime = (boundedX / STEP_WIDTH) * STEP_TIME;
-      const now = Tone.now();
-      startTimeRef.current = now - newTime;
-      pauseOffsetRef.current = newTime;
-      triggeredRef.current.clear();
-    };
-
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      window.removeEventListener("touchmove", onMove);
-      window.removeEventListener("touchend", onUp);
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("touchmove", onMove, { passive: false });
-    window.addEventListener("touchend", onUp);
-  };
-
-  const startEngine = () => {
-    if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    const loop = () => {
-      const now = Tone.now();
-      let elapsed = now - startTimeRef.current;
-      const allBlocks = Object.values(tracks).flat();
-      if (allBlocks.length > 0) {
-        const lastBlockEndPX = Math.max(...allBlocks.map(b => b.x + b.length));
-        const loopEndTime = (lastBlockEndPX / STEP_WIDTH) * STEP_TIME;
-        // Отображение времени: такт / доля / секунды
-        const elapsedSeconds = elapsed;
-        const secondsPerBeat = 60 / bpm;        // длительность одной четверти
-        const beats = elapsedSeconds / secondsPerBeat;
-        const currentBar = Math.floor(beats / 4) + 1;
-        const currentBeat = (Math.floor(beats) % 4) + 1;
-        setCurrentPosition({
-        bar: currentBar,
-        beat: currentBeat,
-        seconds: elapsedSeconds
-        });
-        if (elapsed >= loopEndTime) {
-          startTimeRef.current = now;
-          pauseOffsetRef.current = 0;
-          elapsed = 0;
-          triggeredRef.current.clear();
-        }
-      }
-      Object.entries(tracks).forEach(([type, blocks]) => {
-        if (!filtersRef.current[type]) return; // защита от сброса
-        blocks.forEach((b) => {
-          const startStep = Math.floor(b.x / STEP_WIDTH);
-          const durationSteps = Math.max(1, Math.floor(b.length / STEP_WIDTH));
-          const startTime = startStep * STEP_TIME;
-          const duration = durationSteps * STEP_TIME;
-          const key = `${type}_${b.id}_${startStep}`;
-          if (elapsed >= startTime && elapsed <= startTime + duration && !triggeredRef.current.has(key)) {
-            const freq = OPEN_STRINGS[b.string] * Math.pow(2, b.fret / 12);
-            const synth = synthsRef.current[type];
-            const velocity = Math.min(1, Math.max(0, b.velocity ?? 1));
-            if (type === "bass") {
-              synth.triggerAttack(freq, now + 0.01, velocity);
-              synth.triggerRelease(now + 0.01 + duration);
-            } else {
-              synth.triggerAttackRelease(freq, duration, now + 0.01, velocity);
-            }
-            triggeredRef.current.add(key);
-          }
-        });
-      });
-      const x = (elapsed / STEP_TIME) * STEP_WIDTH;
-      playheadXRef.current = x;
-    
-    // Вычисляем шаг для подсветки
-    const currentStep = Math.floor(x / STEP_WIDTH);
-    if (activeStep !== currentStep) {
-      setActiveStep(currentStep);
-    }
-
-    if (playheadRef.current) {
-      playheadRef.current.style.transform = `translateX(${x}px)`;
-    }
-
-    if (scrollRef.current) {
-      const target = Math.max(0, x - FOLLOW_OFFSET);
-      scrollRef.current.scrollLeft += (target - scrollRef.current.scrollLeft) * 0.08;
-    }
-    if (meterRef.current) {
-      const level = meterRef.current.getValue();
-      let normalized = (level + 60) / 60;
-      normalized = Math.min(1, Math.max(0, normalized));
-      setMasterVolume(normalized);
-    }
-    // Вот эта строка должна быть ОДНА:
-    animationRef.current = requestAnimationFrame(loop);
-  }; // <--- Закрывающая скобка самой функции loop
-
-  loop(); // Запуск цикла
-}; // <--- Закрывающая скобка функции startEngine
-
-const handleTogglePlay = async () => {
-  if (Tone.context.state !== 'running') {
-    await Tone.start();
-    console.log("Audio Context started!");
+/* Анимация мягкого свечения */
+@keyframes glassPulse {
+  0%, 100% { 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 15px rgba(255, 255, 255, 0.05); 
   }
-  
-  if (isPlaying) {
-    // Остановка воспроизведения
-    const now = Tone.now();
-    cancelAnimationFrame(animationRef.current);
-    pauseOffsetRef.current = now - startTimeRef.current; 
-    setIsPlaying(false);
-    
-    // Сбрасываем VU-метр
-    setMasterVolume(0);
-    
-    // Останавливаем sidechain-лупер
-    if (window.__sidechain?.kickLoop) {
-      window.__sidechain.kickLoop.stop();
-    }
-    
-    // Глушим все синтезаторы
-    Object.values(synthsRef.current).forEach(s => { 
-      try { 
-        if (s.releaseAll) s.releaseAll(); 
-        else if (s.triggerRelease) s.triggerRelease(); 
-      } catch(e) {} 
-    });
-  } else {
-    // Запуск воспроизведения
-    await Tone.start();
-    const now = Tone.now();
-    startTimeRef.current = now - pauseOffsetRef.current;
-    triggeredRef.current.clear();
-    setIsPlaying(true);
-    
-    // Запускаем sidechain-лупер
-    if (window.__sidechain?.kickLoop) {
-      window.__sidechain.kickLoop.start(0);
-    }
-    
-    startEngine();
+  50% { 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 25px var(--text-accent); 
   }
-};
-
-const handleStop = () => {
-  cancelAnimationFrame(animationRef.current);
-  pauseOffsetRef.current = 0;
-  startTimeRef.current = Tone.now();
-  triggeredRef.current.clear();
-  setIsPlaying(false);
+}
+/* Кнопка старт в светлой теме (Liquid Glass) */
+.app.light-theme .start-btn {
+  /* Более прозрачный фон, чтобы просвечивал цветной градиент фона */
+  background: rgba(255, 255, 255, 0.35) !important; 
   
-  // Сбрасываем VU-метр
-  setMasterVolume(0);
+  /* Тонкие рамки для эффекта стекла */
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-top: 1px solid rgba(255, 255, 255, 1) !important;
   
-  // Останавливаем sidechain-лупер
-  if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
-  
-  if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
-  if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-  
-  Object.values(synthsRef.current).forEach(s => { 
-    try { 
-      if (s.releaseAll) s.releaseAll(); 
-      else if (s.triggerRelease) s.triggerRelease(); 
-    } catch(e) {} 
-  });
-};
-
-  const handleRecord = async () => {
-    if (!isRecording) {
-      await Tone.start();
-      recorderRef.current.start();
-      setIsRecording(true);
-      if (!isPlaying) handleTogglePlay();
-    } else {
-      const recording = await recorderRef.current.stop();
-      setIsRecording(false);
-      const url = URL.createObjectURL(recording);
-      const anchor = document.createElement("a");
-      anchor.download = `STRUNA_Track_${Date.now()}.wav`;
-      anchor.href = url;
-      anchor.click();
-    }
-  };
-
-  const stopSound = () => {
-    // 1. Останавливаем анимацию
-    cancelAnimationFrame(animationRef.current);
+  /* Убираем жесткую белую тень, делаем мягкую темную */
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.08), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 20px rgba(0, 0, 0, 0.02) !important;
     
-    // 2. Мгновенно глушим все синтезаторы
-    Object.values(synthsRef.current).forEach(s => { 
-      try { 
-        if (s.releaseAll) s.releaseAll(); 
-        else if (s.triggerRelease) s.triggerRelease(); 
-      } catch(e) {} 
-    });
+  color: #1a1a2e !important; /* Темный текст для контраста */
+}
 
-    // 3. Агрессивное глушение мастер-шины
-    if (masterGainRef.current) {
-      masterGainRef.current.gain.rampTo(0, 0.01); 
-      setTimeout(() => {
-        if (masterGainRef.current) {
-          masterGainRef.current.gain.setTargetAtTime(0.8, Tone.now(), 0.1);
-        }
-      }, 100);
-    }
+.app.light-theme .start-btn:hover {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 1) !important;
+  
+  /* При наведении добавляем свечение цвета акцента (как в темной теме) */
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.12), 
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 30px var(--text-accent) !important;
+}
 
-    // 4. Сброс состояния
-    pauseOffsetRef.current = 0;
-    triggeredRef.current.clear();
-    setIsPlaying(false);
-    
-    if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
-    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-  };
+/* ==================== НЕОНОВЫЙ ЛОГОТИП ==================== */
+.logo {
+  font-size: 64px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255, 0, 128, 0.4)) drop-shadow(0 0 15px rgba(0, 255, 255, 0.2));
+  animation: neonFlowSmooth 6s ease-in-out infinite;
+  display: inline-block;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+.logo:hover { transform: scale(1.02); }
+@keyframes neonFlowSmooth {
+  0%, 100% { background-position: 0% 50%; filter: drop-shadow(0 0 8px rgba(255,0,128,0.4)) drop-shadow(0 0 15px rgba(0,255,255,0.2)); }
+  25%, 75% { filter: drop-shadow(0 0 15px rgba(255,128,0,0.5)) drop-shadow(0 0 25px rgba(0,255,128,0.3)); }
+  50% { background-position: 100% 50%; filter: drop-shadow(0 0 20px rgba(0,255,255,0.6)) drop-shadow(0 0 35px rgba(128,0,255,0.4)); }
+}
 
-  const handleResetAll = () => {
-    // Останавливаем воспроизведение
-    if (isPlaying) {
-      cancelAnimationFrame(animationRef.current);
-      setIsPlaying(false);
-    }
-    // Останавливаем sidechain-лупер
-    if (window.__sidechain?.kickLoop) window.__sidechain.kickLoop.stop();
-    // Глушим синтезаторы
-    Object.values(synthsRef.current).forEach(s => {
-      try { s.releaseAll?.(); s.triggerRelease?.(); } catch(e) {}
-    });
-    // Сбрасываем состояние времени
-    pauseOffsetRef.current = 0;
-    startTimeRef.current = Tone.now();
-    triggeredRef.current.clear();
-    if (playheadRef.current) playheadRef.current.style.transform = "translateX(0px)";
-    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
-    // Очищаем треки
-    setTracks({ guitar: [], synth: [], bass: [], chip: [] });
-    // Сбрасываем все настройки до заводских
-    setFilters(defaultFilters);
-    setFx(defaultFx);
-    setVolumes(defaultVolumes);
-    setBpm(120);
-    // Снимаем выделение блоков
-    setSelectedBlockIds(new Set());
-    setMasterVolume(0);
-    setCurrentPosition({ bar: 1, beat: 1, seconds: 0 });
-  };
-  // --- ИСПРАВЛЕННОЕ КОПИРОВАНИЕ И ВСТАВКА (ПОСЛЕДОВАТЕЛЬНО) ---
+.neon-struna {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(50px, 15vw, 120px);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  display: block;
+  margin: 0 auto 30px auto;
+  background: linear-gradient(90deg, #ff0080, #ff8c00, #ffff00, #00ff80, #00bfff, #8a2be2, #ff0080);
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(255,0,128,0.4)) drop-shadow(0 0 15px rgba(0,255,255,0.2));
+  animation: neonFlowSmooth 6s ease-in-out infinite;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+.neon-struna:hover { transform: scale(1.02); }
 
-const handleSelectBlock = (e, block, instName) => {
-  e.stopPropagation();
-  if (e.ctrlKey || e.metaKey) {
-    setSelectedBlockIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(block.id)) newSet.delete(block.id);
-      else newSet.add(block.id);
-      return newSet;
-    });
-  } else {
-    setSelectedBlockIds(new Set([block.id]));
+/* ==================== НЕОНОВЫЙ ЛОГОТИП KARGANI STUDIO ==================== */
+.neon-kargani {
+  background: linear-gradient(
+    90deg, 
+    #ff0033 0%,    /* Яркий красный */
+    #ffffff 20%,   /* Белый */
+    #ffd700 40%,   /* Золотой */
+    #111111 50%,   /* Черный (глубокий графит) */
+    #ffd700 60%,   /* Золотой */
+    #ffffff 80%,   /* Белый */
+    #ff0033 100%   /* Яркий красный */
+  );
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  
+  /* Запускаем анимацию переливания и свечения */
+  animation: kargantiShift 6s ease-in-out infinite alternate;
+  
+  font-weight: bold;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.neon-kargani:hover {
+  transform: scale(1.05);
+}
+
+/* Анимация переливания цвета и свечения */
+@keyframes kargantiShift {
+  0% {
+    background-position: 0% 50%;
+    /* Красно-белое свечение */
+    filter: drop-shadow(0 0 4px rgba(255, 0, 51, 0.6)) 
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
   }
-};
-
-const copySelectedBlocks = () => {
-  const blocksToCopy = [];
-  for (const [inst, blocks] of Object.entries(tracks)) {
-    blocks.forEach(block => {
-      if (selectedBlockIds.has(block.id)) {
-        blocksToCopy.push({
-          instrument: inst,
-          block: { ...block }
-        });
-      }
-    });
+  50% {
+    /* Золото-черное свечение */
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8)) 
+            drop-shadow(0 0 15px rgba(255, 215, 0, 0.4));
   }
-  copiedBlocksRef.current = blocksToCopy.sort((a, b) => a.block.x - b.block.x);
-  console.log("Скопировано:", copiedBlocksRef.current.length);
-};
-
-const pasteBlocks = () => {
-  if (copiedBlocksRef.current.length === 0) return;
-  const minX = Math.min(...copiedBlocksRef.current.map(i => i.block.x));
-  const maxEndX = Math.max(...copiedBlocksRef.current.map(i => i.block.x + i.block.length));
-  const offset = (maxEndX - minX) || STEP_WIDTH; // исправлено: || вместо |
-  const nextClipboard = copiedBlocksRef.current.map(item => ({
-    instrument: item.instrument,
-    block: {
-      ...item.block,
-      id: Date.now() + Math.random(),
-      x: item.block.x + offset
-    }
-  }));
-  setTracks(prev => {
-    const updated = { ...prev };
-    nextClipboard.forEach(({ instrument: inst, block: newBlock }) => {
-      updated[inst] = [...(updated[inst] || []), newBlock];
-    });
-    return updated;
-  });
-  copiedBlocksRef.current = nextClipboard;
-  console.log("Вставлено последовательно");
-};
-
-const deleteSelectedBlocks = () => {
-  if (selectedBlockIds.size === 0) return;
-  setTracks(prev => {
-    const updated = { ...prev };
-    Object.keys(updated).forEach(inst => {
-      updated[inst] = updated[inst].filter(block => !selectedBlockIds.has(block.id));
-    });
-    return updated;
-  });
-  setSelectedBlockIds(new Set());
-  console.log("Selected blocks deleted");
-};
-  // Горячие клавиши с поддержкой русской раскладки и Chrome
-useEffect(() => {
-  const handleKeyDown = (e) => {
-    // 1. Игнорируем в инпутах
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    // 2. Удаление (Delete / Backspace)
-    if (e.code === 'Delete' || e.code === 'Backspace') {
-      if (selectedBlockIds.size > 0) {
-        e.preventDefault();
-        deleteSelectedBlocks();
-      }
-      return;
-    }
-
-    // 3. Пробел – Play / Pause
-    if (e.code === 'Space') {
-      e.preventDefault();
-      e.stopPropagation();
-      if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
-        document.activeElement.blur();
-      }
-      handleTogglePlay();  // ← основная функция play/pause
-      return;
-    }
-    // 4. Клавиша S – STOP (остановка с возвратом в начало)
-    if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      handleStop();
-      return;
-    }
-
-    // 4. Копирование / Вставка (Ctrl+C / Ctrl+V)
-    const isC = e.key === 'c' || e.key === 'с' || e.code === 'KeyC';
-    const isV = e.key === 'v' || e.key === 'м' || e.code === 'KeyV';
-
-    if ((e.ctrlKey || e.metaKey) && isC) {
-      e.preventDefault();
-      copySelectedBlocks();
-    } else if ((e.ctrlKey || e.metaKey) && isV) {
-      e.preventDefault();
-      pasteBlocks();
-    }
-  };
-
-  window.addEventListener('keydown', handleKeyDown, true);
-  return () => window.removeEventListener('keydown', handleKeyDown, true);
-}, [selectedBlockIds, handleTogglePlay, copySelectedBlocks, pasteBlocks, deleteSelectedBlocks]);
-  const handleLogout = () => {
-    localStorage.removeItem("struna_user");
-    setUser(null);
-    setMode("landing");
-  };
-  const handleDriveSave = async () => {
-    // 1. Берем данные пользователя прямо из хранилища (самый надежный способ)
-    const storedUser = JSON.parse(localStorage.getItem("struna_user") || "{}");
-    const token = user?.access_token || storedUser?.access_token;
-
-    if (!token) {
-      alert("Ошибка: Ключ доступа не найден. Пожалуйста, сделайте Logout и войдите снова.");
-      return;
-    }
-
-    const projectData = { bpm, tracks, name: "Struna Project " + new Date().toLocaleString() };
-    const metadata = { name: `struna_${Date.now()}.json`, mimeType: 'application/json' };
-
-    const file = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
-    const formData = new FormData();
-    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (response.ok) {
-        alert("✅ Успешно сохранено на Google Диск!");
-      } else {
-        const errorDetail = await response.json();
-        console.error("Детали ошибки Google:", errorDetail);
-        alert(`Ошибка: ${errorDetail.error.message}`);
-      }
-    } catch (err) {
-      alert("Ошибка сети или сервера Google");
-    }
-  };
-  // --- ЛОГИКА ЖЕСТОВ ТАЧПАДА (v1.1) ---
-  const handleTouchStart = (e, b, isResize) => {
-    e.stopPropagation();
-    const touch = e.touches[0];
-    const now = Date.now();
-    const state = touchStateRef.current;
-
-    if (now - state.lastTapTime < 350 && state.block?.id === b.id) {
-      state.taps += 1;
-    } else {
-      state.taps = 1;
-    }
-    
-    state.lastTapTime = now;
-    state.startX = touch.clientX;
-    state.startY = touch.clientY;
-    state.block = b;
-    state.blockX = b.x;
-    state.blockLength = b.length;
-    state.initialFret = b.fret;
-    state.initialVelocity = b.velocity ?? 1;
-    state.hasMoved = false;
-
-    if (isResize) {
-      state.mode = 'resize';
-      state.taps = 0; 
-    } else if (state.taps === 3) {
-      state.mode = 'volume';
-    } else if (state.taps === 2) {
-      state.mode = 'color';
-    } else {
-      state.mode = 'drag'; 
-    }
-
-    clearTimeout(state.tapTimer);
-    state.tapTimer = setTimeout(() => { state.taps = 0; }, 400);
-  };
-
-  const handleTouchMove = (e) => {
-    const state = touchStateRef.current;
-    if (!state.block || !state.mode) return;
-
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - state.startX;
-    const deltaY = touch.clientY - state.startY;
-
-    // 1. Сначала проверяем, сдвинулся ли палец достаточно сильно
-    if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-        state.hasMoved = true;
-    }
-
-    // 2. Если еще не сдвинулся — ничего не делаем (ждем)
-    if (!state.hasMoved) return;
-
-    // 3. А вот ТЕПЕРЬ пошла вся остальная логика (удаление, движение и т.д.)
-    if (state.mode === 'drag' && deltaY < -50 && Math.abs(deltaX) < 40) {
-        // ... твой код удаления
-        setTracks(prev => ({
-          ...prev, 
-          [instrument]: prev[instrument].filter(it => it.id !== state.block.id)
-      })); 
-      state.block = null;
-      state.mode = null;
-      return;
+  100% {
+    background-position: 100% 50%;
+    /* Возврат к красно-белому свечению */
+    filter: drop-shadow(0 0 4px rgba(255, 0, 51, 0.6)) 
+            drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
   }
-    if (state.mode === 'color' && state.hasMoved) {
-      const fretChange = Math.floor(-deltaY / 20); 
-      const newFret = Math.max(0, state.initialFret + fretChange);
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, fret: newFret } : b)}));
-    } 
-    else if (state.mode === 'volume' && state.hasMoved) {
-      const volChange = -deltaY / 200; 
-      const newVol = Math.min(1, Math.max(0, state.initialVelocity + volChange));
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, velocity: newVol } : b)}));
-    } 
-    else if (state.mode === 'drag' && state.hasMoved) {
-      const newX = Math.max(0, Math.floor((state.blockX + deltaX) / STEP_WIDTH) * STEP_WIDTH);
-      const rect = scrollRef.current.getBoundingClientRect();
-      const relativeY = touch.clientY - rect.top;
-      const newString = Math.max(0, Math.min(strings.length - 1, Math.floor(relativeY / 60)));
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, x: newX, string: newString } : b)}));
-    } 
-    else if (state.mode === 'resize') {
-      const newLength = Math.max(STEP_WIDTH, Math.floor((state.blockLength + deltaX) / STEP_WIDTH) * STEP_WIDTH);
-      setTracks(prev => ({...prev, [instrument]: prev[instrument].map(b => b.id === state.block.id ? { ...b, length: newLength } : b)}));
-    }
-  };
+}
 
-  const handleTouchEnd = () => {
-    touchStateRef.current.mode = null;
-    touchStateRef.current.block = null;
-  };
+/* ==================== НАВИГАЦИОННЫЕ И ДОП КНОПКИ ==================== */
+.back-to-home-btn {
+  background: rgba(77, 136, 255, 0.05) !important;
+  border: 1px solid rgba(77, 136, 255, 0.3) !important;
+  color: var(--text-accent) !important;
+  padding: 5px 12px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 2px !important;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.15;
+}
+.back-to-home-btn:hover { background: rgba(77, 136, 255, 0.15) !important; border-color: var(--text-accent) !important; color: #ffffff !important; box-shadow: 0 0 15px rgba(77, 136, 255, 0.4); opacity: 1 !important; transform: translateY(-1px); }
+.back-to-home-btn:active { transform: scale(0.95); box-shadow: 0 0 5px rgba(77, 136, 255, 0.2); }
 
-  const mixerColumnStyle = { display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", width: "75px" };
-  const verticalSliderStyle = { height: "120px", width: "30px", appearance: "slider-vertical", WebkitAppearance: "slider-vertical", cursor: "pointer" };
-  const resetBtnStyle = { fontSize: "10px", padding: "4px 8px", background: "#2A3350", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" };
-  const labelStyle = { fontSize: "11px", fontWeight: "bold", color: "#AAB3C2", textAlign: "center" };
-  if (mode === "landing") {
-    return (
-      <div className="app landing">
-    
-        <div className="landing-content">
-    
-        <div className="logo-wrapper">
-  <h1 className="neon-struna">STRUNA</h1>
-</div>
-    
-          <p className="tagline" style={{ marginTop: "-50px" }}>UNBOUND SOUND</p>
-    
-          <button
-    // Просто одна строка вместо пяти!
-onClick={() => handleStartCreating("guitar")}
-    className="start-btn"
->
-    START CREATING
-</button>
-{mode === "landing" && (
-  <div style={{
-    position: 'fixed',
-    top: '25px',
-    right: '25px',
-    zIndex: 9999,
-    cursor: 'pointer',
-    background: 'rgba(255, 255, 255, 0.07)',
-    padding: '12px',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-  }} 
-  onClick={() => login()}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-    e.currentTarget.style.transform = 'scale(1.05)';
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
-    e.currentTarget.style.transform = 'scale(1)';
-  }}
-  >
-    <svg width="20" height="20" viewBox="0 0 48 48">
-  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
-  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-</svg>
-  </div>
-)}
-    
-<div className="preview">
+.controls-help-btn {
+  position: relative !important;
+  display: block !important;
+  margin: 40px auto 20px auto !important;
+  z-index: 9999 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid var(--modal-border) !important;
+  color: var(--modal-border) !important;
+  padding: 10px 25px !important;
+  border-radius: 30px !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+.controls-help-btn:hover { background: rgba(0, 243, 255, 0.2) !important; box-shadow: 0 0 25px rgba(0, 243, 255, 0.6) !important; transform: scale(1.05) !important; }
 
-<div
-  className="preview-track guitar"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("guitar");
-  }}
-  onDoubleClick={() => handleStartCreating("guitar")}
->
-  <span>GUITAR</span>
-  <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-</div>
+.app.light-theme .controls-help-btn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: #0066ff !important;
+  color: #0066ff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+.app.light-theme .controls-help-btn:hover { background: #ffffff !important; border-color: #0066ff !important; color: #0066ff !important; box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15) !important; }
 
-<div
-  className="preview-track synth"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("synth");
-  }}
-  onDoubleClick={() => handleStartCreating("synth")}
->
-  <span>SYNTH</span>
-  <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-</div>
+/* ==================== КНОПКИ ЭФФЕКТОВ (LIQUID GLASS) ==================== */
 
-<div
-  className="preview-track bass"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("bass");
-  }}
-  onDoubleClick={() => handleStartCreating("bass")}
->
-  <span>BASS</span>
-  <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-</div>
+/* Квадратные кнопки эффектов */
+.effect-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
 
-<div
-  className="preview-track chip"
-  onClick={(e) => {
-    e.stopPropagation();
-    playDemo("chip");
-  }}
-  onDoubleClick={() => handleStartCreating("chip")}
->
-  <span>CHIP</span>
-  <div className="wave">
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-    <span></span>
-  </div>
-</div>
+.effect-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--text-accent) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2), 
+    0 0 15px var(--text-accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
 
-</div>
-<div style={{
-  position: "absolute",
-  bottom: "20px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  textAlign: "center",
-  width: "100%",
-  pointerEvents: "none",
-  zIndex: 10,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "6px"
-}}>
-  <p style={{
-    color: "rgba(255, 255, 255, 0.3)",
-    fontSize: "10px",
-    letterSpacing: "4px",
-    textTransform: "uppercase",
-    margin: 0,
-    fontFamily: "sans-serif"
-  }}>
-    Powered By <span style={{ color: "rgba(255, 255, 255, 0.6)", fontWeight: "bold" }}>KARGANI STUDIO</span>
-  </p>
+.effect-btn:active {
+  transform: translateY(1px) scale(0.95) !important;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Кнопка удаления (крестик) */
+.effect-btn-remove {
+  color: #ff4d4d !important;
+}
+.effect-btn-remove:hover {
+  border-color: #ff4d4d !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.2), 
+    0 0 15px rgba(255, 77, 77, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Компактные кнопки SUB и Reverse */
+.pill-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 8px 10px !important;
+  width: 100%;
+  max-width: 95px !important;
+  height: 44px !important;
+  display: flex;
+  flex-direction: column !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px !important;
+  font-size: 9px !important;
+  font-weight: bold;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Активные состояния SUB и REVERSE */
+.active-sub {
+  background: rgba(189, 0, 255, 0.15) !important;
+  border-color: #bd00ff !important;
+  box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important;
+}
+.active-rev {
+  background: rgba(255, 184, 77, 0.15) !important;
+  border-color: #FFB84D !important;
+  box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important;
+}
+
+/* ==================== МОДАЛЬНЫЕ ОКНА ==================== */
+.custom-modal-overlay {
+  position: fixed !important;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.6) !important;
+  display: flex !important; justify-content: center; align-items: center;
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.custom-modal {
+  background: rgba(18, 22, 41, 0.55) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  padding: 40px !important;
+  border-radius: 24px !important;
+  width: 450px !important;
+  max-width: 90vw !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  text-align: center;
+  animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-modal h2 {
+  color: var(--text-bright) !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  font-size: 22px;
+  text-shadow: 0 0 20px rgba(77, 255, 136, 0.2);
+}
+
+.modal-content {
+  text-align: left !important;
+  margin-bottom: 30px !important;
+}
+
+.control-item {
+  margin-bottom: 14px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 14px !important;
+  line-height: 1.4;
+  border-left: 3px solid var(--text-accent) !important;
+  padding-left: 15px;
+}
+
+.control-item span {
+  color: var(--text-accent) !important;
+  font-weight: bold !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.close-modal-btn {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: var(--text-primary) !important;
+  padding: 12px 40px !important;
+  border-radius: 50px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+.close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--text-accent) !important;
+  box-shadow: 0 0 25px rgba(77, 136, 255, 0.2) !important;
+}
+
+/* ===== ВАРНИНГ (ОПАСНАЯ ЗОНА) ===== */
+.warning-overlay {
+  position: fixed !important;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.7) !important;
+  display: flex !important; justify-content: center; align-items: center;
+  z-index: 100000 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+.warning-modal {
+  background: rgba(18, 22, 41, 0.6) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 77, 77, 0.2) !important;
+  border-top: 1px solid rgba(255, 77, 77, 0.3) !important;
+  box-shadow: 0 24px 60px rgba(255, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  padding: 40px !important;
+  border-radius: 24px !important;
+  width: 420px !important;
+  max-width: 90vw !important;
+  text-align: center !important;
+}
+
+.warning-icon {
+  font-size: 44px;
+  color: var(--warning-border);
+  margin-bottom: 15px;
+  text-shadow: 0 0 30px rgba(255, 51, 51, 0.4);
+}
+
+.warning-modal h2 {
+  color: var(--warning-border) !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  font-size: 24px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.3);
+}
+
+.warning-modal p {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 15px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  width: 100%; /* 👈 Добавили */
+}
+
+.cancel-modal-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
   
-  <span style={{
-    fontSize: "9px",
-    color: "#4D88FF",
-    opacity: 0.6,
-    letterSpacing: "1px",
-    textTransform: "uppercase",
-    padding: "2px 8px",
-    border: "1px solid rgba(77, 136, 255, 0.2)",
-    borderRadius: "4px"
-  }}>
-    Desktop Version Only
-  </span>
-</div>
-        </div>
-    
-      </div>
-    );
-  }
-  return (
-    <div className="app">
-     
-      <style>{`
-        @keyframes pulse-record {
-          0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
-          70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
-        }
-      `}</style>
+  /* 👇 Новые свойства для выравнивания */
+  flex: 1;
+  max-width: 180px;
+  height: 44px;
+  padding: 0 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+.cancel-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.confirm-reset-btn {
+  background: var(--warning-border) !important;
+  border: 1px solid var(--warning-border) !important;
+  color: #fff !important;
+  border-radius: 50px !important;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
   
-  {/* Левая часть: Кнопка НАЗАД (EXIT) и Логотип */}
-  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-    
-    {/* Кнопка-невидимка EXIT */}
-    <button 
-      onClick={() => {
-        stopSound(); // Остановка звука
-        setMode("landing"); // Возврат на главный экран
-      }} 
-      style={{
-        background: "transparent",
-        border: "none",
-        color: "rgba(255, 255, 255, 0.3)",
-        cursor: "pointer",
-        padding: "5px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all 0.3s ease",
-      }}
-      onMouseOver={(e) => { 
-        e.currentTarget.style.color = "#FF4D4D"; 
-        e.currentTarget.style.filter = "drop-shadow(0 0 10px rgba(255, 77, 77, 0.8))";
-        e.currentTarget.style.transform = "translateX(-3px) scale(1.1)";
-      }}
-      onMouseOut={(e) => { 
-        e.currentTarget.style.color = "rgba(255, 255, 255, 0.3)"; 
-        e.currentTarget.style.filter = "none";
-        e.currentTarget.style.transform = "translateX(0) scale(1)";
-      }}
-    >
-      <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-      </svg>
-    </button>
+  /* 👇 Новые свойства для выравнивания */
+  flex: 1;
+  max-width: 180px;
+  height: 44px;
+  padding: 0 15px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    {/* Логотип */}
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-        <h1 className="logo" style={{ margin: 0 }}>STRUNA</h1>
-        <span style={{ fontSize: "10px", color: "#4D88FF", opacity: 0.7 }}>v1.4.2-BETA</span>
-      </div>
-    </div>
-  </div>
+.confirm-reset-btn:hover {
+  box-shadow: 0 0 30px rgba(255, 51, 51, 0.4) !important;
+  transform: scale(1.03);
+}
 
-  {/* Правая часть: Кнопки сохранения и загрузки */}
-  <div style={{ display: "flex", gap: "10px" }}>
-  <UserProfile user={user} onLogout={handleLogout} />
-    <button onClick={handleSaveProject} className="save-btn">💾 SAVE</button>
-    <button onClick={() => fileInputRef.current.click()} className="load-btn">📂 LOAD</button>
-{user && (
-  <button
-    onClick={handleDriveSave}
-    className="save-btn"
-    style={{ background: '#34A853', marginLeft: '10px' }}
-  >
-    ▲ DRIVE SAVE
-  </button>
-)}
-{user && (
-  <button 
-    onClick={handleShare} 
-    className="save-btn share-btn" 
-    style={{ marginLeft: '10px' }}
-  >
-    <span>🔗</span> SHARE
-  </button>
-)}
-    <input type="file" ref={fileInputRef} onChange={handleLoadProject} style={{ display: "none" }} accept=".json" />
-  </div>
+/* ===== INFO MODAL ===== */
+.info-modal {
+  border-color: rgba(77, 136, 255, 0.2) !important;
+  border-top-color: rgba(77, 136, 255, 0.3) !important;
+}
 
-</div>
+.info-modal h2 {
+  color: var(--text-accent) !important;
+  text-shadow: 0 0 20px rgba(77, 136, 255, 0.2) !important;
+}
 
-<div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: 20, marginTop: 60 }}>
-        <button onClick={handleTogglePlay} className={`play-pause-btn ${isPlaying ? "playing" : "stopped"}`}>
-          {isPlaying ? (
-            <svg viewBox="0 0 24 24" width="28" height="28">
-              <rect x="6" y="5" width="4" height="14" rx="1" fill="#4d88ff" />
-              <rect x="14" y="5" width="4" height="14" rx="1" fill="#4d88ff" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" width="28" height="28">
-              <path d="M8 5v14l11-7z" fill="#4dff88" />
-            </svg>
-          )}
-        </button>
-        <button onClick={handleStop} className="stop-btn">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <rect x="6" y="6" width="12" height="12" rx="1" fill="#ff4d4d" />
-          </svg>
-        </button>
-        
-        <button onClick={handleRecord} className={`record-btn ${isRecording ? 'recording' : ''}`}>
-          <div className="record-dot"></div>
-          {isRecording ? 'REC' : 'RECORD'}
-        </button>
-        <button 
-  onClick={() => setShowResetConfirm(true)} 
-  className="reset-btn"
->
-  RESET
-</button>
-      </div>
-      <div style={{ display: "flex", gap: "20px", alignItems: "stretch", marginBottom: 25, width: "fit-content" }}>
+.info-modal .neon-icon {
+  font-size: 48px;
+  display: inline-block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px var(--text-accent));
+}
 
- 
-{/* Анимированный контейнер с блоками TEMPO и MASTER */}
-<div style={{
-  overflow: "hidden",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  maxHeight: isTempoMasterVisible ? "300px" : "0px",
-  opacity: isTempoMasterVisible ? 1 : 0,
-  marginBottom: isTempoMasterVisible ? "20px" : "0px"
-}}>
-  <div style={{ display: "flex", gap: "20px", alignItems: "stretch", flexWrap: "wrap" }}>
-    
-    {/* Блок TEMPO — без неона, стильная рамка */}
-<div style={{
-  background: "#0a0e1a",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid #2a3a6e",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px",
-  textAlign: "center"
-}}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "8px" }}>TEMPO</div>
-  <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "4px" }}>
-    {bpm}
-  </div>
-  <div style={{ fontSize: "10px", color: "#4D88FF", marginBottom: "12px" }}>BPM</div>
-  <input
-    type="range"
-    min="60"
-    max="200"
-    value={bpm}
-    onChange={(e) => setBpm(Number(e.target.value))}
-    style={{ width: "100%", cursor: "pointer", marginTop: "4px" }}
-  />
-</div>
+.info-modal p {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 15px;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
 
-{/* Блок MASTER — без неона, стильная рамка */}
-<div style={{
-  background: "#0a0e1a",
-  padding: "15px",
-  borderRadius: "12px",
-  border: "1px solid #2a3a6e",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-  width: "200px",
-  textAlign: "center"
-}}>
-  <div style={{ fontSize: "12px", color: "#4D88FF", marginBottom: "8px" }}>MASTER</div>
-  <div style={{ fontSize: "28px", fontWeight: "bold", color: "#4DFF88", marginBottom: "8px" }}>
-    {Math.floor(masterVolume * 100)}%
-  </div>
-  {/* VU-метр */}
-  <div style={{ display: "flex", gap: "4px", alignItems: "center", justifyContent: "center", height: "30px", marginBottom: "12px" }}>
-    {[...Array(20)].map((_, idx) => {
-      const intensity = idx / 20;
-      const isActive = masterVolume > intensity;
-      let color = "#4DFF88";
-      if (intensity > 0.7) color = "#FFB84D";
-      if (intensity > 0.9) color = "#FF4D4D";
-      return (
-        <div
-          key={idx}
-          style={{
-            width: "6px",
-            height: `${10 + intensity * 20}px`,
-            backgroundColor: isActive ? color : "rgba(77,136,255,0.2)",
-            borderRadius: "2px",
-            transition: "height 0.05s linear"
-          }}
-        />
-      );
-    })}
-  </div>
-  <div style={{ fontSize: "18px", fontWeight: "bold", color: "#4DFF88", marginTop: "6px" }}>
-    {currentPosition.seconds.toFixed(1)}s
-  </div>
-  <div style={{ fontSize: "10px", color: "#4D88FF" }}>
-    ({currentPosition.bar}.{currentPosition.beat})
-  </div>
-</div>
-  </div>
-</div>
+/* ===== CHANGELOG MODAL ===== */
+.changelog-modal .neon-icon {
+  font-size: 48px;
+  display: inline-block;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 0 10px #4DFF88);
+}
 
-</div>
-      
+.changelog-title {
+  color: #4DFF88 !important;
+  text-shadow: 0 0 20px rgba(77, 255, 136, 0.2) !important;
+}
 
-<div className="instrument-selector">
-  {["guitar", "synth", "bass", "chip"].map((t) => (
-    <button
-      key={t}
-      onClick={() => setInstrument(t)}
-      className={`inst-btn ${instrument === t ? "active" : ""} ${t}-btn`}
-    >
-      <span className="inst-icon">
-        {t === "guitar" ? "🎸" : t === "synth" ? "🎹" : t === "bass" ? "🔊" : "🕹️"}
-      </span>
-      <span className="inst-text">{t.toUpperCase()}</span>
-      {instrument === t && <div className="active-glow"></div>}
-    </button>
-  ))}
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
-  {/* Блок двух кнопок: INFO и FX — прижаты друг к другу */}
-<div style={{ display: "flex", gap: "2px", marginLeft: "auto" }}>
-  <button
-    onClick={() => setIsTempoMasterVisible(!isTempoMasterVisible)}
-    className={`inst-btn fx-toggle-btn ${isTempoMasterVisible ? "fx-active" : ""}`}
-    style={{ borderRadius: "20px 0 0 20px" }}
-  >
-    <span className="inst-icon">{isTempoMasterVisible ? "🔽" : "🔼"}</span>
-    <span className="inst-text" style={{ fontSize: "9px" }}>INFO</span>
-    {isTempoMasterVisible && <div className="active-glow"></div>}
-  </button>
-  <button
-    onClick={() => setShowFX(!showFX)}
-    className={`inst-btn fx-toggle-btn ${showFX ? "fx-active" : ""}`}
-    style={{ borderRadius: "0 20px 20px 0" }}
-  >
-    <span className="inst-icon">⚙️</span>
-    <span className="inst-text" style={{ fontSize: "9px" }}>FX</span>
-    {showFX && <div className="active-glow"></div>}
-  </button>
-</div>
-</div>
+/* ============================================================ */
+/* ===== СВЕТЛАЯ ТЕМА ДЛЯ МОДАЛЬНЫХ ОКОН ===== */
+/* ============================================================ */
 
-<div style={{ maxHeight: showFX ? "300px" : "0px", opacity: showFX ? 1 : 0, overflow: "hidden", transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)", marginBottom: showFX ? 30 : 0 }}>
-  <div style={{
-    background: "#0a0e1a",
-    border: "1px solid #2a3a6e",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-    padding: "20px",
-    display: "flex",
-    gap: "25px",
-    width: "fit-content",
-    flexWrap: "wrap"
-  }}>
-    {/* VOLUME */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>VOLUME<br/>{volumes[instrument].toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={volumes[instrument]}
-        onChange={(e) => setVolumes(prev => ({ ...prev, [instrument]: Number(e.target.value) }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setVolumes(prev => ({ ...prev, [instrument]: 0.5 }))}>Reset</button>
-    </div>
+.app.light-theme .custom-modal-overlay {
+  background: rgba(200, 210, 230, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
 
-    {/* CUTOFF */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>CUTOFF<br/>{filters[instrument].cutoff}</span>
-      <input
-        type="range"
-        min="200"
-        max="10000"
-        value={filters[instrument].cutoff}
-        onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], cutoff: 8000 } }))}>Reset</button>
-    </div>
+.app.light-theme .custom-modal {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
 
-    {/* Q (RES) */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>Q (RES)<br/>{filters[instrument].q}</span>
-      <input
-        type="range"
-        min="0.1"
-        max="20"
-        step="0.1"
-        value={filters[instrument].q}
-        onChange={(e) => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFilters(p => ({ ...p, [instrument]: { ...p[instrument], q: 1 } }))}>Reset</button>
-    </div>
+.app.light-theme .custom-modal h2 {
+  color: #1a1a2e !important;
+  text-shadow: 0 0 20px rgba(0, 102, 255, 0.1) !important;
+}
 
-    {/* CHORUS */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>CHORUS<br/>{fx[instrument].chorus.toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={fx[instrument].chorus}
-        onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], chorus: 0.3 } }))}>Reset</button>
-    </div>
+.app.light-theme .custom-modal .control-item {
+  color: #1a1a2e !important;
+}
 
-    {/* REVERB */}
-    <div style={mixerColumnStyle}>
-      <span style={labelStyle}>REVERB<br/>{fx[instrument].reverb.toFixed(2)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={fx[instrument].reverb}
-        onChange={(e) => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: Number(e.target.value) } }))}
-        style={verticalSliderStyle}
-      />
-      <button style={resetBtnStyle} onClick={() => setFx(p => ({ ...p, [instrument]: { ...p[instrument], reverb: 0.25 } }))}>Reset</button>
-    </div>
-  </div>
-</div>
+.app.light-theme .custom-modal .control-item span {
+  color: #0066ff !important;
+}
 
-      <div 
-        ref={scrollRef}
-        onMouseMove={(e) => {
-          if (!isDraggingRef.current) return;
-        
-          autoScrollIfNeeded(e.clientX); // 🔥 КЛЮЧ
-        }}
-        onTouchMove={(e) => {
-          if (!isDraggingRef.current) return;
-        
-          const touchX = e.touches[0].clientX;
-          autoScrollIfNeeded(touchX);
-        }}
-        className="scroll-container"
-        onContextMenu={(e) => e.preventDefault()}
-        style={{
-          width: "100%",
-          overflowX: "auto", // Оставляем
-          overflowY: "auto", // БЫЛО "hidden" - именно оно обрезало ползунок! Измените на auto
-          paddingBottom: "10px", // ДОБАВЬТЕ отступ снизу, чтобы ползунку было где отрисоваться
-          position: "relative",
-          background: "#050814",
-          borderRadius: 10,
-          border: "1px solid #161B33",
-          WebkitOverflowScrolling: "touch", 
-          touchAction: "pan-x"
-        }}
-        >
-          <div style={{ 
-            width: `${Math.max(2000, Math.max(0, ...Object.values(tracks).flat().map(b => b.x + b.length)) + 1000)}px`, 
-            display: "inline-block",
-            minWidth: '100%', 
-            position: "relative", 
-            height: 360, 
-            backgroundImage: `linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)`, 
-            backgroundSize: `${STEP_WIDTH}px 60px` 
-          }}>
-          {strings.map((s, i) => (
-            <div key={i} 
-            onMouseDown={(e) => {
-              if (e.button !== 0) return; // только левая кнопка
-              if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
-              isDraggingRef.current = true;
-              const x = Math.floor(getRelativeX(e.clientX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
-              const existingOnString = tracks[instrument].filter(b => b.string === i);
-              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
-              if (!overlapping) {
-                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
-              }
-            }}
-            onTouchStart={(e) => {
-              if (e.target.closest(".block") || e.target.closest(".playhead-grabber")) return;
-              const touchX = e.touches[0].clientX;
-              const x = Math.floor(getRelativeX(touchX) / STEP_WIDTH) * STEP_WIDTH;
-              const newBlock = { id: Date.now(), string: i, x, length: 80, fret: 0, velocity: 1 };
-              const existingOnString = tracks[instrument].filter(b => b.string === i);
-              const overlapping = existingOnString.some(b => (x < b.x + b.length && x + 80 > b.x));
-              if (!overlapping) {
-                setTracks(prev => ({...prev, [instrument]: [...prev[instrument], newBlock]}));
-              }
-            }}
-            style={{ borderBottom: "1px solid #161B33", height: 60, display: "flex", alignItems: "center", paddingLeft: 10, color: "#4D88FF", position: "relative" }}
-          >
-            <span style={{ width: 30, fontWeight: "bold" }}>{s}</span>
-              
-              {Object.keys(tracks).map(instName => 
-                tracks[instName]
-                  .filter(b => b.string === i)
-                  .map(b => {
-                    const isActive = instName === instrument; 
-                    
-                    return (
-                      <div 
-  key={b.id} 
-  className={`block ${
-    isPlaying && 
-    activeStep >= Math.floor(b.x / STEP_WIDTH) && 
-    activeStep < Math.floor((b.x + b.length) / STEP_WIDTH) 
-      ? 'playing' : ''
-  }`}
-  data-id={b.id}
-  onMouseEnter={() => setHoveredBlockId(b.id)}
-  onMouseLeave={() => setHoveredBlockId(null)}
-  onMouseDown={(e) => {
-    handleSelectBlock(e, b, instName);
-    
-    if (instName === instrument) {
-      // Если тянем выделенный блок — включаем режим группы
-      if (selectedBlockIds.has(b.id)) {
-        handleGroupDragStart(e, b);
-      }
-      
-      // В любом случае запускаем стандартный драг, чтобы ничего не «стояло»
-      isDraggingRef.current = true;
-      startDrag(b, e);
-    }
-  }}
-  onDoubleClick={() => {
-    if (instName !== instrument) return;
-    setTracks(prev => ({
-      ...prev,
-      [instrument]: prev[instrument].map(it => 
-        it.id === b.id ? { ...it, velocity: (it.velocity || 1) <= 0.5 ? 1 : 0.5 } : it
-      )
-    }));
-  }}
-  onTouchStart={(e) => {
-    handleSelectBlock(e, b, instName);
-    if (instName === instrument) handleTouchStart(e, b, false);
-  }}
-  onTouchMove={(e) => {
-    if (instName === instrument) handleTouchMove(e);
-  }}
-  onTouchEnd={handleTouchEnd}
-  onContextMenu={(e) => { 
-    e.preventDefault(); 
-    if (instName !== instrument) return;
-    setTracks(prev => ({...prev, [instrument]: prev[instrument].filter(it => it.id !== b.id)}));
-    setSelectedBlockIds(prev => { const ns = new Set(prev); ns.delete(b.id); return ns; });
-  }} 
-  style={{
-    position: "absolute",
-    left: b.x,
-    width: b.length,
-    height: 45,
-    backgroundColor: instName === instrument ? getColor(b.fret) : "rgba(100, 100, 100, 0.3)",
-    "--neon-color": instName === instrument ? getColor(b.fret) : "transparent",
-    opacity: instName === instrument ? (b.velocity || 1) : 0.4,
-    border: instName === instrument ? "none" : "1px dashed rgba(255,255,255,0.2)",
-    outline: selectedBlockIds.has(b.id) ? "2px solid cyan" : "none",
-    outlineOffset: "2px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: instName === instrument ? "white" : "rgba(255,255,255,0.2)",
-    fontWeight: "bold",
-    cursor: instName === instrument ? "grab" : "default",
-    zIndex: instName === instrument ? 10 : 5,
-    borderRadius: 6,
-    pointerEvents: "auto",   // ← теперь ВСЕ блоки можно выделять
-    touchAction: "none" 
-  }}>
-  {b.fret}
-  {instName === instrument && (
-    <div 
-      onMouseDown={(e) => startResize(b, e)}
-      onTouchStart={(e) => { e.stopPropagation(); handleTouchStart(e, b, true); }}
-      style={{
-        position: "absolute",
-        right: 0,
-        top: 0,
-        width: 15,
-        height: "100%",
-        cursor: "ew-resize",
-        background: "rgba(0,0,0,0.1)",
-        borderRadius: "0 6px 6px 0",
-      }} 
-    />
-  )}
-</div>
-                    );
-                  })
-              )}
-            </div>
-          ))}
-          <div 
-            ref={playheadRef} 
-            className="playhead-grabber" 
-            onMouseDown={startPlayheadDrag} 
-            onTouchStart={startPlayheadDrag} 
-            style={{ 
-              position: "absolute", 
-              top: 0, 
-              width: 25, 
-              marginLeft: -11, 
-              height: "100%", 
-              cursor: "ew-resize", 
-              zIndex: 30, 
-              display: "flex", 
-              justifyContent: "center" 
-            }} 
-          >
-            <div style={{ width: 3, height: "100%", background: "#FF4D4D", pointerEvents: "none" }} />
-          </div>
+.app.light-theme .close-modal-btn {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: #1a1a2e !important;
+}
 
-        </div>
-      </div>
-      <button 
-        className="controls-help-btn"
-        onClick={() => setShowHelp(true)}
-      >
-        Controls Help
-      </button>
+.app.light-theme .close-modal-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: #0066ff !important;
+  box-shadow: 0 0 25px rgba(0, 102, 255, 0.15) !important;
+}
 
-      {showHelp && (
-  <div className="custom-modal-overlay" onClick={() => setShowHelp(false)}>
-    <div className="custom-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h2>Controls Guide</h2>
-        <div className="header-line"></div>
-      </div>
-      
-      <div className="modal-content">
-        <div className="help-section">
-        <p><strong>🖱️ Mouse Controls</strong></p>
-          <div className="control-item"><span>Mouse Wheel</span> — Change string / color</div>
-          <div className="control-item"><span>Alt + Scroll</span> — Change note volume</div>
-          <div className="control-item"><span>Right Click</span> — Delete block</div>
-        </div>
+/* Светлая тема — Warning */
+.app.light-theme .warning-overlay {
+  background: rgba(200, 210, 230, 0.7) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
 
-        <div className="help-section">
-  <p><strong>⌨️ Keyboard Shortcuts</strong></p>
-  <div className="control-item"><span>Space</span> — Play / Pause</div>
-  <div className="control-item"><span>S</span> — Stop</div>
-  <div className="control-item"><span>Shift + Click</span> — Move playhead</div>
-  <div className="control-item"><span>Ctrl + Click</span> – Select multiple blocks</div>
-  <div className="control-item"><span>Ctrl + C</span> — Copy selected blocks</div>
-  <div className="control-item"><span>Ctrl + V</span> — Smart Paste </div>
-  <div className="control-item"><span>Del / Backspace</span> — Delete selected blocks</div>
-</div>
-      </div>
+.app.light-theme .warning-modal {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1px solid rgba(204, 51, 51, 0.2) !important;
+  border-top: 1px solid rgba(204, 51, 51, 0.3) !important;
+  box-shadow: 0 24px 60px rgba(204, 51, 51, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
 
-      <button className="close-modal-btn" onClick={() => setShowHelp(false)}>Let's Rock!</button>
-    </div>
-  </div>
-)}
+.app.light-theme .warning-modal h2 {
+  color: #cc3333 !important;
+  text-shadow: 0 0 20px rgba(204, 51, 51, 0.15) !important;
+}
 
-      {/* ВСТАВЛЯЙ ВЫРЕЗАННЫЙ БЛОК СЮДА */}
-      {showResetConfirm && (
-        <div className="custom-modal-overlay warning-overlay" onClick={() => setShowResetConfirm(false)}>
-          <div className="custom-modal warning-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="warning-icon">⚠</div>
-            <h2>DANGER ZONE</h2>
-            <p>Clear entire project? All notes will be permanently deleted.</p>
-            <div className="modal-buttons">
-              <button className="cancel-modal-btn" onClick={() => setShowResetConfirm(false)}>CANCEL</button>
-              <button className="confirm-reset-btn" onClick={() => { handleResetAll(); setShowResetConfirm(false); }}>YES, RESET ALL</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+.app.light-theme .warning-modal p {
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .cancel-modal-btn {
+  color: #555566 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.app.light-theme .cancel-modal-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #1a1a2e !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+.app.light-theme .confirm-reset-btn {
+  background: #cc3333 !important;
+  border-color: #cc3333 !important;
+  color: #ffffff !important;
+}
+
+.app.light-theme .confirm-reset-btn:hover {
+  box-shadow: 0 0 30px rgba(204, 51, 51, 0.3) !important;
+}
+
+/* Светлая тема — Info Modal */
+.app.light-theme .info-modal {
+  border-color: rgba(0, 102, 255, 0.15) !important;
+  border-top-color: rgba(0, 102, 255, 0.25) !important;
+}
+
+.app.light-theme .info-modal h2 {
+  color: #0066ff !important;
+  text-shadow: 0 0 20px rgba(0, 102, 255, 0.15) !important;
+}
+
+.app.light-theme .info-modal p {
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .info-modal .neon-icon {
+  filter: drop-shadow(0 0 10px #0066ff);
+}
+
+/* Светлая тема — Changelog */
+.app.light-theme .changelog-modal .neon-icon {
+  filter: drop-shadow(0 0 10px #27ae60);
+}
+
+.app.light-theme .changelog-title {
+  color: #27ae60 !important;
+  text-shadow: 0 0 20px rgba(39, 174, 96, 0.15) !important;
+}
+
+.app.light-theme .changelog-modal div[style*="color: var(--text-secondary)"] {
+  color: #1a1a2e !important;
+}
+
+/* ==================== ВСПОМОГАТЕЛЬНЫЕ ЭФФЕКТЫ ==================== */
+.btn-flash { background: var(--text-bright) !important; color: #0a0e1a !important; box-shadow: 0 0 12px var(--text-bright) !important; transform: scale(0.95); transition: all 0.05s linear !important; }
+.btn-flash-red { background: #FF4D4D !important; color: #0a0e1a !important; box-shadow: 0 0 12px #FF4D4D !important; transform: scale(0.95); transition: all 0.05s linear !important; }
+
+/* ==================== КНОПКИ РЕЖИМОВ ==================== */
+.sub-toggle { background: rgba(77, 136, 255, 0.1); backdrop-filter: blur(4px); transition: all 0.2s ease; }
+.sub-toggle:hover { transform: scale(1.02); background: rgba(189, 0, 255, 0.2); }
+.sub-toggle.active { background: rgba(189, 0, 255, 0.2); border-color: #bd00ff !important; box-shadow: 0 0 12px #bd00ff; animation: subPulse 1.5s infinite; }
+@keyframes subPulse { 0%, 100% { box-shadow: 0 0 2px #bd00ff; } 50% { box-shadow: 0 0 15px #ff44ff; } }
+
+.ai-btn { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; position: relative; overflow: hidden; }
+.ai-btn:hover { background: rgba(189, 0, 255, 0.25) !important; border-color: rgba(189, 0, 255, 0.8) !important; color: #bd00ff !important; transform: scale(1.06) !important; box-shadow: 0 0 25px rgba(189, 0, 255, 0.4) !important; }
+.ai-btn:active { transform: scale(0.94) !important; background: rgba(189, 0, 255, 0.4) !important; box-shadow: 0 0 10px rgba(189, 0, 255, 0.6) !important; }
+
+.app.light-theme .ai-btn { background: rgba(0, 0, 0, 0.05) !important; border-color: rgba(189, 0, 255, 0.2) !important; color: rgba(189, 0, 255, 0.6) !important; }
+.app.light-theme .ai-btn:hover { background: rgba(189, 0, 255, 0.15) !important; border-color: #bd00ff !important; color: #bd00ff !important; box-shadow: 0 0 20px rgba(189, 0, 255, 0.3) !important; }
+.app.light-theme .ai-btn:active { background: rgba(189, 0, 255, 0.3) !important; }
+
+/* Если на странице есть блок превью (и он не скрыт), полностью отключаем скролл у окна */
+html:has(.landing), 
+body:has(.landing) {
+  overflow: hidden !important;
+  height: 100vh !important;
+  width: 100vw !important;
+}
+.block:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 12px currentColor;
+  transform: scale(1.02);
+}
+
+/* ===== Аппаратное ускорение и изоляция для контейнера сетки ===== */
+.scroll-container {
+  contain: layout style paint;
+  will-change: scroll-position;
+}
+
+.block {
+  transition: none !important;
+}
+.block:hover {
+  transform: scale(1.02);
+  filter: brightness(1.2);
+}
+
+.playhead-grabber {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+.playhead-grabber > div {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ===== ЕДИНЫЙ СТИЛЬ «LIQUID GLASS» ДЛЯ ВСЕХ КНОПОК ===== */
+.save-btn,
+.load-btn,
+.share-btn,
+.inst-btn,
+.fx-toggle-btn,
+.play-pause-btn,
+.stop-btn,
+.record-square-btn,
+.reset-btn,
+.ai-btn,
+.clear-instrument-btn,
+.controls-help-btn,
+div[style*="background: var(--bg-card)"] button,
+div[style*="background-color: var(--bg-card)"] button {
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.25s ease !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: var(--text-primary) !important;
+}
+
+.clear-instrument-btn {
+  border-color: var(--inst-color, #4D88FF) !important;
+  color: var(--inst-color, #4D88FF) !important;
+}
+
+.controls-help-btn.changelog-btn {
+  border-color: #4DFF88 !important;
+  color: #4DFF88 !important;
+}
+.app.light-theme .controls-help-btn.changelog-btn {
+  border-color: #27ae60 !important;
+  color: #27ae60 !important;
+}
+
+.save-btn:hover,
+.load-btn:hover,
+.share-btn:hover,
+.inst-btn:hover,
+.fx-toggle-btn:hover,
+.play-pause-btn:hover,
+.stop-btn:hover,
+.record-square-btn:hover,
+.reset-btn:hover,
+.ai-btn:hover,
+.clear-instrument-btn:hover,
+.controls-help-btn:hover,
+div[style*="background: var(--bg-card)"] button:hover,
+div[style*="background-color: var(--bg-card)"] button:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.inst-btn.active,
+.fx-toggle-btn.fx-active,
+.play-pause-btn.playing,
+.record-square-btn.recording-active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 20px currentColor, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.stop-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.reset-btn {
+  border-color: rgba(255, 77, 77, 0.3) !important;
+  color: #ff4d4d !important;
+}
+.reset-btn:hover {
+  border-color: #ff4d4d !important;
+  box-shadow: 0 0 15px rgba(255, 77, 77, 0.2) !important;
+}
+
+/* ===== СВЕТЛАЯ ТЕМА ===== */
+.app.light-theme .save-btn,
+.app.light-theme .load-btn,
+.app.light-theme .share-btn,
+.app.light-theme .inst-btn,
+.app.light-theme .fx-toggle-btn,
+.app.light-theme .play-pause-btn,
+.app.light-theme .stop-btn,
+.app.light-theme .record-square-btn,
+.app.light-theme .reset-btn,
+.app.light-theme .ai-btn,
+.app.light-theme .clear-instrument-btn,
+.app.light-theme .controls-help-btn,
+.app.light-theme div[style*="background: var(--bg-card)"] button,
+.app.light-theme div[style*="background-color: var(--bg-card)"] button {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: var(--text-primary) !important;
+}
+.app.light-theme .save-btn:hover,
+.app.light-theme .load-btn:hover,
+.app.light-theme .share-btn:hover,
+.app.light-theme .inst-btn:hover,
+.app.light-theme .fx-toggle-btn:hover,
+.app.light-theme .play-pause-btn:hover,
+.app.light-theme .stop-btn:hover,
+.app.light-theme .record-square-btn:hover,
+.app.light-theme .reset-btn:hover,
+.app.light-theme .ai-btn:hover,
+.app.light-theme .clear-instrument-btn:hover,
+.app.light-theme .controls-help-btn:hover,
+.app.light-theme div[style*="background: var(--bg-card)"] button:hover,
+.app.light-theme div[style*="background-color: var(--bg-card)"] button:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+.app.light-theme .inst-btn.active,
+.app.light-theme .fx-toggle-btn.fx-active,
+.app.light-theme .play-pause-btn.playing,
+.app.light-theme .record-square-btn.recording-active {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 0 20px currentColor, 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+.app.light-theme .reset-btn {
+  color: #cc3333 !important;
+  border-color: rgba(204, 51, 51, 0.3) !important;
+}
+.app.light-theme .reset-btn:hover {
+  border-color: #cc3333 !important;
+  box-shadow: 0 0 15px rgba(204, 51, 51, 0.2) !important;
+}
+
+/* ===== ИНДИВИДУАЛЬНЫЕ ЦВЕТА ДЛЯ КНОПОК ИНСТРУМЕНТОВ ===== */
+.inst-btn.guitar-btn.active, .inst-btn.guitar-btn.fx-active { border-color: #FFB84D !important; box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #FFB84D !important; }
+.inst-btn.guitar-btn:hover { border-color: rgba(255, 184, 77, 0.5) !important; box-shadow: 0 0 15px rgba(255, 184, 77, 0.3) !important; color: #FFB84D !important; }
+
+.inst-btn.synth-btn.active, .inst-btn.synth-btn.fx-active { border-color: #4DC3FF !important; box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #4DC3FF !important; }
+.inst-btn.synth-btn:hover { border-color: rgba(77, 195, 255, 0.5) !important; box-shadow: 0 0 15px rgba(77, 195, 255, 0.3) !important; color: #4DC3FF !important; }
+
+.inst-btn.drum-btn.active, .inst-btn.drum-btn.fx-active { border-color: #FF4D4D !important; box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #FF4D4D !important; }
+.inst-btn.drum-btn:hover { border-color: rgba(255, 77, 77, 0.5) !important; box-shadow: 0 0 15px rgba(255, 77, 77, 0.3) !important; color: #FF4D4D !important; }
+
+.inst-btn.bass-btn.active, .inst-btn.bass-btn.fx-active { border-color: #BD00FF !important; box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #BD00FF !important; }
+.inst-btn.bass-btn:hover { border-color: rgba(189, 0, 255, 0.5) !important; box-shadow: 0 0 15px rgba(189, 0, 255, 0.3) !important; color: #BD00FF !important; }
+
+.inst-btn.chip-btn.active, .inst-btn.chip-btn.fx-active { border-color: #4DFF88 !important; box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.08) !important; color: #4DFF88 !important; }
+.inst-btn.chip-btn:hover { border-color: rgba(77, 255, 136, 0.5) !important; box-shadow: 0 0 15px rgba(77, 255, 136, 0.3) !important; color: #4DFF88 !important; }
+
+.app.light-theme .inst-btn.guitar-btn.active, .app.light-theme .inst-btn.guitar-btn.fx-active { border-color: #FFB84D !important; box-shadow: 0 0 20px #FFB84D, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.synth-btn.active, .app.light-theme .inst-btn.synth-btn.fx-active { border-color: #4DC3FF !important; box-shadow: 0 0 20px #4DC3FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.drum-btn.active, .app.light-theme .inst-btn.drum-btn.fx-active { border-color: #FF4D4D !important; box-shadow: 0 0 20px #FF4D4D, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.bass-btn.active, .app.light-theme .inst-btn.bass-btn.fx-active { border-color: #BD00FF !important; box-shadow: 0 0 20px #BD00FF, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+.app.light-theme .inst-btn.chip-btn.active, .app.light-theme .inst-btn.chip-btn.fx-active { border-color: #4DFF88 !important; box-shadow: 0 0 20px #4DFF88, 0 2px 8px rgba(0, 0, 0, 0.04) !important; }
+
+/* ===== СТЕКЛЯННЫЙ SELECT (метроном) ===== */
+.glass-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 4px 28px 4px 12px !important;
+  color: var(--text-primary) !important;
+  font-size: 9px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  outline: none !important;
+  width: 100% !important;
+  transition: all 0.25s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-select:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.glass-select:focus {
+  border-color: var(--text-accent) !important;
+  box-shadow: 0 0 0 2px rgba(77, 136, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.glass-select option {
+  background: rgba(20, 25, 45, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: var(--text-primary) !important;
+  padding: 6px 12px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  font-size: 9px !important;
+  font-weight: bold !important;
+  transition: background 0.15s ease !important;
+}
+
+.glass-select option:hover,
+.glass-select option:checked {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: var(--text-bright) !important;
+}
+
+.app.light-theme .glass-select {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  color: #1a1a2e !important;
+}
+
+.app.light-theme .glass-select:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+.app.light-theme .glass-select option {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: #1a1a2e !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.app.light-theme .glass-select option:hover,
+.app.light-theme .glass-select option:checked {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #0066ff !important;
+}
+
+/* ========================================================= */
+/* ===== ВЫПАДАЮЩЕЕ МЕНЮ «МОЯ СТРУНА» (LIQUID GLASS) ===== */
+/* ========================================================= */
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-primary);
+}
+.user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.liquid-glass-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 270px;
+  background: rgba(18, 22, 41, 0.55);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 12px 0;
+  z-index: 9999;
+  animation: liquidMenuFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes liquidMenuFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.liquid-glass-menu .user-info {
+  padding: 8px 24px 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 8px;
+}
+.liquid-glass-menu .user-info .user-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+.liquid-glass-menu .user-info .user-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+.liquid-glass-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  font-family: inherit;
+}
+
+.liquid-glass-menu .menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  transform: translateX(4px);
+}
+
+.liquid-glass-menu .divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  margin: 8px 24px;
+  border: none;
+}
+
+.liquid-glass-menu .menu-item.logout {
+  color: #ff4d4d;
+}
+.liquid-glass-menu .menu-item.logout:hover {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff6666;
+}
+
+.autosave-item {
+  justify-content: space-between;
+}
+.custom-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+.custom-checkbox.checked {
+  background: #d4b5e6;
+  border-color: transparent;
+  box-shadow: 0 0 8px rgba(212, 181, 230, 0.6);
+}
+
+.app.light-theme .user-profile-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1a1a2e;
+}
+.app.light-theme .user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+.app.light-theme .liquid-glass-menu {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.app.light-theme .liquid-glass-menu .user-info {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+.app.light-theme .liquid-glass-menu .user-info .user-name {
+  color: #1a1a2e;
+}
+.app.light-theme .liquid-glass-menu .user-info .user-email {
+  color: rgba(26, 26, 46, 0.6);
+}
+.app.light-theme .liquid-glass-menu .menu-item {
+  color: rgba(26, 26, 46, 0.85);
+}
+.app.light-theme .liquid-glass-menu .menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0066ff;
+}
+.app.light-theme .liquid-glass-menu .divider {
+  background: rgba(0, 0, 0, 0.06);
+}
+.app.light-theme .liquid-glass-menu .menu-item.logout {
+  color: #cc3333;
+}
+.app.light-theme .liquid-glass-menu .menu-item.logout:hover {
+  background: rgba(204, 51, 51, 0.08);
+}
+.app.light-theme .custom-checkbox {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+}
+.app.light-theme .custom-checkbox.checked {
+  background: #0066ff;
+  box-shadow: 0 0 8px rgba(0, 102, 255, 0.4);
+}
+
+/* ===== КНОПКА ИЗБРАННОГО (СЕРДЕЧКО) ===== */
+.favorite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 55px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  cursor: pointer;
+  transition: all 0.25s ease !important;
+  color: var(--text-primary) !important;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+}
+
+.favorite-btn.active {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: #ff4b6e !important;
+  box-shadow: 0 0 20px rgba(255, 75, 110, 0.3), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  color: #ff4b6e !important;
+}
+
+.favorite-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app.light-theme .favorite-btn {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  color: var(--text-primary) !important;
+}
+
+.app.light-theme .favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.app.light-theme .favorite-btn.active {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: #e63956 !important;
+  box-shadow: 0 0 20px rgba(230, 57, 86, 0.2), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  color: #e63956 !important;
+}
+
+/* ========================================================= */
+/* ==== ИЗБРАННОЕ (Favorites) — СТИЛЬ LIQUID GLASS ======== */
+/* ========================================================= */
+
+.favorite-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.favorite-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.fav-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0;
+  width: 100%;
+  transition: border-color 0.25s ease;
+  outline: none;
+  font-family: inherit;
+}
+
+.fav-name-input:hover,
+.fav-name-input:focus {
+  border-bottom-color: var(--text-accent);
+}
+
+.fav-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  opacity: 0.7;
+  letter-spacing: 0.3px;
+}
+
+.fav-load-btn {
+  background: rgba(77, 136, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(77, 136, 255, 0.2);
+  border-radius: 30px;
+  padding: 5px 16px;
+  color: var(--text-accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.fav-load-btn:hover {
+  background: rgba(77, 136, 255, 0.25);
+  border-color: var(--text-accent);
+  box-shadow: 0 0 20px rgba(77, 136, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.fav-delete-btn {
+  background: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 77, 77, 0.15);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff4d4d;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 77, 77, 0.04);
+}
+
+.fav-delete-btn:hover {
+  background: rgba(255, 77, 77, 0.15);
+  border-color: #ff4d4d;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.3);
+  transform: scale(1.08);
+}
+
+.app.light-theme .favorite-item {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.app.light-theme .favorite-item:hover {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.app.light-theme .fav-name-input {
+  color: #1a1a2e;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+.app.light-theme .fav-name-input:hover,
+.app.light-theme .fav-name-input:focus {
+  border-bottom-color: #0066ff;
+}
+
+.app.light-theme .fav-load-btn {
+  background: rgba(0, 102, 255, 0.08);
+  border-color: rgba(0, 102, 255, 0.15);
+  color: #0066ff;
+}
+
+.app.light-theme .fav-load-btn:hover {
+  background: rgba(0, 102, 255, 0.18);
+  border-color: #0066ff;
+  box-shadow: 0 0 20px rgba(0, 102, 255, 0.15);
+}
+
+.app.light-theme .fav-delete-btn {
+  color: #cc3333;
+  border-color: rgba(204, 51, 51, 0.15);
+  background: rgba(204, 51, 51, 0.04);
+}
+
+.app.light-theme .fav-delete-btn:hover {
+  background: rgba(204, 51, 51, 0.12);
+  border-color: #cc3333;
+  box-shadow: 0 0 16px rgba(204, 51, 51, 0.2);
+}
+
+.fav-status-spinner {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================================= */
+/* ==== АНИМИРОВАННЫЙ ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ ==================== */
+/* ========================================================= */
+
+.theme-toggle-item {
+  padding: 8px 24px !important;
+  cursor: default !important;
+}
+
+.theme-toggle-item span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.theme-switch .slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.theme-switch .slider::before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.theme-switch .slider::after {
+  content: "🌙";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.8;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1;
+}
+
+.theme-switch input:checked + .slider {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
+
+.theme-switch input:checked + .slider::before {
+  transform: translateX(24px);
+  background: #1a1a2e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.theme-switch input:checked + .slider::after {
+  content: "☀️";
+  right: auto;
+  left: 4px;
+}
+
+.theme-switch:hover .slider {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.theme-switch input:checked:hover .slider {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.theme-switch input:active + .slider::before {
+  width: 26px;
+  transition: width 0.15s ease;
+}
+
+.clear-instrument-btn {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.clear-instrument-btn:not(.empty):hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 25px var(--inst-color, #4D88FF), 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.clear-instrument-btn.empty {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.clear-instrument-btn.empty:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.app.light-theme .clear-instrument-btn {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.app.light-theme .clear-instrument-btn:not(.empty):hover {
+  box-shadow: 0 0 25px var(--inst-color, #0066ff), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.app.light-theme .clear-instrument-btn.empty:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.clear-instrument-btn:hover:not(.empty) {
+  background: var(--inst-color, #4D88FF) !important;
+  color: #ffffff !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 0 25px var(--inst-color, #4D88FF), 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  border-color: var(--inst-color, #4D88FF) !important;
+}
+
+.clear-instrument-btn:not(.empty) {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.clear-instrument-btn.empty:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-secondary) !important;
+}
+
+.app.light-theme .clear-instrument-btn:hover:not(.empty) {
+  background: var(--inst-color, #0066ff) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 25px var(--inst-color, #0066ff), 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  border-color: var(--inst-color, #0066ff) !important;
+}
+
+.app.light-theme .clear-instrument-btn.empty:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+/* ========================================================= */
+/* ===== ДОБАВЛЯЕМ ЭФФЕКТ ЖИДКОГО СТЕКЛА И СВЕЧЕНИЯ ======== */
+/* ========================================================= */
+
+/* Делаем текст поверх блика */
+.preview-track span {
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+/* Сам пробегающий блик */
+.preview-track::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+
+/* Двигаем блик при наведении */
+.preview-track:hover::before {
+  left: 150%;
+}
+
+/* Усиливаем свечение текста при наведении (использует цвет инструмента) */
+.preview-track:hover span {
+  text-shadow: 0 0 15px currentColor, 0 0 5px currentColor;
+}
+
+/* ===== АДАПТАЦИЯ ДЛЯ СВЕТЛОЙ ТЕМЫ ===== */
+/* В светлой теме делаем блик темным, чтобы его было видно на белом */
+.app.light-theme .preview-track::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.08),
+    transparent
   );
 }
 
-export default App;
+/* Приглушаем цвета текста в светлой теме, чтобы не резали глаз */
+.app.light-theme .preview-track span {
+  filter: brightness(0.8);
+}
+
+/* При наведении в светлой теме возвращаем яркость и добавляем тень */
+.app.light-theme .preview-track:hover span {
+  filter: brightness(1);
+  text-shadow: 0 0 12px currentColor;
+}
+/* ===== ПЕРФ-ФИКСЫ: убираем дорогой backdrop-filter со скролла и тулбара ===== */
+.app .scroll-container,
+.app .instrument-selector {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* компенсируем прозрачность — фоны стали чуть плотнее */
+.app .scroll-container {
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+.app .instrument-selector {
+  background: rgba(20, 25, 45, 0.75) !important;
+}
+
+.app.light-theme .scroll-container,
+.app.light-theme .instrument-selector {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.app.light-theme .scroll-container {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+.app.light-theme .instrument-selector {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* кнопки тулбара: blur с них тоже снимаем */
+.inst-btn,
+.fx-toggle-btn {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ==================== СТИЛИ ДЛЯ SVG-ИКОНОК В КНОПКАХ ==================== */
+
+/* Базовый размер и цвет иконок */
+.effect-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--text-secondary); /* В обычном состоянии иконки серые */
+  transition: all 0.2s ease;
+}
+
+/* При наведении иконка загорается цветом акцента */
+.effect-btn:hover svg {
+  fill: var(--text-accent);
+  filter: drop-shadow(0 0 5px var(--text-accent));
+}
+
+/* Иконка удаления (крестик) */
+.effect-btn-remove svg {
+  fill: var(--text-secondary);
+}
+.effect-btn-remove:hover svg {
+  fill: #ff4d4d;
+  filter: drop-shadow(0 0 5px #ff4d4d);
+}
+
+/* Иконки внутри длинных кнопок (SUB и REVERSE) */
+.pill-btn svg {
+  fill: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.pill-btn:hover svg {
+  fill: var(--text-primary);
+}
+
+/* Когда SUB включен - иконка становится фиолетовой */
+.active-sub svg {
+  fill: #bd00ff !important;
+}
+
+/* Когда REVERSE включен - иконка становится оранжевой */
+.active-rev svg {
+  fill: #FFB84D !important;
+}
+
+/* Вспышка (при клике) */
+.btn-flash svg, .btn-flash-red svg {
+  fill: #0a0e1a !important;
+}
+
+
+
+@keyframes floatLeft {
+  0% { transform: translateY(0) rotate(-5deg); }
+  100% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes floatRight {
+  0% { transform: translateY(-15px) rotate(3deg); }
+  100% { transform: translateY(10px) rotate(-3deg); }
+}
+
+@keyframes facePulse {
+  0% { filter: drop-shadow(0 0 5px #FFEA00); opacity: 0.9; }
+  100% { filter: drop-shadow(0 0 20px #FFB84D); opacity: 1; }
+}
+
+/* Адаптив для маленьких экранов */
+@media (max-width: 1024px) {
+  .pumpkin-left { left: 5%; width: 100px; height: 100px; }
+  .pumpkin-right { right: 5%; width: 90px; height: 120px; }
+}
+@media (max-width: 768px) {
+  /* Уменьшаем тыквы и аккуратно размещаем их по краям */
+  .pumpkin-left { 
+    left: 2%; 
+    top: 8%; 
+    width: 70px; 
+    height: 70px; 
+  }
+  .pumpkin-right { 
+    right: 2%; 
+    top: 12%; 
+    width: 60px; 
+    height: 80px; 
+  }
+}
+
+/* ==================== АНИМАЦИЯ ЛОГОТИПА В ПРИЛОЖЕНИИ ==================== */
+
+/* Базовая кнопка */
+.app-logo-btn {
+  position: relative; /* Нужно для блика */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden; /* Обрезаем блик по кругу */
+  
+  /* Легкое парение вверх-вниз */
+  animation: floatAppLogo 4s ease-in-out infinite;
+  
+  /* Плавные переходы для трансформации и подсветки */
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+}
+
+/* Сама картинка */
+.app-logo-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: contain;
+  
+  /* Пульсирующее неоновое свечение */
+  animation: pulseAppLogo 3s ease-in-out infinite;
+  transition: box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+/* ✨ ЭФФЕКТ БЛИКА (Пробегающая полоса света) */
+.app-logo-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%; 
+  left: -50%;
+  width: 200%; 
+  height: 200%;
+  background: linear-gradient(
+    45deg, 
+    transparent 40%, 
+    rgba(255, 255, 255, 0.8) 50%, 
+    transparent 60%
+  );
+  transform: rotate(45deg) translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 🖱️ ЭФФЕКТ ПРИ НАВЕДЕНИИ */
+.app-logo-btn:hover {
+  animation-play-state: paused; /* Останавливаем парение */
+  transform: scale(1.15); /* Увеличиваем */
+  
+  /* 💡 АКТИВНАЯ ПОДСВЕТКА ВОКРУГ КНОПКИ */
+  box-shadow: 
+    0 0 0 3px rgba(255, 255, 255, 0.2), /* Тонкое внутреннее белое кольцо */
+    0 0 20px 6px rgba(255, 0, 128, 0.8), /* Розовое свечение */
+    0 0 40px 12px rgba(0, 200, 255, 0.6); /* Голубое внешнее свечение */
+}
+
+/* Картинка при наведении (вибрирует и светится) */
+.app-logo-btn:hover .app-logo-img {
+  animation: 
+    hoverWobble 0.4s ease-in-out infinite alternate, /* Вибрация */
+    hoverGlow 0.2s infinite alternate; /* Резкое мерцание неона */
+}
+
+/* Запуск блика при наведении */
+.app-logo-btn:hover::after {
+  animation: shineLogo 0.8s ease-in-out forwards;
+}
+
+/* --- КЛЮЧЕВЫЕ КАДРЫ --- */
+
+/* Парение (в покое) */
+@keyframes floatAppLogo {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Пульсация свечения (в покое) */
+@keyframes pulseAppLogo {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(255, 0, 128, 0.4), 0 0 20px rgba(0, 200, 255, 0.3);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.7), 0 0 35px rgba(0, 200, 255, 0.6);
+    filter: brightness(1.1);
+  }
+}
+
+/* Вибрация при наведении */
+@keyframes hoverWobble {
+  0% { transform: scale(1.1) rotate(-4deg); }
+  100% { transform: scale(1.15) rotate(4deg); }
+}
+
+/* Резкое неоновое мерцание при наведении */
+@keyframes hoverGlow {
+  0% { box-shadow: 0 0 20px rgba(255, 0, 128, 0.8), 0 0 40px rgba(0, 200, 255, 0.7); filter: brightness(1.2); }
+  100% { box-shadow: 0 0 30px rgba(255, 0, 128, 1), 0 0 60px rgba(0, 200, 255, 0.9); filter: brightness(1.4); }
+}
+
+/* Пробегающий блик */
+@keyframes shineLogo {
+  0% { transform: rotate(45deg) translateX(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: rotate(45deg) translateX(100%); opacity: 0; }
+}
+
+/* ==================== ИНТЕРАКТИВНЫЙ ТУТОРИАЛ ==================== */
+.tutorial-container {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none; /* Чтобы можно было кликать по сетке сквозь туториал */
+}
+
+.tutorial-card {
+  background: rgba(18, 22, 41, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(77, 136, 255, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(77, 136, 255, 0.2);
+  border-radius: 20px;
+  padding: 20px 30px;
+  text-align: center;
+  max-width: 400px;
+  pointer-events: auto; /* Кнопку можно нажимать */
+  animation: tutorialSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+}
+
+.tutorial-title {
+  color: var(--text-accent);
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin: 0 0 10px 0;
+  font-weight: bold;
+}
+
+.tutorial-content p {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  line-height: 1.4;
+}
+
+.tutorial-skip-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.tutorial-skip-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: #fff;
+}
+
+/* Прыгающая стрелочка */
+.tutorial-arrow {
+  width: 0; 
+  height: 0; 
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 15px solid var(--text-accent);
+  margin-top: 15px;
+  animation: bounceArrow 1.5s infinite alternate ease-in-out;
+  filter: drop-shadow(0 0 8px var(--text-accent));
+}
+
+@keyframes tutorialSlideUp {
+  from { opacity: 0; transform: translateY(50px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bounceArrow {
+  0% { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(-15px); opacity: 1; }
+}
+
+/* ==================== МОБИЛЬНАЯ ПАНЕЛЬ ДЕЙСТВИЙ ==================== */
+.mobile-action-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 22, 41, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 99998;
+  animation: slideUpPanel 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.mobile-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.mobile-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.9);
+}
+
+.mobile-delete-btn {
+  background: rgba(255, 77, 77, 0.15);
+  border-color: rgba(255, 77, 77, 0.3);
+  font-size: 18px;
+  color: #ff4d4d;
+  margin-left: 10px;
+}
+
+.mobile-delete-btn:active {
+  background: rgba(255, 77, 77, 0.3);
+  transform: scale(0.9);
+}
+
+@keyframes slideUpPanel {
+  from { opacity: 0; transform: translate(-50%, 50px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+/* ==================== ЗОНА РЕСАЙЗА БЛОКА ==================== */
+.note-resize-handle {
+  width: 15px; /* Для ПК: оставляем место для перетаскивания */
+  transition: background 0.2s ease;
+}
+
+.note-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* На сенсорных экранах делаем зону шире для пальца */
+@media (max-width: 1024px) {
+  .note-resize-handle {
+    width: 25px; 
+  }
+}
+
+/* ==================== МОБИЛЬНАЯ АДАПТАЦИЯ (ПОРТРЕТНЫЙ РЕЖИМ) ==================== */
+@media (max-width: 768px) {
+
+  /* --- 10. ВЕРТИКАЛЬНЫЙ СКРОЛЛ СЕТКИ НА МОБИЛКАХ --- */
+  .scroll-container {
+    /* Ограничиваем высоту: 50% от высоты экрана минус небольшие отступы */
+    max-height: 50vh !important; 
+    /* Включаем плавный инерционный скролл для iOS */
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* --- 1. ВЕРХНЯЯ ПАНЕЛЬ И ПРОФИЛЬ --- */
+  .user-profile-btn {
+    padding: 4px !important;
+    border-radius: 50% !important;
+    gap: 0 !important;
+  }
+  /* Прячем текст "МОЯ СТРУНА", оставляем только аватарку */
+  .user-profile-btn > span {
+    display: none !important; 
+  }
+  
+  /* Делаем меню фиксированным, чтобы оно не наезжало на кнопку */
+  .liquid-glass-menu {
+    position: fixed !important;
+    top: 80px !important;
+    right: 15px !important;
+    width: calc(100vw - 30px) !important;
+    max-width: 320px !important;
+  }
+
+  /* --- 2. ПАНЕЛЬ ИНСТРУМЕНТОВ --- */
+  .instrument-selector {
+    flex-wrap: wrap !important; /* Оставляем перенос, чтобы блок INFO/FX/3D уехал вниз */
+    justify-content: center !important;
+    padding: 10px !important;
+    gap: 6px !important; /* Уменьшаем отступ между кнопками */
+  }
+  
+  /* Делаем инструменты в один ряд (по 5 штук) */
+  .inst-btn {
+    flex: 1 1 calc(20% - 6px) !important; /* 20% ширины для каждого из 5 инструментов */
+    min-width: 0 !important; /* Убираем минимальную ширину, чтобы они сжались */
+    padding: 8px 2px !important; /* Делаем кнопки более узкими */
+  }
+
+  /* Уменьшаем иконки и текст, чтобы всё влезло */
+  .inst-icon {
+    font-size: 14px !important;
+    margin-bottom: 2px !important;
+  }
+  .inst-text {
+    font-size: 6px !important;
+    letter-spacing: 0px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Блок с кнопками INFO, FX, 3D переносится на новую строку и центрируется */
+  .instrument-selector > div:last-child {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0 !important;
+    margin-top: 8px;
+    gap: 8px !important;
+  }
+
+  /* Кнопки INFO/FX/3D тоже становятся по 3 в ряд */
+  .fx-toggle-btn {
+    flex: 1 1 calc(33% - 10px) !important;
+    border-radius: 12px !important;
+    padding: 8px 2px !important;
+  }
+
+  /* Уменьшаем шрифты */
+  .inst-icon { font-size: 16px !important; }
+  .inst-text { font-size: 8px !important; }
+
+    /* --- 3. КНОПКИ ТРАНСПОРТА (В ОДИН РЯД) --- */
+    .transport-row {
+      display: flex !important;
+      flex-wrap: nowrap !important; /* Запрещаем перенос на новую строку */
+      justify-content: space-between !important;
+      gap: 5px !important;
+      width: 100% !important;
+      padding: 0 10px !important;
+      box-sizing: border-box !important;
+      margin-top: 15px !important;
+      margin-bottom: 15px !important;
+    }
+  
+    /* Магия: «растворяем» обертку правой группы, чтобы ее кнопки встали в общий ряд */
+    .transport-row > div {
+      display: contents !important;
+    }
+  
+    /* Делаем все 7 кнопок абсолютно одинаковыми */
+    .transport-row button {
+      flex: 1 1 0% !important; /* Все кнопки делят место поровну */
+      min-width: 0 !important; /* Разрешаем им сжиматься на узких экранах */
+      height: 45px !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 8px !important;
+    }
+  
+    /* Убираем текст "REC", оставляем только точку */
+    .transport-row .record-square-btn {
+      font-size: 0 !important; 
+    }
+    .transport-row .record-square-btn .record-dot {
+      margin: 0 !important;
+    }
+  
+    /* Чуть уменьшаем текст, чтобы всё влезло */
+    .transport-row .ai-btn {
+      font-size: 12px !important;
+      letter-spacing: 0 !important;
+    }
+    .transport-row .reset-btn {
+      font-size: 7.5px !important;
+      letter-spacing: 0 !important;
+    }
+    /* Кнопка очистки остается в виде иконки корзины */
+    .transport-row .clear-instrument-btn {
+      font-size: 0 !important;
+    }
+
+  /* --- 4. ОСТАЛЬНЫЕ ПАНЕЛИ --- */
+  .info-panel-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .info-panel-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px !important;
+  }
+  .fx-panel-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Кнопка "Очистить инструмент" превращается в иконку корзины */
+  .clear-instrument-btn {
+    font-size: 0 !important;
+    padding: 8px 12px !important;
+  }
+  .clear-instrument-btn::before {
+    content: '🗑️';
+    font-size: 16px;
+  }
+
+  .custom-modal {
+    width: 90vw !important;
+    padding: 20px !important;
+  }
+  
+  /* --- 5. КРАСИВОЕ РАСКРЫТИЕ ПАНЕЛИ INFO НА МОБИЛКЕ --- */
+  
+  /* Делаем отступы внутри блоков INFO более аккуратными */
+  .info-panel-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; /* Красивая тонкая линия-разделитель */
+    padding: 20px 10px !important;
+  }
+  
+  .info-panel-grid > div:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Центрируем заголовки и элементы управления */
+  .info-panel-grid > div > div {
+    margin-bottom: 15px;
+  }
+
+  /* Делаем кнопки эффектов (иконки) чуть меньше, чтобы они влезли в один ряд */
+  .effect-btn {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  
+  /* Уменьшаем размер шрифта в кнопках VU/WAVE */
+  .info-panel-grid button {
+    font-size: 9px !important;
+  }
+
+  /* Прячем скроллбар у сетки, чтобы он не перекрывал контент */
+  .scroll-container {
+    padding-bottom: 20px;
+  }
+
+  /* --- 6. ПАНЕЛЬ FX КАК В 3D (НА МОБИЛКЕ) --- */
+  .fx-panel-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important; /* Убираем отступы, используем рамки */
+    padding: 10px 15px !important;
+  }
+
+  .fx-item {
+    flex-direction: row !important; /* Выстраиваем в строку */
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 12px 0 !important;
+    gap: 10px;
+  }
+
+  .fx-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+
+  .fx-label {
+    width: 65px; /* Фиксированная ширина для ровного выравнивания */
+    text-align: left;
+    order: 1;
+    font-size: 10px;
+  }
+
+  .fx-slider {
+    flex: 1; /* Растягиваем ползунок на всё свободное место */
+    max-width: none;
+    order: 2;
+  }
+
+  .fx-value {
+    width: 35px;
+    text-align: right;
+    order: 3;
+    font-size: 10px;
+  }
+
+  .fx-reset-btn {
+    order: 4;
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+
+  /* --- 7. КРАСИВАЯ ПАНЕЛЬ 3D НА МОБИЛКЕ --- */
+  .panel-3d-axes {
+    /* Перестраиваем сетку в одну колонку */
+    grid-template-columns: 1fr !important; 
+    gap: 15px !important; /* Уменьшаем отступ между осями */
+    padding: 0 5px !important;
+  }
+
+  /* Делаем ползунки чуть шире, чтобы за них было удобно тянуть */
+  .panel-3d-axes input[type="range"] {
+    min-width: 80px !important;
+  }
+  
+  /* Выравниваем подписи и кнопки сброса по краям */
+  .panel-3d-axes > div {
+    justify-content: space-between;
+  }
+
+    /* --- 8. ИДЕАЛЬНЫЙ МОБИЛЬНЫЙ ЛЕНДИНГ (БЕЗ СКРОЛЛА) --- */
+  
+  .app.landing {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html:has(.landing),
+  body:has(.landing) {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .landing-content {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important; 
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    
+    /* 👇 Увеличили верхний отступ до 90px, чтобы убрать наложение кнопок на логотип */
+    padding: 90px 14px max(12px, env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Логотип */
+  .neon-struna {
+    font-size: clamp(35px, 11vw, 52px) !important;
+    line-height: 1 !important;
+    margin-bottom: 5px !important;
+    letter-spacing: 2px !important;
+  }
+
+  /* Слоган */
+  .tagline {
+    font-size: 0.78rem !important;
+    margin-bottom: 15px !important;
+    letter-spacing: 2px !important;
+    white-space: normal !important;
+  }
+
+  /* Кнопка START */
+  .start-btn {
+    padding: 10px 24px !important;
+    margin-top: 5px !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Пять инструментов */
+  .preview {
+    width: 100% !important;
+    flex: 1 !important; /* 👈 Растягиваем блок на всё свободное место */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important; /* 👈 Центрируем кнопки по вертикали */
+    margin: 0 !important;
+    gap: 10px !important;
+  }
+
+  .preview-track {
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* Нижняя надпись */
+  .landing-footer {
+    flex-shrink: 0 !important;
+    padding-top: 10px !important;
+    text-align: center !important;
+    margin-top: 0 !important; /* Убрали auto, так как preview теперь сам занимает место */
+  }
+
+  .powered-by-text {
+    font-size: 8px !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  /* Корректировка тыкв */
+  .pumpkin-left { 
+    top: 8%; 
+    left: 2%; 
+    width: 45px; 
+    height: 45px; 
+  }
+  .pumpkin-right { 
+    top: 11%; 
+    right: 2%; 
+    width: 40px; 
+    height: 55px; 
+  }
+  /* --- 9. КНОПКИ ПОМОЩЬ И ЧТО НОВОГО (ТОЛЬКО ИКОНКИ) --- */
+  .bottom-action-buttons {
+    gap: 15px !important; /* Увеличиваем отступ между круглыми кнопками */
+    margin: 15px 0 !important;
+  }
+
+  .controls-help-btn {
+    font-size: 0 !important; /* Скрываем текст внутри кнопки */
+    width: 45px !important;  /* Делаем кнопку идеально круглой */
+    height: 45px !important;
+    min-width: 45px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important; /* Убираем старые отступы */
+  }
+
+  /* Добавляем иконки вместо скрытого текста */
+  .controls-help-btn:nth-child(1)::before {
+    content: '❓';
+    font-size: 18px !important;
+  }
+
+  .controls-help-btn:nth-child(2)::before {
+    content: '📢';
+    font-size: 18px !important;
+  }
+}
+
+/* Дополнительная компактность для невысоких экранов (как iPhone SE) */
+@media (max-width: 768px) and (max-height: 700px) {
+  .landing-content {
+    padding-top: 70px !important; /* Чуть меньше для маленьких экранов */
+  }
+  .neon-struna {
+    font-size: clamp(32px, 10vw, 46px) !important;
+  }
+  .tagline {
+    margin-bottom: 10px !important;
+    font-size: 0.72rem !important;
+  }
+  .start-btn {
+    padding: 8px 20px !important;
+    margin-bottom: 10px !important;
+  }
+  .preview {
+    gap: 8px !important;
+  }
+  .preview-track {
+    padding: 8px 12px !important;
+  }
+}
+
+
+/* ==================== ПАНЕЛЬ FX (БАЗОВЫЕ СТИЛИ ДЛЯ ПК) ==================== */
+.fx-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.fx-label { font-size: 9px; color: var(--text-secondary); font-weight: bold; order: 1; }
+.fx-value { font-size: 11px; color: var(--text-bright); order: 2; }
+.fx-slider { width: 100%; max-width: 100px; order: 3; }
+
+.fx-reset-btn {
+  font-size: 8px;
+  padding: 2px 10px;
+  background: var(--btn-bg);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  order: 4;
+  transition: background 0.2s;
+}
+.fx-reset-btn:hover { background: var(--btn-hover); }
+
+/* ==================== СКРЫВАЕМ VU/WAVE НА МОБИЛКАХ ==================== */
+@media (max-width: 768px) {
+  .master-mode-toggles,
+  .master-meter-container {
+    display: none !important;
+  }
+  
+  /* Заодно уменьшим отступы в панели INFO, чтобы она стала компактнее */
+  .info-panel-grid > div {
+    padding: 12px 10px !important;
+  }
+}
+
+
+
+
+/* ==================== КНОПКИ УПРАВЛЕНИЯ ЭФФЕКТАМИ ==================== */
+.effects-controls-wrapper {
+  display: flex;
+  flex-direction: row;     /* Всегда в ряд */
+  flex-wrap: nowrap;       /* Запрещаем перенос на новую строку */
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 260px;        /* Ограничиваем ширину на ПК, чтобы не были огромными */
+  margin-top: 10px;
+}
+
+/* Базовый стиль для всех трех кнопок в контейнере */
+.effects-controls-wrapper .pill-btn {
+  flex: 1;                 /* Делаем все кнопки одинаковой ширины */
+  width: auto !important;
+  max-width: none !important;
+  height: 48px !important; /* Чуть увеличили высоту для удобства */
+  padding: 4px 2px !important;
+  font-size: 8px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+  white-space: normal;     /* Разрешаем тексту переноситься, если не влезает */
+}
+
+/* --- КНОПКИ УПРАВЛЕНИЯ ЭФФЕКТАМИ НА МОБИЛКЕ --- */
+.effects-controls-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  width: 100% !important;
+  max-width: 340px !important; /* 👈 Ограничиваем максимальную ширину контейнера */
+  margin: 15px auto 0 auto !important; /* 👈 Центрируем по горизонтали */
+  gap: 6px !important;
+}
+
+.effects-controls-wrapper .pill-btn {
+  flex: 1; /* Кнопки делят 340px поровну */
+  height: 48px !important;
+  padding: 4px 2px !important;
+  font-size: 8px !important;
+  white-space: normal !important; /* Разрешаем тексту переноситься */
+  line-height: 1.1;
+  text-align: center;
+  border-radius: 12px !important;
+}
+
+
+/* ==================== СКРЫВАЕМ МЕТРОНОМ И ЛУП НА МОБИЛКАХ ==================== */
+@media (max-width: 768px) {
+  .mobile-hide-tempo-controls {
+    display: none !important;
+  }
+  
+  /* Чтобы блок не выглядел пустым, уменьшим отступы */
+  .info-panel-grid > div {
+    padding: 15px 10px !important;
+  }
+}
+

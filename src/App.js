@@ -3829,68 +3829,7 @@ const menuItemStyle = {
           paddingTop: "12vh",
           boxSizing: "border-box"
         }}>
-                               {/* 🎃 ДВЕ КЛАССИЧЕСКИЕ ТЫКВЫ */}
-          <div className="halloween-pumpkins-container">
-            
-            {/* ЛЕВАЯ ТЫКВА (ШИРОКАЯ) */}
-            <div className="pumpkin-wrapper pumpkin-left">
-              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <radialGradient id="pumpkinGradLeft" cx="50%" cy="50%" r="50%">
-                    <stop offset="10%" stopColor="#FF9D00" />
-                    <stop offset="70%" stopColor="#E65C00" />
-                    <stop offset="100%" stopColor="#8C2900" />
-                  </radialGradient>
-                </defs>
-                {/* Стебель */}
-                <path d="M 90 50 Q 95 20 115 30 Q 110 40 115 50" fill="#4A2E15" stroke="#2B1A0B" strokeWidth="2"/>
-                {/* Тело */}
-                <ellipse cx="100" cy="125" rx="85" ry="65" fill="url(#pumpkinGradLeft)" />
-                {/* Прожилки */}
-                <path d="M 100 60 Q 70 125 100 190" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 60 Q 130 125 100 190" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 60 Q 40 125 50 185" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 60 Q 160 125 150 185" stroke="#C24B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                {/* Глаза (Классические треугольники) */}
-                <polygon points="40,100 85,110 55,140" className="face-glow" />
-                <polygon points="160,100 115,110 145,140" className="face-glow" />
-                {/* Нос */}
-                <polygon points="100,125 85,145 115,145" className="face-glow" />
-                {/* Рот с зубами */}
-                <path d="M 50,160 L 70,175 L 80,160 L 100,185 L 120,160 L 130,175 L 150,160 L 140,190 L 60,190 Z" className="face-glow" />
-              </svg>
-            </div>
-
-            {/* ПРАВАЯ ТЫКВА (ВЫСОКАЯ) */}
-            <div className="pumpkin-wrapper pumpkin-right">
-              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <radialGradient id="pumpkinGradRight" cx="50%" cy="50%" r="50%">
-                    <stop offset="10%" stopColor="#FF8800" />
-                    <stop offset="70%" stopColor="#D94E00" />
-                    <stop offset="100%" stopColor="#7A1C00" />
-                  </radialGradient>
-                </defs>
-                {/* Стебель (изогнутый) */}
-                <path d="M 95 40 Q 105 10 125 20 Q 120 30 115 45" fill="#4A2E15" stroke="#2B1A0B" strokeWidth="2"/>
-                {/* Тело (более овальное) */}
-                <ellipse cx="100" cy="120" rx="70" ry="75" fill="url(#pumpkinGradRight)" />
-                {/* Прожилки */}
-                <path d="M 100 45 Q 70 120 100 195" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 45 Q 130 120 100 195" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 45 Q 50 120 60 185" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                <path d="M 100 45 Q 150 120 140 185" stroke="#B33B00" strokeWidth="3" fill="none" opacity="0.6"/>
-                {/* Глаза (Большие, злые) */}
-                <polygon points="40,85 85,95 45,125" className="face-glow" />
-                <polygon points="160,85 115,95 155,125" className="face-glow" />
-                {/* Нос */}
-                <polygon points="100,120 90,135 110,135" className="face-glow" />
-                {/* Рот */}
-                <path d="M 55,155 L 75,165 L 85,150 L 100,175 L 115,150 L 125,165 L 145,155 L 135,185 L 65,185 Z" className="face-glow" />
-              </svg>
-            </div>
-
-          </div>
+                               
 
 
           <div className="logo-wrapper">

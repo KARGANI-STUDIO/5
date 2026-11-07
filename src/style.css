@@ -2348,52 +2348,7 @@ div[style*="background-color: var(--bg-card)"] button:hover {
   fill: #0a0e1a !important;
 }
 
-/* ==================== ХЭЛЛОУИНСКИЕ ТЫКВЫ ==================== */
-.halloween-pumpkins-container {
-  position: absolute;
-  top: 10%;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Чтобы не мешали кликать */
-  z-index: 10;
-  overflow: hidden;
-}
 
-.pumpkin-wrapper {
-  position: absolute;
-  width: 150px;
-  height: 150px;
-}
-
-/* Левая широкая тыква */
-.pumpkin-left {
-  left: 10%;
-  top: 15%;
-  animation: floatLeft 5s ease-in-out infinite alternate;
-}
-
-/* Правая высокая тыква */
-.pumpkin-right {
-  right: 10%;
-  top: 25%;
-  width: 130px;
-  height: 170px;
-  animation: floatRight 6s ease-in-out infinite alternate;
-}
-
-.pumpkin-wrapper svg {
-  width: 100%;
-  height: 100%;
-  /* Свечение вокруг самой тыквы */
-  filter: drop-shadow(0 0 25px rgba(255, 120, 0, 0.6)); 
-}
-
-/* Свечение лиц (глаз и рта) */
-.face-glow {
-  fill: #FFEA00;
-  animation: facePulse 3s infinite alternate;
-}
 
 @keyframes floatLeft {
   0% { transform: translateY(0) rotate(-5deg); }
